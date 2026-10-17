@@ -8,6 +8,15 @@ importers:
 
   .:
     devDependencies:
+      '@dennis/platform':
+        specifier: workspace:*
+        version: link:packages/platform
+      '@dennis/purchasing':
+        specifier: workspace:*
+        version: link:packages/purchasing
+      '@dennis/shortme':
+        specifier: workspace:*
+        version: link:packages/shortme
       '@types/node':
         specifier: 22.20.5
         version: 22.20.5
