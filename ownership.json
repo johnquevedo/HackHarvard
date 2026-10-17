@@ -82,7 +82,7 @@
   "reviewBranches": {
     "a1/a1-09-recovery-hardening": {
       "agents": ["a1", "a2", "a3", "a4"],
-      "reason": "Human-requested cross-package completion for branch review; main publication is not authorized."
+      "reason": "Human-requested cross-package integration review; publication requires separate lead authorization."
     }
   }
 }

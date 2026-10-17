@@ -307,3 +307,11 @@ Suggested order: A2 (1 and 2) merges next, then A4 (3 and 5), then A1 (4). A3 re
 Root type checking now includes explicit purchasing and eval-data projects, including their unit tests. Purchasing declares its test-only LLM dependency instead of relying on another package's installation. This closes the prior gap where packages lacking tsconfig.json were not checked by typecheck-all.
 
 A repeated restart run exposed a real readiness race: main printed the listening message immediately after calling serve, before the HTTP socket had bound. The restart rehearsal could then reach a recovered DB row and send its replay request before the new listener existed. The message now comes only from Hono's listening callback, after bind. The regression continues to use actual child processes and sockets, rather than adding a retry that conceals premature readiness.
+
+## STATUS lead authorization: A2 may commit the purchasing lockfile update (CR-A2-004)
+
+Recorded by A3 at the lead's request. The lead authorizes Agent 2 to include the importer-only `pnpm-lock.yaml` update for `packages/purchasing` in its merge, the same exception granted to Agent 1 in e118159. Scope: only the purchasing importer entries (typescript, vitest, @dennis/contracts, @dennis/db, drizzle-orm, zod); no other lockfile changes. The ownership check will flag `pnpm-lock.yaml` on the a2 branch; that flag is expected for this authorized exception. CR-A2-004 to A4 is therefore no longer blocking.
+
+## STATUS lead authorization: publish A1 integration to main
+
+The lead explicitly authorized publishing the completed integration branch to main. This supersedes earlier branch-only publication instructions. Live Photon acceptance remains unverified, and the legacy private-event migration remains an explicit opt-in operation that has not been applied to a user database.
