@@ -1,10 +1,18 @@
 {
   "name": "@dennis/eval-data",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./routes": "./src/routes.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
   "dependencies": {
     "@dennis/platform": "workspace:*",
-    "hono": "4.13.13"
+    "hono": "4.13.13",
+    "zod": "4.6.7"
   }
 }
