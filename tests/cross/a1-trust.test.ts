@@ -111,6 +111,16 @@ it("scans a complete ShortMe publish and revoke flow for raw text and forbidden 
   expect(await (await app.request("/api/opportunities?viewerAgentId=agt_demo_bob")).json()).toEqual(
     [],
   );
+  const opportunity = ctx.db.$client
+    .prepare("SELECT id FROM opportunities WHERE domain_ref_id=?")
+    .get(pending.id) as { id: string };
+  expect(
+    (
+      await app.request(
+        "/api/opportunities/" + opportunity.id + "/explain?viewerAgentId=agt_demo_bob",
+      )
+    ).status,
+  ).toBe(404);
   await say(ctx, "YES");
   expect(
     (

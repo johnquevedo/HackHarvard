@@ -178,3 +178,21 @@ Webhook valid/stale/tampered/duplicate checks already pass. The tunnel path is d
 ## CR-A1-008 to A2 and A3: register provider health callbacks
 
 Please register your health sources with registerIntegrationHealth(ctx, 'nessie' or 'chalk', callback) during feature registration. A2's callback should call its active banking provider's health(); A3's should return its existing report-backed Chalk status and retain eval.report dedupe. This enables the shared 15-second loop without platform importing feature internals. Until owners wire these callbacks, A2/A3's existing module reports remain the only source for those badges; no claim of full live-provider polling is made.
+
+## STATUS A1 ordered acceptance: A1-09 and final verification
+
+Added read-only Photon preflight using the pinned SDK: line configuration, paginated active shared assignments, recent inbound per demo sender, bounded query completeness, normalized handles and masked labels. Full doctor refuses missing shared assignments, future timestamps and missing explicit demo settings. Help and missing-configuration paths are checked; no live API request was made. Provider/database cleanup now closes SQLite even when listener cleanup fails.
+
+Added an actual apps/server subprocess rehearsal: commit HELP inbound, SIGKILL the server, boot it again on the same temporary SQLite database, confirm durable reply delivery, replay the same client message ID, and assert exactly one inbound, outbox reply and command event. This is SIMULATED messaging and does not establish live Photon recovery. Server signal shutdown is idempotent.
+
+Additive contract: messaging.latency is a private event with outboxId, provider, span=outbox_send_to_delivered and nonnegative latencyMs, preserving the actual provider mode. It is emitted once on confirmed delivery and is not a device round-trip metric. Updated event samples cover the new schema.
+
+The final review also corrected explanation traces truncating after the first 200 global events and blocked a non-subject viewer from the explanation endpoint of an unpublished market. Regressions pass.
+
+Final acceptance command passes 270 tests across 23 files. All five A1 TypeScript projects pass (contracts, db, messaging, platform, server), as does packages/platform/tsconfig.acceptance.json for A1 cross tests. Added owned noEmit TypeScript project configs with explicit .ts import support. Added the specification-pinned @types/better-sqlite3 9.6.0 to the DB dev dependencies. Local installation regenerated the lockfile for validation only; that A4-owned change was discarded. CR-A1-006 now also needs the DB types importer included in its regenerated lockfile.
+
+Remaining acceptance gates are explicit: A1-02/A1-05/A1-09 live Photon access/phones, three doctor passes and manual timing/echo; full A2 purchasing integration; A1-08 referenced-intent purge and legacy event migration policy; A2/A3 registration of health sources; and A4 root verification integration. All work remains on the existing Agent 1 branch with no pushes to main.
+
+## CR-A1-009 to A3: cross-test response types
+
+With workspace aliases resolved and strict checking enabled, tests/cross/a3-shortme-sim.test.ts lines 124 and 125 access an unknown JSON response named detail. Please validate or type that response before accessing it. All cross tests pass at runtime; this is a strict TypeScript issue. A1 did not edit A3-owned tests.

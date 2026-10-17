@@ -405,8 +405,10 @@ describe("platform foundation", () => {
         })
       ).status,
     ).toBe(400);
-    const users = await (await app.request("/api/users")).json();
-    expect(users[0].user.handle.startsWith("***")).toBe(true);
+    const users = (await (await app.request("/api/users")).json()) as {
+      user: { handle: string };
+    }[];
+    expect(users[0]!.user.handle.startsWith("***")).toBe(true);
     const response = await app.request("/api/sim/inbound", {
       method: "POST",
       headers: {
@@ -421,7 +423,9 @@ describe("platform foundation", () => {
     });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ accepted: true });
-    const bobEvents = await (await app.request("/api/events?viewerAgentId=agt_demo_bob")).json();
+    const bobEvents = (await (
+      await app.request("/api/events?viewerAgentId=agt_demo_bob")
+    ).json()) as { events: { type: string }[] };
     expect(bobEvents.events.some((e: { type: string }) => e.type === "message.received")).toBe(
       false,
     );

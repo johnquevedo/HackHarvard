@@ -19,7 +19,7 @@ The current [Beta Node example](https://photon.codes/docs/beta/websocket/example
 | Cursor resume                     | Durable checkpoint and failure tests                            | Not run                       |
 | Inbound resource                  | SDK received iMessage resource; strict normalizer tests         | Not run                       |
 | Public envelope around resource   | Direct resource, data, and data.message accepted conservatively | Unconfirmed; capture required |
-| Agent user ID                     | Must be supplied as PHOTON_AGENT_USER_ID                        | Not available                 |
+| Agent user ID                     | Explicit setting or unique-agent SDK discovery                  | Not available                 |
 | Own-message echo                  | Normalizer rejects the configured sender identity               | Provider behavior unconfirmed |
 | First outbound before human text  | Doctor replies only to new inbound                              | Not tested                    |
 | Rate limits and shared-line seats | No live project queried                                         | Not tested                    |
@@ -40,7 +40,7 @@ node --env-file=.env.local --import tsx scripts/spike-photon.ts --catalog-only
 node --env-file=.env.local --import tsx scripts/spike-photon.ts --samples 3
 ```
 
-Catalog-only mode needs PHOTON_PROJECT_ID and PHOTON_API_KEY and makes read-only API calls. Live mode additionally needs DEMO_ALICE_HANDLE and DEMO_BOB_HANDLE. Set PHOTON_AGENT_USER_ID explicitly if discovery finds zero or multiple candidates. Keep every secret out of git and chat. The root script name remains Agent 4's tooling responsibility; these direct commands work with the existing local tooling.
+Catalog-only mode needs PHOTON_PROJECT_ID and PHOTON_API_KEY and makes read-only API calls. Live mode additionally needs DEMO_ALICE_HANDLE and DEMO_BOB_HANDLE. Set PHOTON_AGENT_USER_ID explicitly if discovery finds zero or multiple candidates. Keep every secret out of git and chat. Agent 4's root tooling now exposes pnpm spike:photon and pnpm photon:doctor. The direct commands also load a local environment file explicitly.
 
 The runner writes event-catalog.json, inbound-text.json (and numbered subsequent samples), inbound-event-schema.json and spike-results.json under fixtures/photon only after actual calls. Inbound fixtures preserve envelope structure with redacted values. The results label the measured span as provider receipt to outbound delivered. This is distinct from device-to-device round-trip timing. A p50 is reported only after at least three samples; manual phone timing is still needed for the specification's round-trip target. A simulated or fallback transport cannot produce a successful live result.
 
@@ -60,14 +60,38 @@ The fixture inbound-text.synthetic.json contains invented test data based on the
 
 The plan is authoritative. Earlier commits bundled code across milestones and advanced to recovery fixes before the live spike; that was an execution-order deviation. This table distinguishes implementation from acceptance and describes the current Agent 1 branch, not an assertion that every change is on main.
 
-| Planned order | Milestone                   | Evidence and remaining acceptance                                                                                                                                                                                                            |
-| ------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1             | A1-01 foundation            | Simulator server, health, inbound/SSE, contract samples, database and contracts tags were verified. Root tooling has landed; full verify is blocked by lockfile, formatting and TypeScript integration issues recorded in CONTRACT_REQUESTS. |
-| 2             | A1-02 Photon spike          | Active now. Runner and synthetic tests exist; live catalog, real inbound fixture, delivered reply, timing and assumptions still require project access and phones.                                                                           |
-| 3             | A1-06 pipeline, stores, A2A | Implemented and tested, including category propagation and A2 detector compatibility. Full two-user purchasing integration and the milestone's combined acceptance scenario still need rehearsal.                                            |
-| 4             | A1-03 consent and commands  | Implemented and simulation-tested, including onboarding, AGREE, STOP, replay and command grammar. Cross-feature FORGET has the documented referenced-record restriction.                                                                     |
-| 5             | A1-04 approvals and outbox  | Implemented and simulation-tested, including hash/user binding, expiry, concurrency, transactional consumption, notification retries and interrupted-send recovery. Recheck with both integrated features.                                   |
-| 6             | A1-05 Photon provider       | Implemented with fake HTTP and Socket.IO tests. A real inbound event and real approval text on the phone remain unverified.                                                                                                                  |
-| 7             | A1-08 trust controls        | Core gates, revoke hooks, viewer filtering and shared-payload scanner are implemented and tested. Full cross-feature privacy acceptance and the referenced-record FORGET policy remain open.                                                 |
-| 8             | A1-07 webhook and status    | Webhook signatures, dedupe and messaging/LLM health are tested. Live tunnel, all-provider polling coverage and optional typing/tapback work remain unverified or incomplete.                                                                 |
-| 9             | A1-09 live hardening        | Some recovery and reconnect code was implemented early. Three passing live doctor runs, real server restart during a conversation, live timing and deliverability preflight are not done.                                                    |
+| Planned order | Milestone                   | Current acceptance                                                                                                                                                             |
+| ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1             | A1-01 foundation            | Simulator vertical slice verified. Shared root verification is still blocked by CR-A1-006.                                                                                     |
+| 2             | A1-02 Photon spike          | Runner code verified. Live spike blocked by project access and phones; documented rung 5 fallback active.                                                                      |
+| 3             | A1-06 pipeline, stores, A2A | Two-agent mock-detector conversation, isolation, gate races and queued recovery verified. Full A2 purchasing rehearsal awaits its integration.                                 |
+| 4             | A1-03 consent and commands  | Command grammar and STOP/onboarding/AGREE/scope/pause/resume conversation checks pass.                                                                                         |
+| 5             | A1-04 approvals and outbox  | Binding, lifecycle, atomic consumption, repeated YES, retries and delivery confirmation checks pass.                                                                           |
+| 6             | A1-05 Photon provider       | Synthetic SDK/HTTP/Socket.IO checks pass. Real inbound fixture and phone approval delivery remain unverified.                                                                  |
+| 7             | A1-08 trust controls        | Isolation, shared-output scanning and new private-event erasure pass. Referenced-intent purge and legacy private-event migration remain acceptance exceptions.                 |
+| 8             | A1-07 webhook and status    | Signature/dedupe tests, registered-provider polling, gated tapback and typing pass. Tunnel unavailable; A2/A3 health registration requested. Live acknowledgements unverified. |
+| 9             | A1-09 live hardening        | Real-process SIGKILL/restart rehearsal, durable outbox recovery and socket cursor tests pass. Three live doctor passes, manual echo and device timing remain blocked.          |
+
+## Ordered code acceptance checkpoint
+
+The milestones above were reviewed in the agreed order, using A1-02's documented fallback while live prerequisites remain unavailable. The expanded acceptance command passes 270 tests across 23 files, including both agents' cross-feature tests and an actual server process killed and restarted against a temporary SQLite database:
+
+```sh
+pnpm exec vitest run --config packages/platform/vitest.acceptance.config.ts
+pnpm exec tsc -p packages/platform/tsconfig.acceptance.json
+```
+
+All five A1 package/server TypeScript projects pass strict checking. The cross acceptance TypeScript config checks A1's cross tests; A3's cross tests execute successfully but their separate TypeScript check exposes two pre-existing unknown JSON response types recorded in CONTRACT_REQUESTS. Full root verify remains blocked by shared formatting, lockfile and root TypeScript configuration. A passing subset is not a claim that pnpm verify passes.
+
+Doctor now supports a read-only deliverability preflight:
+
+```sh
+node --env-file=.env.local --import tsx scripts/photon-doctor.ts --preflight-only
+node --env-file=.env.local --import tsx scripts/photon-doctor.ts
+```
+
+Preflight reads the iMessage line configuration, active shared assignments and the previous 30 minutes of incoming direct texts, with bounded pagination and masked sender labels. An unobserved sender is not proof of undeliverability. Preflight does not send messages or establish delivery. A full doctor run refuses missing assignments in shared-line mode and requires a new recognized demo inbound followed by delivered read-back. Its receipt and outbound timing do not establish device-to-device latency or own-message echo behavior. Run it successfully three times and record the manual checks before marking live hardening accepted.
+
+New messaging.latency events are private, mode-labeled and measure outbox_send_to_delivered only. Optional MessagingProvider acknowledgement/typing capabilities use the typed pinned SDK, stable keys and the owner's ackMode=reaction setting. Default none sends no acknowledgement. Synthetic tests do not establish live support.
+
+New private event prose uses removable overlays so FORGET can erase it while preserving immutable event rows. Existing databases with raw prose already embedded in immutable private events explicitly refuse FORGET pending a migration policy. Feature-referenced intents retain the previously documented refusal pending A2/A3 purge paths; financial and points audit records are not silently deleted.

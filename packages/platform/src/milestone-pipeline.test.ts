@@ -118,10 +118,9 @@ it("rehearses two agents through detection, anonymous sharing, A2A and the conve
     headers: { "x-dennis-admin": ctx.config.dennisAdminToken },
   });
   expect(response.status).toBe(200);
-  expect((await response.json()).map((m: { type: string }) => m.type)).toEqual([
-    "purchase.probe",
-    "purchase.probe_result",
-  ]);
+  expect(
+    ((await response.json()) as { type: string }[]).map((m: { type: string }) => m.type),
+  ).toEqual(["purchase.probe", "purchase.probe_result"]);
 });
 it.each(["pause", "disable", "revoke"])(
   "blocks inference results after %s during an external call",
@@ -208,5 +207,50 @@ it("recovers queued A2A after handler registration and binds retries to the oppo
   expect(handled).toBe(1);
   await expect(ctx.a2a.send({ ...input, opportunityId: "opp_changed" })).rejects.toMatchObject({
     code: "idempotency_conflict",
+  });
+});
+
+it("keeps complete explanation traces after more than one page of unrelated history", async () => {
+  const ctx = await setup();
+  const opportunity = await ctx.opportunities.upsert({
+    type: "group_purchase",
+    domainRefId: "grp_trace",
+    status: "proposed",
+    headline: "Simulated offer",
+    participantAgentIds: ["agt_demo_alice", "agt_demo_bob"],
+  });
+  for (let index = 0; index < 210; index++)
+    ctx.events.emit({
+      type: "agent.status_changed",
+      actor: { kind: "agent", agentId: "agt_demo_alice" },
+      visibility: "private",
+      payload: { agentId: "agt_demo_alice", status: "active" },
+    });
+  ctx.events.emit({
+    type: "purchase.match.evaluated",
+    actor: { kind: "system" },
+    visibility: "shared",
+    opportunityId: opportunity.id,
+    payload: {
+      conversationId: "cnv_trace",
+      aAgentId: "agt_demo_alice",
+      bAgentId: "agt_demo_bob",
+      compatible: true,
+      checks: [{ rule: "budget", passed: true, detail: "Within budget" }],
+    },
+  });
+  const app = new Hono();
+  mountPlatformRoutes(app, ctx);
+  const response = await app.request(
+    "/api/opportunities/" + opportunity.id + "/explain?viewerAgentId=agt_demo_alice",
+  );
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({
+    steps: expect.arrayContaining([
+      expect.objectContaining({
+        type: "purchase.match.evaluated",
+        checks: [{ rule: "budget", passed: true, detail: "Within budget" }],
+      }),
+    ]),
   });
 });

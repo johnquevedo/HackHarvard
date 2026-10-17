@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@dennis/contracts": ["../contracts/src/index.ts"],
+      "@dennis/db": ["../db/src/index.ts"],
+      "@dennis/platform": ["../platform/src/index.ts"],
+      "@dennis/messaging": ["../messaging/src/index.ts"],
+      "@dennis/llm": ["../llm/src/index.ts"],
+      "@dennis/shortme": ["../shortme/src/index.ts"],
+      "@dennis/purchasing": ["../purchasing/src/index.ts"],
+      "@dennis/eval-data": ["../eval-data/src/index.ts"],
+      "@dennis/platform/testing": ["./src/testing.ts"],
+      "hono": ["./node_modules/hono/dist/types/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "../../tests/cross/a1-*.test.ts", "vitest.acceptance.config.ts"]
+}

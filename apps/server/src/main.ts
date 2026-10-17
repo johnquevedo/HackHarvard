@@ -16,10 +16,13 @@ const server = serve({
 process.stdout.write(
   `Dennis server listening on http://127.0.0.1:${config.portServer}; messaging=${ctx.messaging.name}\n`,
 );
-async function stop() {
-  server.close();
-  await runtime.stop();
-  ctx.db.$client.close();
+let stopping: Promise<void> | undefined;
+function stop(): Promise<void> {
+  return (stopping ??= (async () => {
+    server.close();
+    await runtime.stop();
+    ctx.db.$client.close();
+  })());
 }
 process.once("SIGINT", () => {
   void stop();

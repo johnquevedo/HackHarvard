@@ -8,6 +8,27 @@ import { rows, row, update } from "./storage.ts";
 import { pollIntegrationHealth } from "./integrations.ts";
 import { recoverA2A } from "./a2a.ts";
 import { ingestInbound, runPipeline } from "./pipeline.ts";
+function emitDeliveryLatency(
+  ctx: PlatformContext,
+  outboxId: string,
+  agentId: string,
+  latencyMs: number,
+  mode: "live" | "simulated" | "fallback" | "replay",
+) {
+  if (!Number.isFinite(latencyMs) || latencyMs < 0) return;
+  ctx.events.emit({
+    type: "messaging.latency",
+    actor: { kind: "agent", agentId },
+    visibility: "private",
+    mode,
+    payload: {
+      outboxId,
+      provider: ctx.messaging.name,
+      span: "outbox_send_to_delivered",
+      latencyMs: Math.round(latencyMs),
+    },
+  });
+}
 export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
   await ctx.runExclusive("outbox-dispatch", async () => {
     const pending = rows<OutboxRecordT>(
@@ -90,6 +111,18 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
           "id=?",
           item.id,
         );
+        if (result.status === "delivered")
+          emitDeliveryLatency(
+            ctx,
+            item.id,
+            agent.id,
+            ctx.clock.now().getTime() -
+              Date.parse(
+                row<{ sentAt: string }>(ctx.db, "SELECT sent_at FROM outbox WHERE id=?", item.id)!
+                  .sentAt,
+              ),
+            result.mode,
+          );
         ctx.events.emit({
           type: "outbox.updated",
           actor: { kind: "agent", agentId: agent.id },
@@ -255,6 +288,14 @@ export async function confirmOutbox(
           item.id,
         );
         const agent = await ctx.users.getAgentByUserId(item.userId);
+        if (agent && status === "delivered")
+          emitDeliveryLatency(
+            ctx,
+            item.id,
+            agent.id,
+            ctx.clock.now().getTime() - Date.parse(item.sentAt!),
+            provider.name === "photon" ? "live" : "simulated",
+          );
         if (agent)
           ctx.events.emit({
             type: "outbox.updated",

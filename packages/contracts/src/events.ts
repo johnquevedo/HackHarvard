@@ -204,6 +204,9 @@ export const EVENT_PAYLOAD_SCHEMAS = {
       invariantOk: b,
     })
     .strict(),
+  "messaging.latency": z
+    .object({ outboxId: s, provider: s, span: z.literal("outbox_send_to_delivered"), latencyMs: n })
+    .strict(),
   "demo.reset": z.object({ runId: s }).strict(),
   "eval.report": z.object({ provider: z.enum(["chalk", "local"]), runId: s }).strict(),
   "error.logged": z.object({ where: s, message: s }).strict(),

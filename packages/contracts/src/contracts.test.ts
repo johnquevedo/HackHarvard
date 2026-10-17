@@ -16,6 +16,12 @@ const pub = {
   regionCode: "boston-cambridge",
 };
 const samples: Record<keyof typeof EVENT_PAYLOAD_SCHEMAS, unknown> = {
+  "messaging.latency": {
+    outboxId: "out_latency",
+    provider: "sim",
+    span: "outbox_send_to_delivered",
+    latencyMs: 15,
+  },
   "message.received": {
     messageId: "msg_demo_test",
     provider: "sim",

@@ -395,11 +395,22 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
     const opportunity = await ctx.opportunities.get(id);
     if (!opportunity) throw new DennisError("not_found", "Opportunity not found", 404);
     const lens = await viewer(c);
-    if (lens.viewerAgentId && !opportunity.participantAgentIds.includes(lens.viewerAgentId))
+    if (
+      lens.viewerAgentId &&
+      (!opportunity.participantAgentIds.includes(lens.viewerAgentId) ||
+        (opportunity.type === "shortme_market" &&
+          ["proposed", "declined", "expired"].includes(opportunity.status) &&
+          opportunity.participantAgentIds[0] !== lens.viewerAgentId))
+    )
       throw new DennisError("not_found", "Opportunity not found", 404);
-    const events = ctx.events
-      .history({ ...lens, limit: 200 })
-      .filter((e) => e.opportunityId === id);
+    const events: ReturnType<typeof ctx.events.history> = [];
+    let cursor = 0;
+    while (true) {
+      const page = ctx.events.history({ ...lens, sinceSeq: cursor, limit: 200 });
+      events.push(...page.filter((event) => event.opportunityId === id));
+      if (page.length < 200) break;
+      cursor = page.at(-1)!.seq;
+    }
     return c.json({
       opportunityId: id,
       steps: events.map((e) => ({

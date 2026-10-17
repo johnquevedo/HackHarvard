@@ -100,3 +100,25 @@ it("uses all three retry intervals and stops after four transient send attempts"
   await dispatchOutbox(ctx);
   expect(calls).toBe(4);
 });
+
+it("reports delivery latency once with an explicit measured span and simulated mode", async () => {
+  const ctx = await setup();
+  await ctx.notifier.send({
+    userId: "usr_demo_alice",
+    kind: "info",
+    text: "Measured",
+    idempotencyKey: "latency",
+  });
+  await dispatchOutbox(ctx);
+  await dispatchOutbox(ctx);
+  const metrics = ctx.events
+    .history({ judge: true, limit: 200 })
+    .filter((e) => e.type === "messaging.latency");
+  expect(metrics).toHaveLength(1);
+  expect(metrics[0]).toMatchObject({
+    visibility: "private",
+    mode: "simulated",
+    payload: { span: "outbox_send_to_delivered", provider: "sim" },
+  });
+  expect(metrics[0]!.payload.latencyMs).toBeGreaterThanOrEqual(0);
+});

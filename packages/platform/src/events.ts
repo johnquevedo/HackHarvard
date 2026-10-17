@@ -136,6 +136,7 @@ export function createEventBus(db: Db, clock: Clock, ids: IdFactory): EventBus {
           "approval.decided",
           "outbox.queued",
           "outbox.updated",
+          "messaging.latency",
           "purchase.payment.updated",
         ].includes(e.type)
       )

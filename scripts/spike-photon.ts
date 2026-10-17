@@ -99,8 +99,11 @@ async function run(): Promise<void> {
       `Live samples: ${report.measurements.length}; provider receipt-to-delivery p50: ${report.receiptToDeliveryP50Ms ?? "not enough samples"} ms. Device-to-device timing, echo and first-outbound behavior remain manual checks.\n`,
     );
   } finally {
-    await provider.stop();
-    db.$client.close();
+    try {
+      await provider.stop();
+    } finally {
+      db.$client.close();
+    }
   }
 }
 try {
