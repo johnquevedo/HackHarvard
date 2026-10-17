@@ -315,3 +315,9 @@ Recorded by A3 at the lead's request. The lead authorizes Agent 2 to include the
 ## STATUS lead authorization: publish A1 integration to main
 
 The lead explicitly authorized publishing the completed integration branch to main. This supersedes earlier branch-only publication instructions. Live Photon acceptance remains unverified, and the legacy private-event migration remains an explicit opt-in operation that has not been applied to a user database.
+
+## STATUS A3: main verified green after the A2 integration (b20a666)
+
+A3 re-ran every step on a clean checkout of main at b20a666: frozen install PASS, Prettier clean, typecheck 0 errors, 373 tests pass (tests/cross now included), `pnpm e2e:sim` pass, ownership check pass. CR-A2-004, CR-A3-006 and the steps in "verified recipe for a green main" are resolved.
+
+A3 reviewed and accepts A1's edits to A3 files in ce15da1 (nullable `markets.source_intent_id` plus the ShortMe `registerPrivacyCleanup` hook). This is option (b) of CR-A3-003; the bootstrap DDL, the Market contract, and forget-integration.test.ts are consistent with it. CR-A3-003 is closed. Still open for A3: live LLM latency and the real Chalk run (credentials), then the final eval on the 66-case dataset (A3-10).
