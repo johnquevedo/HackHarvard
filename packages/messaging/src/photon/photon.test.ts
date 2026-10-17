@@ -363,3 +363,51 @@ it("resumes the durable cursor after restart and ignores the stopped socket", as
       .get("socketio:" + config.photonProjectId),
   ).toMatchObject({ value: "8" });
 });
+
+it("rejects group and unrelated sender resources even when the space kind is omitted", () => {
+  for (const participantIds of [
+    ["pho_usr_agent", fixture.sentBy.id, "pho_usr_third"],
+    ["pho_usr_agent", "pho_usr_unrelated"],
+    [fixture.sentBy.id, "pho_usr_unrelated"],
+  ]) {
+    expect(
+      normalizePhotonEvent(
+        { ...fixture, space: { id: fixture.space.id, participantIds } },
+        "pho_usr_agent",
+      ),
+    ).toBeNull();
+  }
+});
+it("routes recognized direct inbound through the configured account and ignores own-message echoes", async () => {
+  let receive: (raw: unknown) => Promise<void> = async () => {};
+  const source = {
+    async start(handler: typeof receive) {
+      receive = handler;
+    },
+    async stop() {},
+  };
+  const provider = new PhotonBetaProvider(
+    { ...config, photonAccountKey: "demo-account" },
+    { db: db(), clock, log },
+    {
+      source: source as unknown as SocketIoEventSource,
+    },
+  );
+  const messages: unknown[] = [];
+  await provider.start(async (message) => {
+    messages.push(message);
+  });
+  await receive({ data: fixture });
+  await receive({
+    data: { ...fixture, sentBy: { ...fixture.sentBy, id: config.photonAgentUserId } },
+  });
+  expect(messages).toHaveLength(1);
+  expect(messages[0]).toMatchObject({
+    accountKey: "demo-account",
+    providerMessageId: fixture.id,
+    mode: "live",
+  });
+  await provider.stop();
+  await provider.receive(fixture);
+  expect(messages).toHaveLength(1);
+});

@@ -36,7 +36,13 @@ export function normalizePhotonEvent(raw: unknown, agentUserId: string): Inbound
   const msg = parsed.data;
   if (msg.sentBy.id === agentUserId || (msg.receivedBy && msg.receivedBy.id !== agentUserId))
     return null;
-  if (msg.space.participantIds && !msg.space.participantIds.includes(agentUserId)) return null;
+  if (
+    msg.space.participantIds &&
+    (msg.space.participantIds.length !== 2 ||
+      !msg.space.participantIds.includes(agentUserId) ||
+      !msg.space.participantIds.includes(msg.sentBy.id))
+  )
+    return null;
   return InboundMessage.parse({
     provider: "photon",
     accountKey: "primary",

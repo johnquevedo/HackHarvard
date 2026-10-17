@@ -148,3 +148,7 @@ The deterministic command-contract suite and new simulated conversation checks p
 ## STATUS A1 ordered acceptance: A1-04
 
 Approval prompt delivery followed by repeated YES now has an explicit end-to-end simulation test proving one approval decision and one hook. Added all three outbox backoff intervals (5, 15 and 45 seconds), four-attempt exhaustion, and a regression for payload tampering through the legacy consume method. Fixed that method to verify the canonical payload hash, matching the transactional path. The approval/platform/recovery subset passes 35 tests, including user/kind/hash binding, expiry, ambiguity and atomic domain-write rollback.
+
+## STATUS A1 ordered acceptance: A1-05 adapter checks
+
+The Photon adapter and spike suites pass 25 synthetic tests covering normalization, own-message echo suppression, configured-account routing, stable idempotency headers, three-call sends, 403 non-retry, 503 retry, cursor checkpointing/resume, webhook signatures and live-result refusal. Tightened direct-message normalization: an envelope with participant IDs must contain exactly the configured agent and its actual sender, even when space kind is omitted. Live recorded-fixture acceptance, real inbound and phone approval delivery remain NOT VERIFIED under A1-02's fallback.
