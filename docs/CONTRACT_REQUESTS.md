@@ -262,3 +262,7 @@ Included the minimal lockfile update for A1's already-pinned @types/better-sqlit
 ## CR-A2-003 to A4: include cross tests in verification
 
 The root `vitest.config.ts` does not include `tests/cross/**/*.test.ts`, so `pnpm test` skips both the Agent 2 adversarial suite and the Agent 3 end-to-end simulator suite. Please add that include pattern and keep the root workspace dependencies needed by those tests. Agent 2 verified its cross suite separately while this request is open.
+
+## CR-A2-004 to A4: refresh the lockfile for purchasing
+
+Agent 2's final `packages/purchasing/package.json` adds its direct workspace and pinned runtime/test dependencies. Because `pnpm-lock.yaml` is A4-owned, Agent 2 cannot commit the corresponding importer update without failing the ownership check. Please regenerate and commit the lockfile using `origin/a2/a2-09-live-rehearsal`'s purchasing manifest before Agent 2 merges. Until then, `pnpm install --frozen-lockfile` fails before verification starts.
