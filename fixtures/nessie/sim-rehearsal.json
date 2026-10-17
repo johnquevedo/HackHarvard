@@ -1,0 +1,43 @@
+{
+  "mode": "simulated",
+  "label": "SIMULATED BANK",
+  "recordedAt": "2026-10-17",
+  "runs": [
+    {
+      "runTag": "rehearsal-3",
+      "transfers": [
+        {
+          "ownerKey": "usr_demo_alice",
+          "providerTransferId": "sim_tx_01a7212c4715c0be43af",
+          "amountCents": 28499,
+          "verifiedAgainstSimulatedProvider": true
+        },
+        {
+          "ownerKey": "usr_demo_bob",
+          "providerTransferId": "sim_tx_158c165eb94ba971b56a",
+          "amountCents": 28499,
+          "verifiedAgainstSimulatedProvider": true
+        }
+      ]
+    },
+    {
+      "runTag": "rehearsal-4",
+      "transfers": [
+        {
+          "ownerKey": "usr_demo_alice",
+          "providerTransferId": "sim_tx_87fe9f7646fc0a0bfa79",
+          "amountCents": 28499,
+          "verifiedAgainstSimulatedProvider": true
+        },
+        {
+          "ownerKey": "usr_demo_bob",
+          "providerTransferId": "sim_tx_944d7c9ec65025535c63",
+          "amountCents": 28499,
+          "verifiedAgainstSimulatedProvider": true
+        }
+      ]
+    }
+  ],
+  "liveProviderTransferIds": [],
+  "note": "These IDs are deterministic simulated-provider records. They are not Nessie transaction IDs."
+}

@@ -1,0 +1,274 @@
+{
+  "recordedAt": "2026-10-17T20:35:54.353Z",
+  "calls": [
+    {
+      "name": "probe https://prod-api.nessieisreal.com",
+      "request": {
+        "method": "GET",
+        "path": "/customers"
+      },
+      "response": {
+        "status": 200,
+        "body": [
+          {
+            "last_name": "Spike a2-spike-20261017-163355",
+            "first_name": "Dennis",
+            "_id": "c37f2207-cd6e-4f0a-8df7-72af13d129b6",
+            "address": {
+              "city": "Cambridge",
+              "state": "MA",
+              "street_name": "Harvard Yard",
+              "street_number": "1",
+              "zip": "02138"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "create customer",
+      "request": {
+        "method": "POST",
+        "path": "/customers",
+        "body": {
+          "first_name": "Dennis",
+          "last_name": "Spike a2-spike-20261017-163553",
+          "address": {
+            "street_number": "1",
+            "street_name": "Harvard Yard",
+            "city": "Cambridge",
+            "state": "MA",
+            "zip": "02138"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "code": 201,
+          "message": "Customer created",
+          "objectCreated": {
+            "first_name": "Dennis",
+            "last_name": "Spike a2-spike-20261017-163553",
+            "address": {
+              "street_number": "1",
+              "street_name": "Harvard Yard",
+              "city": "Cambridge",
+              "state": "MA",
+              "zip": "02138"
+            },
+            "_id": "08afbe11-c162-4347-8428-b52d6117f19d"
+          }
+        }
+      }
+    },
+    {
+      "name": "create account dennis-a2-spike-20261017-163553-payer",
+      "request": {
+        "method": "POST",
+        "path": "/customers/08afbe11-c162-4347-8428-b52d6117f19d/accounts",
+        "body": {
+          "type": "Checking",
+          "nickname": "dennis-a2-spike-20261017-163553-payer",
+          "rewards": 0,
+          "balance": 100
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "code": 201,
+          "message": "Account created",
+          "objectCreated": {
+            "type": "Checking",
+            "nickname": "dennis-a2-spike-20261017-163553-payer",
+            "rewards": 0,
+            "balance": 100,
+            "_id": "aea55820-4028-4b09-8983-8cfd34aae18a",
+            "account_number": "2784842795905748",
+            "customer_id": "08afbe11-c162-4347-8428-b52d6117f19d"
+          }
+        }
+      }
+    },
+    {
+      "name": "create account dennis-a2-spike-20261017-163553-pool",
+      "request": {
+        "method": "POST",
+        "path": "/customers/08afbe11-c162-4347-8428-b52d6117f19d/accounts",
+        "body": {
+          "type": "Checking",
+          "nickname": "dennis-a2-spike-20261017-163553-pool",
+          "rewards": 0,
+          "balance": 0
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "code": 201,
+          "message": "Account created",
+          "objectCreated": {
+            "type": "Checking",
+            "nickname": "dennis-a2-spike-20261017-163553-pool",
+            "rewards": 0,
+            "balance": 0,
+            "_id": "5502c9a0-a776-4528-82f9-d2fbaded0c1d",
+            "account_number": "6302427869950206",
+            "customer_id": "08afbe11-c162-4347-8428-b52d6117f19d"
+          }
+        }
+      }
+    },
+    {
+      "name": "payer balance before",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/aea55820-4028-4b09-8983-8cfd34aae18a"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "_id": "aea55820-4028-4b09-8983-8cfd34aae18a",
+          "type": "Checking",
+          "nickname": "dennis-a2-spike-20261017-163553-payer",
+          "rewards": 0,
+          "balance": 100,
+          "account_number": "2784842795905748",
+          "customer_id": "08afbe11-c162-4347-8428-b52d6117f19d"
+        }
+      }
+    },
+    {
+      "name": "pool balance before",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/5502c9a0-a776-4528-82f9-d2fbaded0c1d"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "_id": "5502c9a0-a776-4528-82f9-d2fbaded0c1d",
+          "type": "Checking",
+          "nickname": "dennis-a2-spike-20261017-163553-pool",
+          "rewards": 0,
+          "balance": 0,
+          "account_number": "6302427869950206",
+          "customer_id": "08afbe11-c162-4347-8428-b52d6117f19d"
+        }
+      }
+    },
+    {
+      "name": "create transfer",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/aea55820-4028-4b09-8983-8cfd34aae18a/transfers",
+        "body": {
+          "amount": 1,
+          "transaction_date": "2026-10-17",
+          "status": "completed",
+          "description": "dennis:a2-spike-20261017-163553:one-dollar-spike:pool=5502c9a0-a776-4528-82f9-d2fbaded0c1d"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "code": 201,
+          "message": "Transfer created",
+          "objectCreated": {
+            "transaction_date": "2026-10-17",
+            "status": "completed",
+            "amount": 1,
+            "description": "dennis:a2-spike-20261017-163553:one-dollar-spike:pool=5502c9a0-a776-4528-82f9-d2fbaded0c1d",
+            "_id": "b5841ce6-413e-4240-9ff9-f3d7a4e8ed88"
+          }
+        }
+      }
+    },
+    {
+      "name": "get transfer",
+      "request": {
+        "method": "GET",
+        "path": "/transfers/b5841ce6-413e-4240-9ff9-f3d7a4e8ed88"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "b5841ce6-413e-4240-9ff9-f3d7a4e8ed88",
+          "transaction_date": "2026-10-17",
+          "status": "completed",
+          "amount": 1,
+          "description": "dennis:a2-spike-20261017-163553:one-dollar-spike:pool=5502c9a0-a776-4528-82f9-d2fbaded0c1d"
+        }
+      }
+    },
+    {
+      "name": "payer balance after",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/aea55820-4028-4b09-8983-8cfd34aae18a"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "_id": "aea55820-4028-4b09-8983-8cfd34aae18a",
+          "type": "Checking",
+          "nickname": "dennis-a2-spike-20261017-163553-payer",
+          "rewards": 0,
+          "balance": 100,
+          "account_number": "2784842795905748",
+          "customer_id": "08afbe11-c162-4347-8428-b52d6117f19d"
+        }
+      }
+    },
+    {
+      "name": "pool balance after",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/5502c9a0-a776-4528-82f9-d2fbaded0c1d"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "_id": "5502c9a0-a776-4528-82f9-d2fbaded0c1d",
+          "type": "Checking",
+          "nickname": "dennis-a2-spike-20261017-163553-pool",
+          "rewards": 0,
+          "balance": 0,
+          "account_number": "6302427869950206",
+          "customer_id": "08afbe11-c162-4347-8428-b52d6117f19d"
+        }
+      }
+    },
+    {
+      "name": "list payer transfers",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/aea55820-4028-4b09-8983-8cfd34aae18a/transfers"
+      },
+      "response": {
+        "status": 200,
+        "body": [
+          {
+            "id": "b5841ce6-413e-4240-9ff9-f3d7a4e8ed88",
+            "transaction_date": "2026-10-17",
+            "status": "completed",
+            "amount": 1,
+            "description": "dennis:a2-spike-20261017-163553:one-dollar-spike:pool=5502c9a0-a776-4528-82f9-d2fbaded0c1d"
+          }
+        ]
+      }
+    },
+    {
+      "name": "list pool transfers",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/5502c9a0-a776-4528-82f9-d2fbaded0c1d/transfers"
+      },
+      "response": {
+        "status": 404,
+        "body": "No transfers found for this account"
+      }
+    }
+  ]
+}

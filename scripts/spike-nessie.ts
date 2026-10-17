@@ -121,7 +121,7 @@ async function run(): Promise<void> {
   const apiKey = process.env.NESSIE_API_KEY;
   if (!apiKey) {
     console.log("DOCUMENTED FALLBACK: NESSIE_API_KEY is missing. Use NESSIE_MODE=sim.");
-    console.log("BLOCKED: live host, creation, transfer, balance, and memo semantics remain unknown.");
+    console.log("BLOCKED: a credential is required to refresh the recorded live contract evidence.");
     process.exitCode = 2;
     return;
   }
@@ -166,12 +166,10 @@ async function run(): Promise<void> {
   const transfer = await request(baseUrl, apiKey, "create transfer", `/accounts/${payerId}/transfers`, {
     method: "POST",
     body: JSON.stringify({
-      medium: "balance",
-      payee_id: poolId,
       amount: 1,
       transaction_date: new Date().toISOString().slice(0, 10),
       status: "completed",
-      description: memo,
+      description: `${memo}:pool=${poolId}`,
     }),
   });
   const transferId = createdId(transfer);
@@ -181,7 +179,13 @@ async function run(): Promise<void> {
   const payerAfter = await request(baseUrl, apiKey, "payer balance after", `/accounts/${payerId}`);
   const poolAfter = await request(baseUrl, apiKey, "pool balance after", `/accounts/${poolId}`);
   await request(baseUrl, apiKey, "list payer transfers", `/accounts/${payerId}/transfers`);
-  await request(baseUrl, apiKey, "list pool transfers", `/accounts/${poolId}/transfers`);
+  let visibleFromPool = true;
+  try {
+    await request(baseUrl, apiKey, "list pool transfers", `/accounts/${poolId}/transfers`);
+  } catch {
+    visibleFromPool = false;
+    console.log("DOCUMENTED transfer is not visible from the pool account");
+  }
 
   const payerDelta = balanceOf(payerBefore) - balanceOf(payerAfter);
   const poolDelta = balanceOf(poolAfter) - balanceOf(poolBefore);
@@ -200,7 +204,7 @@ async function run(): Promise<void> {
         recordedAt: new Date().toISOString(),
         baseUrl,
         transferId,
-        findings: { payerDelta, poolDelta, balancesMoveBothSides, memoRoundTrips },
+        findings: { payerDelta, poolDelta, balancesMoveBothSides, memoRoundTrips, visibleFromPool },
         calls,
       },
       null,
