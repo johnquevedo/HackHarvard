@@ -134,3 +134,9 @@ A1-02 remains the active milestone. The runner and synthetic tests are committed
 Please regenerate and commit the workspace lockfile against all current package manifests, enable allowImportingTsExtensions in the shared noEmit TypeScript configuration, resolve root workspace imports for cross-feature tests, and include tests/cross/**/*.test.ts in the default Vitest run. Coordinate baseline formatting for the A2/A3-owned files under the new Prettier configuration. packages/db/src/push.ts and packages/db/drizzle.config.ts also need an explicit owner in ownership.json before further edits; both came from A1's original M0 package-wide DB scope.
 
 The database package also needs pinned @types/better-sqlite3 for strict typing. A1 can add that package dependency with a coordinated lockfile update; the prior temporary root tooling supplied it. These are observed validation failures, not reasons to change milestone order or claim live acceptance.
+
+## STATUS A1 ordered acceptance: A1-02 fallback, A1-06 simulation
+
+A1-02 remains NOT LIVE VERIFIED on the documented rung 5 simulated fallback because credentials and assigned phones are unavailable. Per the work order fallback, continue code acceptance without fabricating a live milestone pass.
+
+A1-06: added a two-agent mock-detector rehearsal through real ingest, anonymous IntentStore views, A2A probe/response delivery and GET /api/a2a. Added queued-A2A recovery after handler registration and opportunity binding for retry keys. Fixed pipeline gates to reload status and feature settings before each detector and after inference. Pause, disable and consent revocation during inference now suppress stale detections and subsequent detector calls. Five new tests pass. This is platform acceptance with synthetic detectors, not a full purchasing or live-provider claim.

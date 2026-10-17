@@ -250,9 +250,14 @@ export async function runPipeline(ctx: PlatformContext, messageId: string): Prom
       for (const detector of ctx.detectors.list()) {
         const kind = detector.intentKind;
         const scope = kind === "purchase" ? "purchase_matching" : "shortme_free_play";
+        const current = await ctx.users.getAgent(agent.id);
         if (
+          current?.status !== "active" ||
+          !(await ctx.consent.has(user.id, "messaging_context")) ||
           !(await ctx.consent.has(user.id, scope)) ||
-          (kind === "purchase" ? !agent.settings.matchingEnabled : !agent.settings.shortmeEnabled)
+          (kind === "purchase"
+            ? !current.settings.matchingEnabled
+            : !current.settings.shortmeEnabled)
         )
           continue;
         let outcome: DetectorOutcome;
@@ -291,7 +296,10 @@ export async function runPipeline(ctx: PlatformContext, messageId: string): Prom
           if (
             !(await ctx.consent.has(user.id, "messaging_context")) ||
             !(await ctx.consent.has(user.id, scope)) ||
-            latest?.status !== "active"
+            latest?.status !== "active" ||
+            (kind === "purchase"
+              ? !latest.settings.matchingEnabled
+              : !latest.settings.shortmeEnabled)
           )
             continue;
           const intent = await ctx.intents.create({

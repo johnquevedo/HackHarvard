@@ -90,6 +90,7 @@ export function createA2ABus(ctx: PlatformContext): A2ABus {
           previous.fromAgentId !== input.fromAgentId ||
           previous.toAgentId !== input.toAgentId ||
           previous.conversationId !== input.conversationId ||
+          previous.opportunityId !== (input.opportunityId ?? null) ||
           hashPayload(previous.payload) !== hashPayload(input.payload)
         )
           throw new DennisError("idempotency_conflict", "A2A key reused with different input", 409);
