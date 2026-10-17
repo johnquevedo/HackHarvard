@@ -28,14 +28,14 @@ def x(**over):
         ({"injectionAttempt": True, "isMilestone": False}, "blocked_policy", "policy_blocked"),
         ({"isMilestone": False}, "no_market", "not_an_intent"),
         ({"hyperbole": True}, "no_market", "not_an_intent"),
-        ({"category": "dating"}, "blocked_policy", "policy_blocked"),
+        ({"category": "dating"}, "propose_market", None),
         ({"sensitivity": "high"}, "blocked_policy", "sensitive"),
         ({"subjectIsAuthor": False}, "blocked_policy", "not_subject_owned"),
-        ({"mentionsThirdParty": True}, "blocked_policy", "policy_blocked"),
+        ({"mentionsThirdParty": True}, "propose_market", None),
         ({"outcomeUncertain": False}, "no_market", "not_an_intent"),
         ({"confidence": 0.74}, "no_market", "low_confidence"),
         ({"confidence": 0.75}, "propose_market", None),
-        ({"category": "academics"}, "no_market", "category_disabled"),
+        ({"category": "academics"}, "propose_market", None),
         ({"category": "friend_event"}, "no_market", "category_disabled"),
         ({"sensitivity": "low"}, "propose_market", None),
     ],
@@ -109,10 +109,17 @@ def test_user_text_is_wrapped_and_tags_neutralized():
     assert "(/message)" in seen["user"]
 
 
-def test_employer_never_in_output():
-    out = extract_milestone(
-        "superday at Jane Street",
-        StubLlm(lambda t, u: x(questionTemplate="Will {subject} land Jane Street?", employerMentions=["Jane Street"])),
-        "{today}", DEFAULT_MILESTONE_GATES, today="2026-10-17",
-    )
+def test_employer_redacted_only_when_rules_say_so():
+    llm = StubLlm(lambda t, u: x(questionTemplate="Will {subject} land Jane Street?", employerMentions=["Jane Street"]))
+    strict = dict(DEFAULT_MILESTONE_GATES, redactEmployerNames=True)
+    out = extract_milestone("superday at Jane Street", llm, "{today}", strict, today="2026-10-17")
     assert "jane street" not in json.dumps(out).lower()
+    kept = extract_milestone("superday at Jane Street", llm, "{today}", DEFAULT_MILESTONE_GATES, today="2026-10-17")
+    assert kept["question"] == "Will {subject} land Jane Street?"
+
+
+def test_demo_question_keeps_author_named_employer():
+    q, r = sanitize_question("Will {subject} pass his Meta final round?", "recruiting", ["Meta"], False)
+    assert (q, r) == ("Will {subject} pass his Meta final round?", [])
+    q, r = sanitize_question("Will {subject} beat Bob at Meta?", "recruiting", ["Meta"], False)
+    assert r == ["fallback_question"]

@@ -67,21 +67,23 @@ describe("a3 ShortMe by text through the platform", () => {
     );
     expect(marketRow(ctx)?.status).toBe("proposed");
     const proposal = outbox(ctx, "usr_demo_alice").find((o) => o.kind === "approval_request")!;
-    expect(proposal.text).toContain('"Will Alice get the offer after the final round?"');
-    expect(proposal.text).toContain("Invited: Bob. Points only, no money, no prizes.");
+    expect(proposal.text).toContain("Yo alice why don't you short yourself, i'll set up a market.");
+    expect(proposal.text).toMatch(/ \([a-z0-9]{4}\)$/);
     expect(outbox(ctx, "usr_demo_bob")).toHaveLength(0);
 
     await say(ctx, "alice", "YES");
     expect(marketRow(ctx)?.status).toBe("open");
     const invite = outbox(ctx, "usr_demo_bob").find((o) => o.kind === "invite")!;
-    expect(invite.text).toContain("Fictional points only, you have 1000.");
+    expect(invite.text).toContain("you've got $10,000 sim to play.");
     expect(invite.text).not.toContain("quant firm");
 
     await say(ctx, "bob", "BACK 50");
     await say(ctx, "alice", "FADE 50");
-    expect(outbox(ctx, "usr_demo_alice").some((o) => o.text.includes("You shorted yourself"))).toBe(
-      true,
-    );
+    expect(
+      outbox(ctx, "usr_demo_alice").some((o) =>
+        o.text.includes("bought $50 of insurance on themself"),
+      ),
+    ).toBe(true);
 
     const app = shortmeModule.routes(ctx);
     const m = marketRow(ctx)!;
@@ -99,15 +101,15 @@ describe("a3 ShortMe by text through the platform", () => {
       pools: { back: number; fade: number };
     };
     expect(detail.market.resolverLabel).toBe("STAND-IN FOR OFFICIAL SOURCE");
-    expect(detail.pools).toEqual({ back: 50, fade: 50 });
+    expect(detail.pools).toEqual({ back: 5, fade: 5 });
 
     await say(ctx, "alice", "CONFIRM");
     expect(marketRow(ctx)).toMatchObject({ status: "resolved", outcome: "no" });
-    expect(getBalance(ctx, "usr_demo_alice")).toBe(1050);
-    expect(getBalance(ctx, "usr_demo_bob")).toBe(950);
+    expect(getBalance(ctx, "usr_demo_alice")).toBe(1005);
+    expect(getBalance(ctx, "usr_demo_bob")).toBe(995);
     expect((await checkLedgerInvariants(ctx)).every((c) => c.ok)).toBe(true);
     const result = outbox(ctx, "usr_demo_bob").find((o) => o.kind === "result")!;
-    expect(result.text).toMatch(/Points: Alice \+50, Bob -50\. \(Fictional points, no value\.\)$/);
+    expect(result.text).toMatch(/alice \+\$50, bob -\$50\. \(sim \$, no real money moved\)$/);
 
     // Privacy scan: no shared event carries the source text or a handle.
     const shared = JSON.stringify(
@@ -134,7 +136,7 @@ describe("a3 ShortMe by text through the platform", () => {
     });
     await say(ctx, "alice", "DISPUTE");
     expect(marketRow(ctx)?.status).toBe("disputed");
-    expect(getBalance(ctx, "usr_demo_alice") + getBalance(ctx, "usr_demo_bob")).toBe(1950);
+    expect(getBalance(ctx, "usr_demo_alice") + getBalance(ctx, "usr_demo_bob")).toBe(1995);
   });
 
   it("a prompt injection creates no market", async () => {
@@ -177,7 +179,7 @@ describe("a3 ShortMe by text through the platform", () => {
       expect(shared).not.toContain(needle);
       expect(bob).not.toContain(needle);
     }
-    expect(marketRow(ctx)?.question).toBe("Will Alice get the offer after the final round?");
+    expect(marketRow(ctx)?.question).toBe("Will alice get the offer after the final round?");
   });
 });
 
@@ -201,14 +203,13 @@ const EXTRACTION = {
 
 describe("a3 policy gates through the pipeline (E9 and Section 15.5)", () => {
   it.each([
-    ["dating is blocked", { category: "dating" }, "policy_blocked"],
     ["health is sensitive", { sensitivity: "high" }, "sensitive"],
     [
       "someone else's interview",
       { subjectIsAuthor: false, mentionsThirdParty: true },
       "not_subject_owned",
     ],
-    ["academics template is disabled", { category: "academics" }, "category_disabled"],
+    ["friend_event template is disabled", { category: "friend_event" }, "category_disabled"],
     ["a stated minor is blocked", { minorIndicated: true }, "policy_blocked"],
     ["low confidence", { confidence: 0.5 }, "low_confidence"],
   ] as const)("%s", async (_name, over, reason) => {

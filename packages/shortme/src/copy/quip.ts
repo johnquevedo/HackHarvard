@@ -1,4 +1,5 @@
-export const QUIP_FALLBACK = "Ouch and congratulations, in that order.";
+import { SIM_MONEY_NOTE } from "../templates";
+export const QUIP_FALLBACK = "ouch and congratulations, in that order.";
 export const QUIP_MAX_LENGTH = 140;
 
 const FORBIDDEN_CHARS = /[0-9$€£¥₿@#<>{}[\]\\|]|https?:|www\./i;
@@ -78,12 +79,12 @@ export function validateQuip(quip: string, opts: QuipNameRules = {}): boolean {
   return true;
 }
 
-// Template market_result (Section 8.9). Numbers, names, and codes come from code, never from the LLM.
+// Result message in Dennis's voice (template market_result, Section 8.9, restyled v2). Numbers, names, and codes come from code, never from the LLM.
 export function renderResultMessage(
   input: { outcomeSentence: string; deltaLine: string },
   quip: string | null,
   opts: QuipNameRules = {},
 ): string {
   const safe = quip !== null && validateQuip(quip, opts) ? quip.trim() : QUIP_FALLBACK;
-  return `ShortMe result: ${input.outcomeSentence} ${safe} Points: ${input.deltaLine}. (Fictional points, no value.)`;
+  return `${input.outcomeSentence} ${safe} ${input.deltaLine}. ${SIM_MONEY_NOTE}`;
 }

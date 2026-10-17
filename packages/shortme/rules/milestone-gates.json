@@ -1,13 +1,14 @@
 {
-  "version": "v1",
+  "version": "v2",
   "minConfidence": 0.75,
-  "enabledTemplates": ["recruiting"],
-  "blockedCategories": ["dating"],
+  "enabledTemplates": ["recruiting", "dating", "academics"],
+  "blockedCategories": [],
   "blockHighSensitivity": true,
   "requireSubjectIsAuthor": true,
   "requireOutcomeUncertain": true,
-  "blockThirdPartyExposure": true,
-  "redactEmployerNames": true,
+  "blockThirdPartyExposure": false,
+  "redactEmployerNames": false,
+  "dollarsPerPoint": 10,
   "maxStake": 100,
   "starterPoints": 1000,
   "approvalTtlMinutes": 30,
@@ -15,7 +16,6 @@
   "inviteTtlMinutes": 1440,
   "defaultResolvesWithinDays": 14,
   "disabledTemplates": {
-    "academics": "Will {subject} pass the exam?",
-    "friend_event": "Will {subject} actually show up to the event?"
+    "friend_event": "Will {subject} actually show up?"
   }
 }

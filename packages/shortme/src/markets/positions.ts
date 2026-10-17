@@ -10,8 +10,10 @@ import {
   postLedgerTx,
 } from "../ledger/ledger";
 import { GATES } from "../rules";
+import { dollars, dollarsToPoints, marketCreatedText, stakeRecordedText } from "../templates";
 import { emitLedgerPosted, emitPositionPlaced } from "./events";
-import { passInvite, requireMarket } from "./service";
+import { stakingOnPublish } from "./publish-state";
+import { marketByOpportunity, passInvite, requireMarket } from "./service";
 
 export type PositionRow = typeof marketPositions.$inferSelect;
 
@@ -236,50 +238,77 @@ function resolveCandidate(
   const all = openCandidates(ctx, userId);
   if (code) {
     const hit = all.find((c) => c.code !== null && c.code.toLowerCase() === code.toLowerCase());
-    return hit
-      ? { candidate: hit }
-      : {
-          reply: `No open ShortMe invitation with code ${code.toUpperCase()}.`,
-        };
+    return hit ? { candidate: hit } : { reply: `no open market with code ${code.toLowerCase()}.` };
   }
   if (all.length === 1) return { candidate: all[0] };
-  if (all.length === 0) return { reply: "No open ShortMe market for you right now." };
-  return {
-    reply: `Which one? Reply ${verb} followed by the 4-character code.`,
-  };
+  if (all.length === 0) return { reply: "no open market for you rn." };
+  return { reply: `which one? ${verb} plus the 4-letter code.` };
 }
 
 function friendlyError(err: unknown): string {
   if (err instanceof DennisError) {
     if (err.code === "consent_required")
-      return "ShortMe is off for you. Reply AGREE SHORTME to confirm you are 18+ and turn it on.";
-    return `Could not do that: ${err.message}.`;
+      return "you're not in on ShortMe yet. reply AGREE SHORTME to confirm you're 18+.";
+    if (err.code === "validation_error")
+      return `can't do that amount. $${GATES.dollarsPerPoint} steps, up to ${dollars(GATES.maxStake)} and only what you've got.`;
+    return `can't do that: ${err.message}.`;
   }
-  return "Something went wrong, nothing was recorded.";
+  return "something broke, nothing was recorded.";
 }
 
+async function placeAndDescribe(
+  ctx: PlatformContext,
+  input: {
+    marketId: string;
+    userId: string;
+    side: "back" | "fade";
+    points: number;
+    messageId: string;
+    isSubject: boolean;
+  },
+): Promise<string> {
+  const m = requireMarket(ctx, input.marketId);
+  const p = await placePosition(ctx, {
+    marketId: input.marketId,
+    userId: input.userId,
+    side: input.side,
+    points: input.points,
+    idempotencyKey: `cmd:${input.messageId}`,
+    via: "imessage",
+  });
+  const [me, subject] = await Promise.all([
+    ctx.users.get(input.userId),
+    ctx.users.get(m.subjectUserId),
+  ]);
+  return stakeRecordedText({
+    first: me?.firstName ?? "you",
+    subjectFirst: subject?.firstName ?? "them",
+    side: input.side,
+    points: p.points,
+    isSubject: input.isSubject,
+  });
+}
+
+// BACK $N and FADE $N: amounts are sim dollars (1 ledger point = GATES.dollarsPerPoint).
 export function backFadeHandler(ctx: PlatformContext, side: "back" | "fade") {
   return async (input: CommandInput): Promise<{ reply?: string }> => {
-    const cmd = input.command as {
-      kind: string;
-      points?: number;
-      code: string | null;
-    };
-    const verb = side === "back" ? "BACK <pts>" : "FADE <pts>";
+    const cmd = input.command as { kind: string; points?: number; code: string | null };
+    const verb = side === "back" ? "BACK $amt" : "FADE $amt";
     const { candidate, reply } = resolveCandidate(ctx, input.userId, cmd.code ?? null, verb);
     if (!candidate) return { reply };
+    const points = dollarsToPoints(cmd.points ?? 0);
+    if (points === null)
+      return { reply: friendlyError(new DennisError("validation_error", "amount", 400)) };
     try {
-      const p = await placePosition(ctx, {
-        marketId: candidate.marketId,
-        userId: input.userId,
-        side,
-        points: cmd.points ?? 0,
-        idempotencyKey: `cmd:${input.messageId}`,
-        via: "imessage",
-      });
-      const self = candidate.isSubject && side === "fade" ? " You shorted yourself, bold." : "";
       return {
-        reply: `Recorded: ${side.toUpperCase()} ${p.points} points (fictional, no value). Balance ${getBalance(ctx, input.userId)}.${self}`,
+        reply: await placeAndDescribe(ctx, {
+          marketId: candidate.marketId,
+          userId: input.userId,
+          side,
+          points,
+          messageId: input.messageId,
+          isSubject: candidate.isSubject,
+        }),
       };
     } catch (err) {
       return { reply: friendlyError(err) };
@@ -293,15 +322,93 @@ export function passHandler(ctx: PlatformContext) {
     const { candidate, reply } = resolveCandidate(ctx, input.userId, cmd.code ?? null, "PASS");
     if (!candidate) return { reply };
     if (candidate.isSubject)
-      return {
-        reply: "It's your market, so there is nothing to pass. You can FADE yourself if you like.",
-      };
+      return { reply: "it's your market lol. you can still short yourself." };
     try {
-      await passInvite(ctx, {
-        marketId: candidate.marketId,
-        userId: input.userId,
-      });
-      return { reply: "Passed. No points moved." };
+      await passInvite(ctx, { marketId: candidate.marketId, userId: input.userId });
+      return { reply: "passed. no money moved." };
+    } catch (err) {
+      return { reply: friendlyError(err) };
+    }
+  };
+}
+
+// Proposed command shape for "i'll put $500", "run it. i'll put $500", "lowk sure. $20 tho"
+// (CR-A3-007). Parsing stays deterministic in the platform; this handler only applies rules.
+export interface PutCommand {
+  kind: "put";
+  dollars: number;
+  approve: boolean;
+  code: string | null;
+}
+
+// "i'll put $X": the side comes from the speaker's role. The subject shorts themself (buys insurance
+// on their own outcome); a friend backs the subject. When the speaker has a pending publish_market
+// approval, putting money in approves it first, then stakes.
+export function putHandler(ctx: PlatformContext) {
+  return async (input: CommandInput): Promise<{ reply?: string }> => {
+    const cmd = input.command as unknown as PutCommand;
+    const points = dollarsToPoints(cmd.dollars);
+    if (points === null)
+      return { reply: friendlyError(new DennisError("validation_error", "amount", 400)) };
+    const pending = (await ctx.approvals.findPending(input.userId, cmd.code ?? null)).filter(
+      (a) => a.kind === "publish_market",
+    );
+    const open = openCandidates(ctx, input.userId);
+    if (pending.length === 1 && (cmd.approve || open.length === 0)) {
+      const approval = pending[0]!;
+      const m = marketByOpportunity(ctx, approval.opportunityId);
+      if (!m) return { reply: "that market's gone." };
+      stakingOnPublish.add(m.id);
+      try {
+        await ctx.approvals.decide({
+          approvalId: approval.id,
+          userId: input.userId,
+          decision: "approve",
+          via: "imessage",
+        });
+        await placeAndDescribe(ctx, {
+          marketId: m.id,
+          userId: input.userId,
+          side: "fade",
+          points,
+          messageId: input.messageId,
+          isSubject: true,
+        });
+      } catch (err) {
+        return { reply: friendlyError(err) };
+      } finally {
+        stakingOnPublish.delete(m.id);
+      }
+      const live = requireMarket(ctx, m.id);
+      // Dennis already said its piece on dating markets; recruiting gets the "Market created" line.
+      return live.category === "dating"
+        ? {}
+        : {
+            reply: marketCreatedText({
+              question: live.question,
+              subjectStakePoints: points,
+              category: live.category,
+            }),
+          };
+    }
+    const { candidate, reply } = resolveCandidate(
+      ctx,
+      input.userId,
+      cmd.code ?? null,
+      "i'll put $amt",
+    );
+    if (!candidate) return { reply };
+    try {
+      return {
+        reply: await placeAndDescribe(ctx, {
+          marketId: candidate.marketId,
+          userId: input.userId,
+          side: candidate.isSubject ? "fade" : "back",
+          points,
+          messageId: input.messageId,
+          isSubject: candidate.isSubject,
+        }),
+      };
     } catch (err) {
       return { reply: friendlyError(err) };
     }

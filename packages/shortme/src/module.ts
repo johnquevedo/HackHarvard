@@ -1,4 +1,4 @@
-import { DennisError } from "@dennis/contracts";
+import { DennisError, type CommandHandler } from "@dennis/contracts";
 import {
   marketInvites,
   marketParticipants,
@@ -14,7 +14,7 @@ import { eq } from "drizzle-orm";
 import { MockStructuredLlm } from "@dennis/llm";
 import { milestoneDetector } from "./detector/index";
 import { grantAllUsers } from "./ledger/ledger";
-import { backFadeHandler, passHandler } from "./markets/positions";
+import { backFadeHandler, passHandler, putHandler } from "./markets/positions";
 import {
   handleMilestoneDetection,
   onInviteResponse,
@@ -57,6 +57,12 @@ export const shortmeModule: FeatureModule = {
     ctx.commands.register("back", backFadeHandler(ctx, "back"));
     ctx.commands.register("fade", backFadeHandler(ctx, "fade"));
     ctx.commands.register("pass", passHandler(ctx));
+    // "i'll put $X" (CR-A3-007). The registry type only lists back, fade, pass until A1 adds "put"
+    // to the grammar; registering now means the handler is live as soon as the parser emits it.
+    (ctx.commands.register as (kind: string, handler: CommandHandler) => void)(
+      "put",
+      putHandler(ctx),
+    );
     if (ctx.llm instanceof MockStructuredLlm)
       ctx.log.info("shortme.llm", { provider: "mock", label: "SIMULATED LLM" });
     if (!timers.has(ctx) && ctx.config.nodeEnv !== "test") {

@@ -19,13 +19,13 @@ BUNDLE_FILE = Path(__file__).with_name("_bundle.json")
 
 DEFAULT_MILESTONE_GATES: dict[str, Any] = {
     "minConfidence": 0.75,
-    "enabledTemplates": ["recruiting"],
-    "blockedCategories": ["dating"],
+    "enabledTemplates": ["recruiting", "dating", "academics"],
+    "blockedCategories": [],
     "blockHighSensitivity": True,
     "requireSubjectIsAuthor": True,
     "requireOutcomeUncertain": True,
-    "blockThirdPartyExposure": True,
-    "redactEmployerNames": True,
+    "blockThirdPartyExposure": False,
+    "redactEmployerNames": False,
 }
 DEFAULT_PURCHASE_GATES: dict[str, Any] = {
     "minConfidence": 0.7,

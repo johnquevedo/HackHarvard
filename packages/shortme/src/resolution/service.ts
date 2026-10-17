@@ -20,7 +20,7 @@ import {
 } from "../markets/service";
 import { assertTransition } from "../markets/state";
 import { approvalTtlMinutes } from "../rules";
-import { confirmResolutionPrompt, deltaLine, outcomeSentence } from "../templates";
+import { confirmResolutionPrompt, deltaLine, disputeText, outcomeSentence } from "../templates";
 
 export type ResolutionRow = typeof marketResolutions.$inferSelect;
 
@@ -247,12 +247,7 @@ export async function disputeResolution(
       subjectConfirmState: bySubject ? "disputed" : (res?.subjectConfirmState ?? "pending"),
     });
     await syncOpportunity(ctx, next);
-    await notifyAll(
-      ctx,
-      next,
-      `ShortMe: the result for "${m.question}" is disputed. Points are frozen until an admin settles it. (Fictional points, no value.)`,
-      "dispute",
-    );
+    await notifyAll(ctx, next, disputeText(m.question), "dispute");
     return next;
   });
 }

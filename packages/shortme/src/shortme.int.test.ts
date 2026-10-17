@@ -157,7 +157,7 @@ describe("E6 ShortMe happy path", () => {
     const ctx = await setup();
     const { market } = await detectAndPropose(ctx);
     expect(market?.status).toBe("proposed");
-    expect(market?.question).toBe("Will Alice get the offer after the final round?");
+    expect(market?.question).toBe("Will alice get the offer after the final round?");
 
     // proposed is private to the subject
     expect(listMarketsFor(ctx, { viewerAgentId: BOB_AGENT })).toHaveLength(0);
@@ -174,7 +174,9 @@ describe("E6 ShortMe happy path", () => {
       invitees: [{ userId: BOB, firstName: "Bob" }],
       pointsOnly: true,
     });
-    expect(publish.promptText).toContain("Points only, no money, no prizes");
+    expect(publish.promptText).toMatch(
+      /^Yo alice why don't you short yourself, i'll set up a market\. Anyone wanna get in on this\? \([a-z0-9]{4}\)$/,
+    );
     expect(getMarket(ctx, market!.id)!.status).toBe("open");
 
     // invite reaches Bob only, carries only the approved question
@@ -185,15 +187,15 @@ describe("E6 ShortMe happy path", () => {
     expect(JSON.stringify(invites[0]!.payload)).not.toContain("quant firm");
     const bobInvite = outbox(ctx, BOB).find((o) => o.kind === "invite");
     expect(bobInvite?.text).toMatch(
-      /^ShortMe from Alice's agent: "Will Alice get the offer after the final round\?" Fictional points only, you have 1000\. Reply BACK <pts> [a-z2-9]{4} \(Alice gets it\)/,
+      /^alice's got a market: "Will alice get the offer after the final round\?" you've got \$10,000 sim to play\. BACK \$200 [a-z2-9]{4} if alice makes it/,
     );
 
-    expect(await cmd(ctx, BOB, BOB_AGENT, { kind: "back", points: 50, code: null }, 1)).toContain(
-      "Recorded: BACK 50",
+    expect(await cmd(ctx, BOB, BOB_AGENT, { kind: "back", points: 500, code: null }, 1)).toContain(
+      "bob's in for $500 backing alice.",
     );
     expect(
-      await cmd(ctx, ALICE, ALICE_AGENT, { kind: "fade", points: 50, code: null }, 2),
-    ).toContain("shorted yourself");
+      await cmd(ctx, ALICE, ALICE_AGENT, { kind: "fade", points: 500, code: null }, 2),
+    ).toContain("bought $500 of insurance on themself");
     const placed = events(ctx).filter((e) => e.type === "shortme.position.placed");
     expect(placed.map((e) => e.payload.selfShort)).toEqual([false, true]);
 
@@ -205,7 +207,9 @@ describe("E6 ShortMe happy path", () => {
     });
     expect(getMarket(ctx, market!.id)!.status).toBe("resolution_proposed");
     const confirm = await approve(ctx, ALICE, "confirm_resolution");
-    expect(confirm.promptText).toMatch(/is NO\. Reply CONFIRM ([a-z0-9]{4}) or DISPUTE \1\.$/);
+    expect(confirm.promptText).toMatch(
+      /^results are in for "Will alice get the offer after the final round\?": NO\. CONFIRM ([a-z0-9]{4}) to settle or DISPUTE \1 if that's cap\.$/,
+    );
 
     const m = getMarket(ctx, market!.id)!;
     expect(m.status).toBe("resolved");
@@ -218,7 +222,7 @@ describe("E6 ShortMe happy path", () => {
     {
       const result = outbox(ctx, BOB).find((o) => o.kind === "result")!.text;
       expect(result).toMatch(
-        /^ShortMe result: Alice did not get it this time\. .+ Points: Alice \+50, Bob -50\. \(Fictional points, no value\.\)$/,
+        /^alice took the L\. .+ alice \+\$500, bob -\$500\. \(sim \$, no real money moved\)$/,
       );
       expect(outbox(ctx, ALICE).some((o) => o.kind === "result")).toBe(true);
     }
@@ -230,8 +234,8 @@ describe("E7 dispute and admin void", () => {
     const ctx = await setup();
     const { market } = await detectAndPropose(ctx);
     await approve(ctx, ALICE, "publish_market");
-    await cmd(ctx, BOB, BOB_AGENT, { kind: "back", points: 40, code: null }, 1);
-    await cmd(ctx, ALICE, ALICE_AGENT, { kind: "fade", points: 60, code: null }, 2);
+    await cmd(ctx, BOB, BOB_AGENT, { kind: "back", points: 400, code: null }, 1);
+    await cmd(ctx, ALICE, ALICE_AGENT, { kind: "fade", points: 600, code: null }, 2);
     await proposeResolution(ctx, {
       marketId: market!.id,
       outcome: "yes",
@@ -429,7 +433,7 @@ describe("positions", () => {
 
   it("PASS declines the invitation and closes betting for that friend", async () => {
     const { ctx, id } = await openMarket();
-    expect(await cmd(ctx, BOB, BOB_AGENT, { kind: "pass", code: null }, 1)).toContain("Passed");
+    expect(await cmd(ctx, BOB, BOB_AGENT, { kind: "pass", code: null }, 1)).toContain("passed");
     await expect(
       placePosition(ctx, {
         marketId: id,
@@ -445,7 +449,7 @@ describe("positions", () => {
   it("a wrong code is reported, not guessed", async () => {
     const { ctx } = await openMarket();
     expect(await cmd(ctx, BOB, BOB_AGENT, { kind: "back", points: 5, code: "zzzz" }, 1)).toContain(
-      "No open ShortMe invitation with code ZZZZ",
+      "no open market with code zzzz",
     );
   });
 
