@@ -71,6 +71,13 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
       throw new DennisError("not_found", "Viewer agent not found", 404);
     return { viewerAgentId: id };
   }
+  async function assertUserLens(c: Context, userId: string) {
+    const id = c.req.query("viewerAgentId");
+    if (!id) return;
+    const agent = await ctx.users.getAgent(id);
+    if (!agent || agent.userId !== userId)
+      throw new DennisError("forbidden", "Private data belongs to its owner", 403);
+  }
   async function userSummary(id: string) {
     const user = await ctx.users.get(id);
     const agent = await ctx.users.getAgentByUserId(id);
@@ -314,8 +321,9 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
       ),
     );
   });
-  app.get("/api/approvals", (c) => {
+  app.get("/api/approvals", async (c) => {
     const userId = z.string().min(1).parse(c.req.query("userId"));
+    await assertUserLens(c, userId);
     const status = c.req.query("status");
     if (status) ApprovalStatus.parse(status);
     return c.json(
@@ -338,16 +346,18 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
       }),
     ),
   );
-  app.get("/api/outbox", (c) =>
-    c.json(
+  app.get("/api/outbox", async (c) => {
+    const userId = z.string().min(1).parse(c.req.query("userId"));
+    await assertUserLens(c, userId);
+    return c.json(
       rows<OutboxRecordT>(
         ctx.db,
         "SELECT * FROM outbox WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
-        z.string().min(1).parse(c.req.query("userId")),
+        userId,
         limit(c),
       ).map(({ idempotencyKey: _, ...o }: OutboxRecordT & { idempotencyKey?: string }) => o),
-    ),
-  );
+    );
+  });
   app.get("/api/opportunities", async (c) => {
     const type = c.req.query("type");
     if (type) OpportunityType.parse(type);
@@ -427,6 +437,7 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
   });
   app.get("/api/sim/thread", async (c) => {
     const id = z.string().min(1).parse(c.req.query("userId"));
+    await assertUserLens(c, id);
     if (!(await ctx.users.get(id))) throw new DennisError("not_found", "User not found", 404);
     const incoming = rows<{ text: string; receivedAt: string; status: string }>(
       ctx.db,

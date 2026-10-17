@@ -7,6 +7,28 @@ export const ONBOARDING =
   "Hi {first}, I'm Dennis, your personal agent. With your OK I can notice plans in this chat, like things you want to buy, and talk to other people's agents to find ways to save. I share only a minimal anonymous summary, never your messages, and I ask before anything involving your name or money. Reply AGREE to turn this on. STOP any time.";
 export async function forgetUser(ctx: PlatformContext, userId: string) {
   if (!(await ctx.users.get(userId))) throw new DennisError("not_found", "User not found", 404);
+  const agent = await ctx.users.getAgentByUserId(userId);
+  if (!agent) throw new DennisError("not_found", "Agent not found", 404);
+  const legacyText = ctx.db.$client
+    .prepare("SELECT payload FROM events WHERE visibility='private' AND actor_agent_id=?")
+    .all(agent.id) as { payload: string }[];
+  if (
+    legacyText.some(({ payload }) =>
+      Object.entries(JSON.parse(payload) as Record<string, unknown>).some(
+        ([key, value]) =>
+          ["text", "preview", "summary", "rationale", "detail", "headline", "question"].includes(
+            key,
+          ) &&
+          typeof value === "string" &&
+          value !== "[forgotten]",
+      ),
+    )
+  )
+    throw new DennisError(
+      "invalid_state",
+      "Historical private event text requires a privacy migration before FORGET",
+      409,
+    );
   const open = row(
     ctx.db,
     "SELECT p.id FROM market_positions p JOIN markets m ON m.id=p.market_id WHERE p.user_id=? AND m.status NOT IN ('resolved','void','declined','expired') LIMIT 1",
@@ -18,8 +40,6 @@ export async function forgetUser(ctx: PlatformContext, userId: string) {
       "Resolve or void open market positions before forgetting",
       409,
     );
-  const agent = await ctx.users.getAgentByUserId(userId);
-  if (!agent) throw new DennisError("not_found", "Agent not found", 404);
   for (const scope of ConsentScope.options)
     await ctx.consent.set({ userId, scope, granted: false, via: "dashboard" });
   update(ctx.db, "agents", { status: "paused" }, "id=?", agent.id);
@@ -46,11 +66,16 @@ export async function forgetUser(ctx: PlatformContext, userId: string) {
     const intents = ctx.db.$client
       .prepare("DELETE FROM intents WHERE user_id=?")
       .run(userId).changes;
+    ctx.db.$client
+      .prepare(
+        "DELETE FROM kv WHERE key IN (SELECT 'private-event:' || actor_agent_id || ':' || id FROM events WHERE actor_agent_id=?)",
+      )
+      .run(agent.id);
     update(ctx.db, "approvals", { promptText: "", payload: {} }, "user_id=?", userId);
     update(
       ctx.db,
       "outbox",
-      { text: "", status: "failed", lastError: "privacy_forget" },
+      { text: "", status: "failed", attempts: 4, lastError: "privacy_forget" },
       "user_id=?",
       userId,
     );

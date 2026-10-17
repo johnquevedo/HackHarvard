@@ -152,3 +152,17 @@ Approval prompt delivery followed by repeated YES now has an explicit end-to-end
 ## STATUS A1 ordered acceptance: A1-05 adapter checks
 
 The Photon adapter and spike suites pass 25 synthetic tests covering normalization, own-message echo suppression, configured-account routing, stable idempotency headers, three-call sends, 403 non-retry, 503 retry, cursor checkpointing/resume, webhook signatures and live-result refusal. Tightened direct-message normalization: an envelope with participant IDs must contain exactly the configured agent and its actual sender, even when space kind is omitted. Live recorded-fixture acceptance, real inbound and phone approval delivery remain NOT VERIFIED under A1-02's fallback.
+
+## STATUS A1 ordered acceptance: A1-08 trust controls
+
+Added tests/cross/a1-trust.test.ts for owner-lens isolation, full ShortMe publication/revocation shared-output scanning, FORGET erasure and immutable audit rows. Fixed explicit viewer-lens checks on approvals, outbox and simulated message threads. Forgotten outbox items now exhaust retries, so an empty forgotten notification cannot be resent.
+
+New private event prose is stored in removable kv overlays; immutable events contain redacted text fields. Owner history resolves the overlay until FORGET deletes it. Audit event rows remain byte-for-byte unchanged. This resolves new raw-text retention in event history without weakening E1. Existing databases containing historical raw private event prose are refused explicitly, rather than falsely claiming deletion; a migration policy is needed for those legacy rows. Existing immutable shared/public output and financial/points audit records are retained.
+
+The existing A2/A3 referenced-intent FORGET refusal remains in force, as agreed earlier with A3; no other agent's feature records or audit trail were deleted. A1-08 is therefore code-verified for supported unreferenced users, with the reference-purge and legacy-data migration acceptance exceptions still open.
+
+An A1-owned acceptance Vitest config now runs the root suites plus tests/cross with workspace aliases, without changing A4's root tooling. Command: pnpm exec vitest run --config packages/platform/vitest.acceptance.config.ts. Result: 260 tests pass across 20 files, including the A3 full text-command simulation and the new trust tests. The default root command still omits cross tests pending CR-A1-006.
+
+## CR-A1-007 to A2/A3 and human lead: FORGET acceptance exceptions
+
+A2's referenced-intent purge and A3's previously agreed market-reference refusal still prevent full FORGET acceptance for referenced users. Please provide the feature-owned purge/anonymization path with retained banking/points audit history. Legacy event rows created before the removable private-overlay change contain raw prose and cannot both be erased and remain byte-for-byte immutable; a deliberate migration exception to E1 or a documented retention policy is required. New event rows avoid this conflict. Do not report legacy deletion as successful.

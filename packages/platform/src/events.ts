@@ -8,7 +8,27 @@ import {
 } from "@dennis/contracts";
 import type { EventBus, EventListener, Clock, IdFactory } from "@dennis/contracts";
 import type { Db } from "@dennis/db";
-import { insert, rows } from "./storage.ts";
+import { insert, row, rows } from "./storage.ts";
+const PRIVATE_TEXT_FIELDS = new Set([
+  "text",
+  "preview",
+  "summary",
+  "rationale",
+  "detail",
+  "headline",
+  "question",
+]);
+function redactPrivateText(value: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [
+      key,
+      PRIVATE_TEXT_FIELDS.has(key) && typeof child === "string" ? "[forgotten]" : child,
+    ]),
+  );
+}
+function privateEventKey(agentId: string, eventId: string): string {
+  return "private-event:" + agentId + ":" + eventId;
+}
 type Filter = { viewerAgentId?: string; judge?: boolean };
 function assertSharedSafe(payload: unknown): void {
   const forbidden = new Set([
@@ -74,7 +94,14 @@ export function createEventBus(db: Db, clock: Clock, ids: IdFactory): EventBus {
         opportunityId: r.opportunityId,
         traceId: r.traceId,
         mode: r.providerMode,
-        payload: r.payload,
+        payload:
+          r.visibility === "private" && r.actorAgentId
+            ? (row<{ value: Record<string, unknown> }>(
+                db,
+                "SELECT value FROM kv WHERE key=?",
+                privateEventKey(String(r.actorAgentId), String(r.id)),
+              )?.value ?? r.payload)
+            : r.payload,
       }),
     );
   }
@@ -142,14 +169,20 @@ export function createEventBus(db: Db, clock: Clock, ids: IdFactory): EventBus {
         providerMode: e.mode ?? null,
         payload: parsed.data,
       };
-      insert(db, "events", data);
-      const seq = Number(
-        (
-          db.$client.prepare("SELECT last_insert_rowid() AS seq").get() as {
-            seq: number;
-          }
-        ).seq,
-      );
+      // Keep the immutable audit row free of private prose. The removable overlay
+      // preserves owner history until FORGET without rewriting the event log.
+      const seq = db.$client.transaction(() => {
+        insert(db, "events", {
+          ...data,
+          payload: e.visibility === "private" ? redactPrivateText(data.payload) : data.payload,
+        });
+        const inserted = (
+          db.$client.prepare("SELECT last_insert_rowid() AS seq").get() as { seq: number }
+        ).seq;
+        if (e.visibility === "private" && e.actor.agentId)
+          insert(db, "kv", { key: privateEventKey(e.actor.agentId, data.id), value: data.payload });
+        return Number(inserted);
+      })();
       const event = DomainEvent.parse({
         ...e,
         ...data,
