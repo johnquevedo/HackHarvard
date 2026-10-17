@@ -1,6 +1,7 @@
 import { ConsentScope, DennisError } from "@dennis/contracts";
 import type { CommandInput } from "@dennis/contracts";
 import type { PlatformContext } from "./context.ts";
+import { cleanPrivateReferences } from "./privacy.ts";
 import { commandHandlers } from "./foundation.ts";
 import { row, update } from "./storage.ts";
 export const ONBOARDING =
@@ -43,19 +44,20 @@ export async function forgetUser(ctx: PlatformContext, userId: string) {
   for (const scope of ConsentScope.options)
     await ctx.consent.set({ userId, scope, granted: false, via: "dashboard" });
   update(ctx.db, "agents", { status: "paused" }, "id=?", agent.id);
-  const references = row<{ total: number }>(
-    ctx.db,
-    "SELECT (SELECT count(*) FROM group_purchase_members WHERE user_id=?) + (SELECT count(*) FROM markets WHERE subject_user_id=?) AS total",
-    userId,
-    userId,
-  );
-  if (references?.total)
-    throw new DennisError(
-      "invalid_state",
-      "Feature records must be purged before deleting referenced intents",
-      409,
-    );
   return ctx.db.$client.transaction(() => {
+    cleanPrivateReferences(ctx, userId);
+    const references = row<{ total: number }>(
+      ctx.db,
+      "SELECT (SELECT count(*) FROM group_purchase_members WHERE user_id=? AND intent_id IS NOT NULL) + (SELECT count(*) FROM markets WHERE subject_user_id=? AND source_intent_id IS NOT NULL) AS total",
+      userId,
+      userId,
+    );
+    if (references?.total)
+      throw new DennisError(
+        "invalid_state",
+        "Feature records must detach private sources before deleting intents",
+        409,
+      );
     const messages = update(
       ctx.db,
       "inbound_messages",

@@ -6,13 +6,18 @@ import * as core from "./schema/core.ts";
 import * as purchasing from "./schema/purchasing.ts";
 import * as shortme from "./schema/shortme.ts";
 const schema = { ...core, ...purchasing, ...shortme };
-export function createDb(url: string = ":memory:") {
+export function createDb(url: string = ":memory:", options: { readonly?: boolean } = {}) {
   const path = url.replace(/^file:/, "");
-  if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
-  const sqlite = new Database(path);
+  if (!options.readonly && path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
+  const sqlite = new Database(
+    path,
+    options.readonly ? { readonly: true, fileMustExist: true } : {},
+  );
   sqlite.pragma("foreign_keys = ON");
-  sqlite.pragma("journal_mode = WAL");
-  sqlite.exec(BOOTSTRAP_SQL);
+  if (!options.readonly) {
+    sqlite.pragma("journal_mode = WAL");
+    sqlite.exec(BOOTSTRAP_SQL);
+  }
   return drizzle(sqlite, { schema });
 }
 export type Db = ReturnType<typeof createDb>;
@@ -47,7 +52,7 @@ export const BOOTSTRAP_SQL = [
   "CREATE TABLE IF NOT EXISTS `users` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`display_name` text NOT NULL,\n\t`first_name` text NOT NULL,\n\t`handle` text NOT NULL,\n\t`handle_kind` text NOT NULL,\n\t`photon_user_id` text,\n\t`is_demo` integer DEFAULT true NOT NULL,\n\t`region_code` text DEFAULT 'boston-cambridge' NOT NULL,\n\t`created_at` text NOT NULL\n);\n",
   "CREATE UNIQUE INDEX IF NOT EXISTS `users_unique_0` ON `users` (`handle`);",
   "CREATE TABLE IF NOT EXISTS `bank_links` (\n\t`link_key` text PRIMARY KEY NOT NULL,\n\t`role` text NOT NULL,\n\t`provider` text NOT NULL,\n\t`customer_ref` text NOT NULL,\n\t`account_ref` text NOT NULL,\n\t`account_label` text NOT NULL,\n\t`last4` text NOT NULL,\n\t`baseline_cents` integer NOT NULL,\n\t`seeded_at` text NOT NULL\n);\n",
-  "CREATE TABLE IF NOT EXISTS `group_purchase_members` (\n\t`group_id` text NOT NULL,\n\t`agent_id` text NOT NULL,\n\t`user_id` text NOT NULL,\n\t`intent_id` text NOT NULL,\n\t`share_cents` integer NOT NULL,\n\t`join_state` text NOT NULL,\n\t`join_approval_id` text,\n\t`pay_state` text NOT NULL,\n\t`pay_approval_id` text,\n\tPRIMARY KEY(`group_id`, `agent_id`),\n\tFOREIGN KEY (`group_id`) REFERENCES `group_purchases`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`intent_id`) REFERENCES `intents`(`id`) ON UPDATE no action ON DELETE no action\n);\n",
+  "CREATE TABLE IF NOT EXISTS `group_purchase_members` (\n\t`group_id` text NOT NULL,\n\t`agent_id` text NOT NULL,\n\t`user_id` text NOT NULL,\n\t`intent_id` text,\n\t`share_cents` integer NOT NULL,\n\t`join_state` text NOT NULL,\n\t`join_approval_id` text,\n\t`pay_state` text NOT NULL,\n\t`pay_approval_id` text,\n\tPRIMARY KEY(`group_id`, `agent_id`),\n\tFOREIGN KEY (`group_id`) REFERENCES `group_purchases`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`intent_id`) REFERENCES `intents`(`id`) ON UPDATE no action ON DELETE no action\n);\n",
   "CREATE TABLE IF NOT EXISTS `group_purchases` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`opportunity_id` text NOT NULL,\n\t`offer_id` text NOT NULL,\n\t`product_key` text NOT NULL,\n\t`lead_agent_id` text NOT NULL,\n\t`status` text NOT NULL,\n\t`individual_price_cents` integer NOT NULL,\n\t`group_unit_price_cents` integer NOT NULL,\n\t`quantity_per_member` integer NOT NULL,\n\t`savings_per_member_cents` integer NOT NULL,\n\t`pool_account_ref` text NOT NULL,\n\t`failure_reason` text,\n\t`created_at` text NOT NULL,\n\t`updated_at` text NOT NULL,\n\tFOREIGN KEY (`offer_id`) REFERENCES `merchant_offers`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`lead_agent_id`) REFERENCES `agents`(`id`) ON UPDATE no action ON DELETE no action\n);\n",
   "CREATE UNIQUE INDEX IF NOT EXISTS `group_purchases_unique_0` ON `group_purchases` (`opportunity_id`);",
   "CREATE TABLE IF NOT EXISTS `merchant_offers` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`merchant_name` text NOT NULL,\n\t`product_key` text NOT NULL,\n\t`title` text NOT NULL,\n\t`unit_price_cents` integer NOT NULL,\n\t`tiers` text NOT NULL,\n\t`is_simulated` integer DEFAULT true NOT NULL,\n\t`source_label` text NOT NULL,\n\t`valid_until` text NOT NULL\n);\n",
@@ -61,7 +66,7 @@ export const BOOTSTRAP_SQL = [
   "CREATE UNIQUE INDEX IF NOT EXISTS `market_positions_unique_0` ON `market_positions` (`idempotency_key`);",
   "CREATE UNIQUE INDEX IF NOT EXISTS `market_positions_unique_1` ON `market_positions` (`market_id`,`user_id`);",
   "CREATE TABLE IF NOT EXISTS `market_resolutions` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`market_id` text NOT NULL,\n\t`proposed_outcome` text NOT NULL,\n\t`proposed_by` text NOT NULL,\n\t`status` text NOT NULL,\n\t`subject_confirm_state` text NOT NULL,\n\t`evidence_note` text NOT NULL,\n\t`created_at` text NOT NULL,\n\t`decided_at` text,\n\tFOREIGN KEY (`market_id`) REFERENCES `markets`(`id`) ON UPDATE no action ON DELETE no action\n);\n",
-  "CREATE TABLE IF NOT EXISTS `markets` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`opportunity_id` text NOT NULL,\n\t`subject_user_id` text NOT NULL,\n\t`subject_agent_id` text NOT NULL,\n\t`source_intent_id` text NOT NULL,\n\t`category` text NOT NULL,\n\t`template_key` text NOT NULL,\n\t`question` text NOT NULL,\n\t`resolution_criteria` text NOT NULL,\n\t`status` text NOT NULL,\n\t`lock_at` text,\n\t`outcome` text,\n\t`resolver_kind` text NOT NULL,\n\t`redactions` text NOT NULL,\n\t`created_at` text NOT NULL,\n\t`updated_at` text NOT NULL,\n\t`opened_at` text,\n\t`resolved_at` text,\n\tFOREIGN KEY (`subject_user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`subject_agent_id`) REFERENCES `agents`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`source_intent_id`) REFERENCES `intents`(`id`) ON UPDATE no action ON DELETE no action\n);\n",
+  "CREATE TABLE IF NOT EXISTS `markets` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`opportunity_id` text NOT NULL,\n\t`subject_user_id` text NOT NULL,\n\t`subject_agent_id` text NOT NULL,\n\t`source_intent_id` text,\n\t`category` text NOT NULL,\n\t`template_key` text NOT NULL,\n\t`question` text NOT NULL,\n\t`resolution_criteria` text NOT NULL,\n\t`status` text NOT NULL,\n\t`lock_at` text,\n\t`outcome` text,\n\t`resolver_kind` text NOT NULL,\n\t`redactions` text NOT NULL,\n\t`created_at` text NOT NULL,\n\t`updated_at` text NOT NULL,\n\t`opened_at` text,\n\t`resolved_at` text,\n\tFOREIGN KEY (`subject_user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`subject_agent_id`) REFERENCES `agents`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`source_intent_id`) REFERENCES `intents`(`id`) ON UPDATE no action ON DELETE no action\n);\n",
   "CREATE UNIQUE INDEX IF NOT EXISTS `markets_unique_0` ON `markets` (`opportunity_id`);",
   'CREATE TABLE IF NOT EXISTS `points_accounts` (\n\t`user_id` text PRIMARY KEY NOT NULL,\n\t`balance` integer NOT NULL,\n\tFOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,\n\tCONSTRAINT "nonnegative_balance" CHECK("points_accounts"."balance" >= 0)\n);\n',
   "CREATE TABLE IF NOT EXISTS `points_ledger` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`user_id` text NOT NULL,\n\t`market_id` text,\n\t`kind` text NOT NULL,\n\t`delta` integer NOT NULL,\n\t`balance_after` integer NOT NULL,\n\t`ref_id` text,\n\t`idempotency_key` text NOT NULL,\n\t`created_at` text NOT NULL,\n\tFOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`market_id`) REFERENCES `markets`(`id`) ON UPDATE no action ON DELETE no action\n);\n",

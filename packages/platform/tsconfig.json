@@ -4,5 +4,10 @@
     "noEmit": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["src/**/*.ts", "vitest.acceptance.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "vitest.acceptance.config.ts",
+    "migrate-private-events.ts",
+    "rehearse-purchasing.ts"
+  ]
 }

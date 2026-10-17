@@ -7,3 +7,4 @@ export * from "./runtime.ts";
 export * from "./stores.ts";
 export * from "./routes.ts";
 export * from "./integrations.ts";
+export * from "./privacy.ts";

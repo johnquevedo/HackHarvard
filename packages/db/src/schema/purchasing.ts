@@ -57,9 +57,7 @@ export const groupPurchaseMembers = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id),
-    intentId: text("intent_id")
-      .notNull()
-      .references(() => intents.id),
+    intentId: text("intent_id").references(() => intents.id),
     shareCents: integer("share_cents").notNull(),
     joinState: text("join_state").notNull(),
     joinApprovalId: text("join_approval_id"),

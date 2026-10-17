@@ -21,9 +21,7 @@ export const markets = sqliteTable(
     subjectAgentId: text("subject_agent_id")
       .notNull()
       .references(() => agents.id),
-    sourceIntentId: text("source_intent_id")
-      .notNull()
-      .references(() => intents.id),
+    sourceIntentId: text("source_intent_id").references(() => intents.id),
     category: text("category").notNull(),
     templateKey: text("template_key").notNull(),
     question: text("question").notNull(),

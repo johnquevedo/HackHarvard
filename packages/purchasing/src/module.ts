@@ -1,10 +1,13 @@
 import {
   PurchaseIntentPublic,
+  DennisError,
   type A2AMessage,
   type AgentT,
   type IntentT,
 } from "@dennis/contracts";
-import { merchantOffers } from "@dennis/db";
+import { merchantOffers, groupPurchaseMembers, groupPurchases } from "@dennis/db";
+import { registerPrivacyCleanup } from "@dennis/platform";
+import { eq, inArray, and } from "drizzle-orm";
 import type { FeatureModule, PlatformContext } from "@dennis/platform";
 
 import { purchaseDetector } from "./detector/purchase.js";
@@ -142,6 +145,39 @@ async function handleProbeResult(ctx: PlatformContext, msg: A2AMessage): Promise
 export const purchasingModule: FeatureModule = {
   name: "purchasing",
   async register(ctx) {
+    registerPrivacyCleanup(ctx, (userId) => {
+      const memberships = ctx.db
+        .select()
+        .from(groupPurchaseMembers)
+        .where(eq(groupPurchaseMembers.userId, userId))
+        .all();
+      if (
+        memberships.length &&
+        ctx.db
+          .select()
+          .from(groupPurchases)
+          .where(
+            and(
+              inArray(
+                groupPurchases.id,
+                memberships.map((m) => m.groupId),
+              ),
+              inArray(groupPurchases.status, ["settling"]),
+            ),
+          )
+          .get()
+      )
+        throw new DennisError(
+          "invalid_state",
+          "Wait for in-flight settlement before forgetting",
+          409,
+        );
+      ctx.db
+        .update(groupPurchaseMembers)
+        .set({ intentId: null })
+        .where(eq(groupPurchaseMembers.userId, userId))
+        .run();
+    });
     ctx.detectors.register(purchaseDetector);
     ctx.detectors.onDetection("purchase", (input) => handlePurchaseDetection(ctx, input));
     ctx.a2a.on("purchase.probe", (msg) => handleProbe(ctx, msg));

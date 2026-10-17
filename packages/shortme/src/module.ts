@@ -9,6 +9,8 @@ import {
   pointsLedger,
 } from "@dennis/db";
 import type { FeatureModule, PlatformContext } from "@dennis/platform";
+import { registerPrivacyCleanup } from "@dennis/platform";
+import { eq } from "drizzle-orm";
 import { MockStructuredLlm } from "@dennis/llm";
 import { milestoneDetector } from "./detector/index";
 import { grantAllUsers } from "./ledger/ledger";
@@ -34,6 +36,13 @@ export const shortmeModule: FeatureModule = {
 
   async register(ctx: PlatformContext): Promise<void> {
     ensureShortmeSchema(ctx);
+    registerPrivacyCleanup(ctx, (userId) => {
+      ctx.db
+        .update(markets)
+        .set({ sourceIntentId: null })
+        .where(eq(markets.subjectUserId, userId))
+        .run();
+    });
     ctx.detectors.register(milestoneDetector);
     ctx.detectors.onDetection("milestone", async (input) => {
       await handleMilestoneDetection(ctx, input);

@@ -19,7 +19,7 @@ export const Market = z.object({
   opportunityId: s,
   subjectUserId: s,
   subjectAgentId: s,
-  sourceIntentId: s,
+  sourceIntentId: s.nullable(),
   category: MarketCategory,
   templateKey: s,
   question: s,

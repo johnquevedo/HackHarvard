@@ -4,8 +4,9 @@ import { MockStructuredLlm } from "../llm/src/index.ts";
 import { purchasingModule } from "../purchasing/src/index.ts";
 import { shortmeModule } from "../shortme/src/index.ts";
 import { createTestPlatform } from "./src/testing.ts";
+import type { PlatformContext } from "./src/context.ts";
 import { drainPlatform, ingestInbound } from "./src/index.ts";
-export async function rehearsePurchasing() {
+export async function rehearsePurchasing(onSettled?: (ctx: PlatformContext) => Promise<void>) {
   const llm = new MockStructuredLlm([
     {
       task: "purchase_detector_v1",
@@ -100,6 +101,7 @@ export async function rehearsePurchasing() {
       "for up to $350",
     ])
       assert.equal(encoded.includes(secret), false, "Shared output must remain minimal");
+    await onSettled?.(ctx);
     return {
       mode: "simulated",
       status: "settled",

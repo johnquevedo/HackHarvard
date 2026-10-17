@@ -56,7 +56,7 @@ export const GroupPurchaseMember = z.object({
   groupId: s,
   agentId: s,
   userId: s,
-  intentId: s,
+  intentId: s.nullable(),
   shareCents: Cents,
   joinState: z.enum(["pending", "approved", "declined", "withdrawn"]),
   joinApprovalId: s.nullable(),

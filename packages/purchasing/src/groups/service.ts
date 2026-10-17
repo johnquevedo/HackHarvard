@@ -200,7 +200,7 @@ export async function handleProposal(ctx: PlatformContext, msg: A2AMessage): Pro
       ),
     )
     .get();
-  const own = member ? await ctx.intents.get(member.intentId) : null;
+  const own = member?.intentId ? await ctx.intents.get(member.intentId) : null;
   if (!own) throw new Error("Candidate purchase intent not found");
   const evaluation = evaluateProposal(
     {
@@ -469,9 +469,8 @@ export async function handlePurchaseConsentRevoked(
     .all();
   for (const group of groups) {
     setGroupStatus(ctx, group.id, "cancelled", `${scope} revoked`);
-    await ctx.intents.revoke(memberships.find((item) => item.groupId === group.id)!.intentId, {
-      userId,
-    });
+    const intentId = memberships.find((item) => item.groupId === group.id)!.intentId;
+    if (intentId) await ctx.intents.revoke(intentId, { userId });
     await notifyNeutralCancellation(ctx, group.id, userId);
     await emitGroupUpdated(ctx, group.id);
   }

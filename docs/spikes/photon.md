@@ -56,50 +56,49 @@ The runner writes event-catalog.json, inbound-text.json (and numbered subsequent
 
 The fixture inbound-text.synthetic.json contains invented test data based on the documented resource. It is not evidence of a live provider call.
 
-## Milestone accounting after the sequencing correction
+## Current review-branch status
 
-The plan is authoritative. Earlier commits bundled code across milestones and advanced to recovery fixes before the live spike; that was an execution-order deviation. This table distinguishes implementation from acceptance and describes the current Agent 1 branch, not an assertion that every change is on main.
+All remaining local code and simulator integration work is prepared on a1/a1-09-recovery-hardening for human review. Main was not pushed during this pass. A2 at f84abd3 is integrated, including the two purchasing fixes that were previously only a proposed patch.
 
-| Planned order | Milestone                   | Current acceptance                                                                                                                                                             |
-| ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1             | A1-01 foundation            | Simulator vertical slice verified. Shared root verification is still blocked by CR-A1-006.                                                                                     |
-| 2             | A1-02 Photon spike          | Runner code verified. Live spike blocked by project access and phones; documented rung 5 fallback active.                                                                      |
-| 3             | A1-06 pipeline, stores, A2A | Two-agent mock-detector conversation, isolation, gate races and queued recovery verified. Full A2 purchasing rehearsal awaits its integration.                                 |
-| 4             | A1-03 consent and commands  | Command grammar and STOP/onboarding/AGREE/scope/pause/resume conversation checks pass.                                                                                         |
-| 5             | A1-04 approvals and outbox  | Binding, lifecycle, atomic consumption, repeated YES, retries and delivery confirmation checks pass.                                                                           |
-| 6             | A1-05 Photon provider       | Synthetic SDK/HTTP/Socket.IO checks pass. Real inbound fixture and phone approval delivery remain unverified.                                                                  |
-| 7             | A1-08 trust controls        | Isolation, shared-output scanning and new private-event erasure pass. Referenced-intent purge and legacy private-event migration remain acceptance exceptions.                 |
-| 8             | A1-07 webhook and status    | Signature/dedupe tests, registered-provider polling, gated tapback and typing pass. Tunnel unavailable; A2/A3 health registration requested. Live acknowledgements unverified. |
-| 9             | A1-09 live hardening        | Real-process SIGKILL/restart rehearsal, durable outbox recovery and socket cursor tests pass. Three live doctor passes, manual echo and device timing remain blocked.          |
+- pnpm install --frozen-lockfile passes.
+- pnpm verify passes, including formatting, root TypeScript, 373 tests across 42 files and the explicitly scoped integration-review ownership check.
+- pnpm e2e:sim passes its three tests. The server scenario now proves group creation, both join and payment approval stages, settlement and the three simulated account balances.
+- pnpm exec tsx packages/platform/rehearse-purchasing.ts passes with two members, two simulated transfers of 28499 cents, replay protection and a shared-data privacy scan.
 
-## Ordered code acceptance checkpoint
+The exact review branch is recorded as a cross-package review in ownership.json. Ordinary agent branches retain their original ownership restrictions, and unowned paths still fail. This entry should be reviewed with the source changes; it does not authorize a push to main.
 
-The milestones above were reviewed in the agreed order, using A1-02's documented fallback while live prerequisites remain unavailable. The expanded acceptance command passes 270 tests across 23 files, including both agents' cross-feature tests and an actual server process killed and restarted against a temporary SQLite database:
+| Planned order | Milestone                   | Current acceptance                                                                                                                                                                                                                                              |
+| ------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1             | A1-01 foundation            | Vertical slice, frozen install and full repository verification pass.                                                                                                                                                                                           |
+| 2             | A1-02 Photon spike          | Runner ready. Live capture, timing, line behavior and real fixtures still require Photon credentials and phones. Simulated fallback remains explicit.                                                                                                           |
+| 3             | A1-06 pipeline, stores, A2A | Real purchasing implementation integrated; complete two-member simulated settlement, isolation, gate races and recovery verified.                                                                                                                               |
+| 4             | A1-03 consent and commands  | Deterministic grammar and STOP/onboarding/AGREE/scope/pause/resume checks pass.                                                                                                                                                                                 |
+| 5             | A1-04 approvals and outbox  | Lifecycle, hashing, atomic consumption, repeated replies, retry schedule and delivery confirmation pass.                                                                                                                                                        |
+| 6             | A1-05 Photon provider       | Adapter, signatures, SDK requests, typing and acknowledgement checks pass synthetically. Real inbound and phone approval remain unverified.                                                                                                                     |
+| 7             | A1-08 trust controls        | Source-reference cleanup now supports actual FORGET after settled purchases and ShortMe drafts without deleting audit history. Open positions remain a documented refusal. Legacy payload migration is prepared separately and requires explicit policy review. |
+| 8             | A1-07 webhook and status    | Banking and Chalk sources are wired through server composition. Cadence, timeout, failure transitions and webhook checks pass. Tunnel/live acknowledgement behavior remain unavailable.                                                                         |
+| 9             | A1-09 live hardening        | Actual subprocess restart, SQLite recovery and socket resume checks pass. Three live doctor runs, device timing and manual echo checks remain unverified.                                                                                                       |
+
+## Privacy upgrade and review procedure
+
+The additive contract broadening makes GroupPurchaseMember.intentId and Market.sourceIntentId nullable. Feature-owned synchronous privacy cleanup detaches those references in the same SQLite transaction as private-content deletion. Payments, memberships, published market records, positions and points ledger rows are retained. Active settlement is refused; open market positions still prevent FORGET before consent or stakes are changed.
+
+After review and before using an existing database with the updated source-reference schema, stop the server and run pnpm db:push. Its targeted table rebuild relaxes only the two private source columns, preserves all existing row values, recreates indexes and validates foreign keys. It rejects unrelated schema drift. Migration and repeated-push tests pass; no user database was reset during this work.
+
+Legacy event prose cannot be removed from an immutable historical payload without an explicit exception to E1. The prepared utility is never run automatically by startup or FORGET. Its default is a read-only plan that reports counts only:
 
 ```sh
-pnpm exec vitest run --config packages/platform/vitest.acceptance.config.ts
-pnpm exec tsc -p packages/platform/tsconfig.acceptance.json
+DATABASE_URL=file:./data/dennis.db pnpm exec tsx packages/platform/migrate-private-events.ts
 ```
 
-All five A1 package/server TypeScript projects pass strict checking. The cross acceptance TypeScript config checks A1's cross tests; A3's cross tests execute successfully but their separate TypeScript check exposes two pre-existing unknown JSON response types recorded in CONTRACT_REQUESTS. Full root verify remains blocked by shared formatting, lockfile and root TypeScript configuration. A passing subset is not a claim that pnpm verify passes.
-
-Doctor now supports a read-only deliverability preflight:
+Only after the human lead reviews and accepts the one-time legacy-payload rewrite exception, stop the server, take a SQLite backup, then use:
 
 ```sh
-node --env-file=.env.local --import tsx scripts/photon-doctor.ts --preflight-only
-node --env-file=.env.local --import tsx scripts/photon-doctor.ts
+DATABASE_URL=file:./data/dennis.db pnpm exec tsx packages/platform/migrate-private-events.ts --apply --allow-audit-payload-rewrite
 ```
 
-Preflight reads the iMessage line configuration, active shared assignments and the previous 30 minutes of incoming direct texts, with bounded pagination and masked sender labels. An unobserved sender is not proof of undeliverability. Preflight does not send messages or establish delivery. A full doctor run refuses missing assignments in shared-line mode and requires a new recognized demo inbound followed by delivered read-back. Its receipt and outbound timing do not establish device-to-device latency or own-message echo behavior. Run it successfully three times and record the manual checks before marking live hardening accepted.
+The migration retains event IDs, sequence, timestamps and actor metadata; it moves private prose into removable owner overlays and stores before/after payload hashes as migration receipts. Subsequent FORGET deletes those overlays. It is transactional, idempotent and rejects conflicting existing overlays. Tests prove the owner still sees history before FORGET and the text is absent afterward. This is an explicit legacy policy exception, not a claim that old payloads remained byte-for-byte immutable. No migration was applied to the user's database.
 
-New messaging.latency events are private, mode-labeled and measure outbox_send_to_delivered only. Optional MessagingProvider acknowledgement/typing capabilities use the typed pinned SDK, stable keys and the owner's ackMode=reaction setting. Default none sends no acknowledgement. Synthetic tests do not establish live support.
+## Remaining live steps
 
-New private event prose uses removable overlays so FORGET can erase it while preserving immutable event rows. Existing databases with raw prose already embedded in immutable private events explicitly refuse FORGET pending a migration policy. Feature-referenced intents retain the previously documented refusal pending A2/A3 purge paths; financial and points audit records are not silently deleted.
-
-## Follow-up integration evidence
-
-Latest main through 053944e is integrated on the Agent 1 branch. Root TypeScript now passes after local dependency installation. Full verify is still blocked by three DB formatting files and the DB types lockfile importer, with ownership scope clarification pending. Server composition now registers banking and Chalk health sources when their implementations are present.
-
-A detached checkout combining A2 at 984f209 with this branch exposed two real purchasing blockers despite its existing suite passing: a null required pool reference, and proposal lookup excluding already-matched intents. The tested proposed patch is packages/platform/integration/purchasing-984f209.patch; its companion runner is packages/platform/rehearse-purchasing.ts. With the patch applied only in that detached checkout, the full two-member simulated purchase reaches settled with exactly two simulated transfers, and 364 tests pass. This evidence does not mean the A2 implementation or proposed patch has been merged into the published Agent 1 branch.
-
-The first live gate remains A1-02. Local credentials and phones are still unavailable. Referenced-intent FORGET and legacy-event migration exceptions remain open pending the documented policy and ownership decisions.
+Configure PHOTON_PROJECT_ID, PHOTON_API_KEY, PHOTON_AGENT_USER_ID and both assigned demo handles locally, then run the catalog and three-sample spike described above. Verify real approval delivery and manual phone timing/echo behavior. Run doctor successfully three times and exercise a real conversation across restart. Until those observations exist, A1-02, A1-05 and A1-09 are not live accepted, regardless of simulator results.

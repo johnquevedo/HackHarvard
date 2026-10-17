@@ -18,7 +18,7 @@ const PRIVATE_TEXT_FIELDS = new Set([
   "headline",
   "question",
 ]);
-function redactPrivateText(value: Record<string, unknown>): Record<string, unknown> {
+export function redactPrivateText(value: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(value).map(([key, child]) => [
       key,
