@@ -27,17 +27,10 @@ export function parseCommand(text: string): ParsedCommand {
     if (!scope || scope === "shortme" || scope === "payments")
       return {
         kind: "agree",
-        scope:
-          scope === "shortme"
-            ? "shortme"
-            : scope === "payments"
-              ? "payments"
-              : "base",
+        scope: scope === "shortme" ? "shortme" : scope === "payments" ? "payments" : "base",
       };
   }
-  if (
-    ["stop", "pause", "resume", "status", "forget", "help"].includes(normalized)
-  )
+  if (["stop", "pause", "resume", "status", "forget", "help"].includes(normalized))
     return { kind: normalized } as ParsedCommand;
   const aliases: Record<string, string> = {
     yes: "approve",
@@ -51,12 +44,7 @@ export function parseCommand(text: string): ParsedCommand {
     confirm: "confirm",
     dispute: "dispute",
   };
-  if (
-    first &&
-    aliases[first] &&
-    parts.length <= 2 &&
-    (!parts[1] || /^[a-z0-9]{4}$/.test(parts[1]))
-  )
+  if (first && aliases[first] && parts.length <= 2 && (!parts[1] || /^[a-z0-9]{4}$/.test(parts[1])))
     return { kind: aliases[first], code: parts[1] ?? null } as ParsedCommand;
   if (
     (first === "back" || first === "fade") &&

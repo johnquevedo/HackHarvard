@@ -20,28 +20,18 @@ export interface SpikeTransport {
   send(request: ProviderSendRequestT): Promise<ProviderSendResultT>;
   readStatus(messageId: string): Promise<ProviderSendResultT["status"]>;
 }
-export function requireSpikeEnvironment(
-  env: NodeJS.ProcessEnv,
-  catalogOnly: boolean,
-): void {
+export function requireSpikeEnvironment(env: NodeJS.ProcessEnv, catalogOnly: boolean): void {
   const required = [
     "PHOTON_PROJECT_ID",
     "PHOTON_API_KEY",
     ...(catalogOnly ? [] : ["DEMO_ALICE_HANDLE", "DEMO_BOB_HANDLE"]),
   ];
   const missing = required.filter((key) => !env[key]?.trim());
-  if (
-    env.PHOTON_PROJECT_ID &&
-    !/^pho_prj_[A-Za-z0-9_-]+$/.test(env.PHOTON_PROJECT_ID)
-  )
-    throw new PhotonSpikeError(
-      "PHOTON_PROJECT_ID must be a Photon project ID.",
-    );
+  if (env.PHOTON_PROJECT_ID && !/^pho_prj_[A-Za-z0-9_-]+$/.test(env.PHOTON_PROJECT_ID))
+    throw new PhotonSpikeError("PHOTON_PROJECT_ID must be a Photon project ID.");
   if (missing.length)
     throw new PhotonSpikeError(
-      "NOT VERIFIED: configure " +
-        missing.join(", ") +
-        " locally. No live request was made.",
+      "NOT VERIFIED: configure " + missing.join(", ") + " locally. No live request was made.",
     );
   if (!catalogOnly) {
     const normalized: string[] = [];
@@ -49,15 +39,11 @@ export function requireSpikeEnvironment(
       try {
         normalized.push(normalizeHandle(env[key]!).handle);
       } catch {
-        throw new PhotonSpikeError(
-          key + " must be a valid phone number or email handle.",
-        );
+        throw new PhotonSpikeError(key + " must be a valid phone number or email handle.");
       }
     }
     if (new Set(normalized).size !== 2)
-      throw new PhotonSpikeError(
-        "The two demo senders must have distinct handles.",
-      );
+      throw new PhotonSpikeError("The two demo senders must have distinct handles.");
   }
 }
 export async function discoverPhotonAgent(
@@ -67,9 +53,7 @@ export async function discoverPhotonAgent(
 ): Promise<string> {
   if (configured) {
     if (!/^pho_usr_[A-Za-z0-9_-]+$/.test(configured))
-      throw new PhotonSpikeError(
-        "PHOTON_AGENT_USER_ID must be a Photon user ID.",
-      );
+      throw new PhotonSpikeError("PHOTON_AGENT_USER_ID must be a Photon user ID.");
     return configured;
   }
   const candidates = new Set<string>();
@@ -84,11 +68,7 @@ export async function discoverPhotonAgent(
       },
     });
     for (const user of result.items)
-      if (
-        user.platform === "imessage" &&
-        user.kind === "agent" &&
-        typeof user.id === "string"
-      )
+      if (user.platform === "imessage" && user.kind === "agent" && typeof user.id === "string")
         candidates.add(user.id);
     pageToken = result.nextPageToken;
     if (!pageToken) break;
@@ -110,21 +90,14 @@ export async function readPhotonCatalog(
   requestedVersion?: string,
 ) {
   const versions = await api.listWebhookApiVersions({ path: { projectId } });
-  if (!versions)
-    throw new PhotonSpikeError(
-      "Photon returned no webhook API version catalog.",
-    );
-  const selectable = versions.apiVersions.filter(
-    (version) => version.selectable,
-  );
+  if (!versions) throw new PhotonSpikeError("Photon returned no webhook API version catalog.");
+  const selectable = versions.apiVersions.filter((version) => version.selectable);
   const selected = requestedVersion
     ? selectable.find((version) => version.version === requestedVersion)
     : (selectable.find((version) => version.status === "latest") ??
       selectable.sort((a, b) => b.version.localeCompare(a.version))[0]);
   if (!selected)
-    throw new PhotonSpikeError(
-      "No selectable webhook API version matched the request.",
-    );
+    throw new PhotonSpikeError("No selectable webhook API version matched the request.");
   const catalog = await api.listWebhookEventTypes({
     path: { projectId },
     query: { apiVersion: selected.version },
@@ -135,9 +108,7 @@ export async function readPhotonCatalog(
     catalog.apiVersion !== selected.version ||
     !catalog.events.length
   )
-    throw new PhotonSpikeError(
-      "Photon returned no matching selectable event catalog.",
-    );
+    throw new PhotonSpikeError("Photon returned no matching selectable event catalog.");
   await write("event-catalog.json", {
     mode: "live",
     apiVersion: catalog.apiVersion,
@@ -149,10 +120,7 @@ export async function readPhotonCatalog(
   });
   return catalog;
 }
-export function redactPhotonFixture(
-  raw: unknown,
-  eventTypes: ReadonlySet<string>,
-): unknown {
+export function redactPhotonFixture(raw: unknown, eventTypes: ReadonlySet<string>): unknown {
   const enums = new Set([
     "imessage",
     "received",
@@ -172,33 +140,23 @@ export function redactPhotonFixture(
     if (depth > 20) return "[redacted]";
     if (sensitive.test(key)) return "[redacted]";
     if (key === "metadata" || key === "headers") return {};
-    if (Array.isArray(value))
-      return value.map((item) => visit(item, key, depth + 1));
+    if (Array.isArray(value)) return value.map((item) => visit(item, key, depth + 1));
     if (value && typeof value === "object")
       return Object.fromEntries(
         Object.entries(value).map(([field, item], index) => [
-          /^[A-Za-z_$][A-Za-z0-9_$-]{0,79}$/.test(field)
-            ? field
-            : "redacted_field_" + index,
+          /^[A-Za-z_$][A-Za-z0-9_$-]{0,79}$/.test(field) ? field : "redacted_field_" + index,
           visit(item, field, depth + 1),
         ]),
       );
     if (typeof value === "string") {
-      if (key === "handle")
-        return value.includes("@") ? "redacted@example.test" : "+15555550123";
+      if (key === "handle") return value.includes("@") ? "redacted@example.test" : "+15555550123";
       if (
         ["type", "platform", "status", "format", "kind"].includes(key) &&
         (enums.has(value) || eventTypes.has(value))
       )
         return value;
       if (
-        [
-          "id",
-          "projectId",
-          "senderId",
-          "recipientId",
-          "participantIds",
-        ].includes(key) &&
+        ["id", "projectId", "senderId", "recipientId", "participantIds"].includes(key) &&
         /^pho_(?:msg|usr|spc|prj)_[A-Za-z0-9_-]+$/.test(value)
       )
         return value;
@@ -242,9 +200,7 @@ function findResource(raw: unknown, depth = 0): Record<string, unknown> | null {
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2
-    ? sorted[middle]!
-    : (sorted[middle - 1]! + sorted[middle]!) / 2;
+  return sorted.length % 2 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2;
 }
 export async function runPhotonMessageProbe(options: {
   config: AppConfig;
@@ -258,8 +214,7 @@ export async function runPhotonMessageProbe(options: {
   samples?: number;
   timeoutMs?: number;
 }) {
-  const { config, api, catalog, transport, clock, write, print, sleep } =
-    options;
+  const { config, api, catalog, transport, clock, write, print, sleep } = options;
   const samples = options.samples ?? 3;
   if (!Number.isInteger(samples) || samples < 1 || samples > 10)
     throw new PhotonSpikeError("samples must be an integer between 1 and 10.");
@@ -270,9 +225,7 @@ export async function runPhotonMessageProbe(options: {
     normalizeHandle(config.demoBobHandle).handle,
   ]);
   if (allowed.size !== 2)
-    throw new PhotonSpikeError(
-      "The two demo senders must have distinct handles.",
-    );
+    throw new PhotonSpikeError("The two demo senders must have distinct handles.");
   const eventTypes = new Set(catalog.events.map((event) => event.type));
   const seen = new Set<string>();
   const senders = new Set<string>();
@@ -296,18 +249,12 @@ export async function runPhotonMessageProbe(options: {
       } catch {
         return;
       }
-      if (!allowed.has(handle) || sender.id === config.photonAgentUserId)
-        return;
+      if (!allowed.has(handle) || sender.id === config.photonAgentUserId) return;
       const message = normalizePhotonEvent(raw, config.photonAgentUserId!);
       const type =
-        raw && typeof raw === "object"
-          ? String((raw as Record<string, unknown>).type ?? "")
-          : "";
+        raw && typeof raw === "object" ? String((raw as Record<string, unknown>).type ?? "") : "";
       if (message && seen.has(message.providerMessageId)) return;
-      const filename =
-        seen.size === 0
-          ? "inbound-text.json"
-          : `inbound-text-${seen.size + 1}.json`;
+      const filename = seen.size === 0 ? "inbound-text.json" : `inbound-text-${seen.size + 1}.json`;
       try {
         pendingWrite = write(filename, redactPhotonFixture(raw, eventTypes));
         await pendingWrite;
@@ -363,15 +310,12 @@ export async function runPhotonMessageProbe(options: {
         throw new PhotonSpikeError(
           "Provider receipt is in the future; synchronize clocks before measuring latency.",
         );
-      print(
-        `PASS inbound captured (${eventType}); receipt lag ${inboundLagMs} ms`,
-      );
+      print(`PASS inbound captured (${eventType}); receipt lag ${inboundLagMs} ms`);
       const schema = await api.getWebhookEventSchema({
         path: { projectId: config.photonProjectId!, eventType },
         query: { apiVersion: catalog.apiVersion },
       });
-      if (!schema)
-        throw new PhotonSpikeError("Photon returned no incoming event schema.");
+      if (!schema) throw new PhotonSpikeError("Photon returned no incoming event schema.");
       await write("inbound-event-schema.json", {
         apiVersion: catalog.apiVersion,
         eventType,
@@ -422,11 +366,8 @@ export async function runPhotonMessageProbe(options: {
       measurements,
       demoSendersObserved: senders.size,
       receiptToDeliveryP50Ms:
-        measurements.length >= 3
-          ? median(measurements.map((m) => m.receiptToDeliveryMs))
-          : null,
-      measuredSpan:
-        "provider receipt to outbound delivered; not device-to-device round trip",
+        measurements.length >= 3 ? median(measurements.map((m) => m.receiptToDeliveryMs)) : null,
+      measuredSpan: "provider receipt to outbound delivered; not device-to-device round trip",
       bothDemoSendersVerified: senders.size === 2,
       echoBehavior: "not_manually_verified",
       firstOutboundBeforeInbound: "not_tested",

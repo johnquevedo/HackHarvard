@@ -45,12 +45,7 @@ export const A2A_PAYLOAD_SCHEMAS = {
       groupId: s,
       accept: z.boolean(),
       reasons: z.array(
-        z.enum([
-          "accepted",
-          "savings_below_threshold",
-          "over_budget",
-          "matching_disabled",
-        ]),
+        z.enum(["accepted", "savings_below_threshold", "over_budget", "matching_disabled"]),
       ),
     })
     .strict(),

@@ -175,9 +175,7 @@ const samples: Record<keyof typeof EVENT_PAYLOAD_SCHEMAS, unknown> = {
 describe("contract event completeness", () => {
   for (const [name, schema] of Object.entries(EVENT_PAYLOAD_SCHEMAS)) {
     it(name + " parses its documented sample and rejects extra fields", () => {
-      expect(
-        schema.safeParse(samples[name as keyof typeof samples]).success,
-      ).toBe(true);
+      expect(schema.safeParse(samples[name as keyof typeof samples]).success).toBe(true);
       expect(
         schema.safeParse({
           ...(samples[name as keyof typeof samples] as object),
@@ -228,9 +226,7 @@ describe("contract event completeness", () => {
       },
     };
     for (const [name, schema] of Object.entries(A2A_PAYLOAD_SCHEMAS)) {
-      expect(
-        schema.safeParse(values[name as keyof typeof values]).success,
-      ).toBe(true);
+      expect(schema.safeParse(values[name as keyof typeof values]).success).toBe(true);
       expect(
         schema.safeParse({
           ...values[name as keyof typeof values],
@@ -240,9 +236,7 @@ describe("contract event completeness", () => {
     }
   });
   it("hashes canonical nested JSON and formats integer cents", () => {
-    expect(hashPayload({ b: 2, a: { z: 3, y: 4 } })).toBe(
-      hashPayload({ a: { y: 4, z: 3 }, b: 2 }),
-    );
+    expect(hashPayload({ b: 2, a: { z: 3, y: 4 } })).toBe(hashPayload({ a: { y: 4, z: 3 }, b: 2 }));
     expect(hashPayload({ a: [1, 2] })).not.toBe(hashPayload({ a: [2, 1] }));
     expect(() => hashPayload({ invalid: NaN })).toThrow();
     expect(formatUsd(28499)).toBe("$284.99");
@@ -301,7 +295,5 @@ const cases: [string, object][] = [
   ].map((k) => [k, { kind: "none" }] as [string, object]),
 ];
 describe("deterministic commands", () => {
-  it.each(cases)("parses %s", (text, expected) =>
-    expect(parseCommand(text)).toEqual(expected),
-  );
+  it.each(cases)("parses %s", (text, expected) => expect(parseCommand(text)).toEqual(expected));
 });

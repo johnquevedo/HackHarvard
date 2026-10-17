@@ -1,12 +1,6 @@
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
-import {
-  openSync,
-  readFileSync,
-  writeFileSync,
-  closeSync,
-  unlinkSync,
-} from "node:fs";
+import { openSync, readFileSync, writeFileSync, closeSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
@@ -30,21 +24,14 @@ export class SocketIoEventSource {
     const path = join(
       tmpdir(),
       "dennis-photon-" +
-        createHash("sha256")
-          .update(this.config.photonProjectId!)
-          .digest("hex")
-          .slice(0, 16) +
+        createHash("sha256").update(this.config.photonProjectId!).digest("hex").slice(0, 16) +
         ".lock",
     );
     try {
       const previous = Number(readFileSync(path, "utf8"));
       try {
         process.kill(previous, 0);
-        throw new DennisError(
-          "conflict",
-          "A live Photon listener already owns this project",
-          409,
-        );
+        throw new DennisError("conflict", "A live Photon listener already owns this project", 409);
       } catch (e) {
         if (e instanceof DennisError) throw e;
         if ((e as NodeJS.ErrnoException).code !== "ESRCH") throw e;
@@ -58,8 +45,7 @@ export class SocketIoEventSource {
     closeSync(fd);
     this.release = () => {
       try {
-        if (readFileSync(path, "utf8") === String(process.pid))
-          unlinkSync(path);
+        if (readFileSync(path, "utf8") === String(process.pid)) unlinkSync(path);
       } catch {
         /* Already released. */
       }
@@ -71,36 +57,28 @@ export class SocketIoEventSource {
     const key = "socketio:" + this.config.photonProjectId;
     let cursor = Number(
       (
-        this.db.$client
-          .prepare("SELECT value FROM photon_cursors WHERE key=?")
-          .get(key) as { value: string } | undefined
+        this.db.$client.prepare("SELECT value FROM photon_cursors WHERE key=?").get(key) as
+          { value: string } | undefined
       )?.value ?? 0,
     );
-    const socket = this.connect(
-      this.config.photonSocketUrl ?? this.config.photonApiBaseUrl,
-      {
-        path: `/v1/projects/${this.config.photonProjectId}/events/ws`,
-        addTrailingSlash: false,
-        transports: ["websocket"],
-        extraHeaders: { Authorization: `Bearer ${this.config.photonApiKey}` },
-        autoConnect: false,
-      },
-    );
+    const socket = this.connect(this.config.photonSocketUrl ?? this.config.photonApiBaseUrl, {
+      path: `/v1/projects/${this.config.photonProjectId}/events/ws`,
+      addTrailingSlash: false,
+      transports: ["websocket"],
+      extraHeaders: { Authorization: `Bearer ${this.config.photonApiKey}` },
+      autoConnect: false,
+    });
     this.socket = socket;
     socket.on("connect", () => {
       if (this.socket !== socket) return;
       socket
         .timeout(10000)
-        .emit(
-          "subscribe",
-          { startSeq: cursor },
-          (error: unknown, result: { ok?: boolean }) => {
-            if (error || !result?.ok) {
-              this.log.warn("Photon subscribe failed");
-              socket.io.engine?.close();
-            }
-          },
-        );
+        .emit("subscribe", { startSeq: cursor }, (error: unknown, result: { ok?: boolean }) => {
+          if (error || !result?.ok) {
+            this.log.warn("Photon subscribe failed");
+            socket.io.engine?.close();
+          }
+        });
     });
     socket.on("disconnect", () => {
       if (this.socket === socket) this.epoch++;

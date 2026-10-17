@@ -1,12 +1,7 @@
 import { serve } from "@hono/node-server";
 import { compose, featureModules } from "./compose.ts";
 import { createStructuredLlm } from "@dennis/llm";
-import {
-  loadConfig,
-  createPlatform,
-  seedCore,
-  startRuntime,
-} from "@dennis/platform";
+import { loadConfig, createPlatform, seedCore, startRuntime } from "@dennis/platform";
 const config = loadConfig(process.env);
 const ctx = await createPlatform({ config, llm: createStructuredLlm(config) });
 await seedCore(ctx);

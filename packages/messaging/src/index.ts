@@ -27,11 +27,7 @@ export function normalizeHandle(raw: string): {
       ? "+" + digits
       : digits;
   if (!/^\+[1-9]\d{7,14}$/.test(handle))
-    throw new DennisError(
-      "validation_error",
-      "Invalid phone or email handle",
-      400,
-    );
+    throw new DennisError("validation_error", "Invalid phone or email handle", 400);
   return { handle, kind: "phone" };
 }
 export class SimMessagingProvider implements MessagingProvider {
@@ -84,17 +80,10 @@ export function createMessagingProvider(
   cfg: AppConfig,
   deps: { db: Db; clock: Clock; ids: IdFactory; log: Logger },
 ): MessagingProvider {
-  if (
-    cfg.photonMode === "live" &&
-    cfg.photonProjectId &&
-    cfg.photonApiKey &&
-    cfg.photonAgentUserId
-  )
+  if (cfg.photonMode === "live" && cfg.photonProjectId && cfg.photonApiKey && cfg.photonAgentUserId)
     return new PhotonBetaProvider(cfg, deps);
   if (cfg.photonMode === "live")
-    deps.log.warn(
-      "Photon live transport is not verified; using SIMULATED messaging",
-    );
+    deps.log.warn("Photon live transport is not verified; using SIMULATED messaging");
   return new SimMessagingProvider(deps.clock);
 }
 export { verifyPhotonWebhook } from "./photon/events-webhook.ts";

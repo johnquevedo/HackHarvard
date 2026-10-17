@@ -43,8 +43,7 @@ function validateSharedA2A(
   value: { type: string; payload: Record<string, unknown> },
   ctx: z.RefinementCtx,
 ): void {
-  const schema =
-    A2A_PAYLOAD_SCHEMAS[value.type as keyof typeof A2A_PAYLOAD_SCHEMAS];
+  const schema = A2A_PAYLOAD_SCHEMAS[value.type as keyof typeof A2A_PAYLOAD_SCHEMAS];
   if (!schema?.safeParse(value.payload).success)
     ctx.addIssue({ code: "custom", message: "Invalid minimal A2A payload" });
 }
@@ -65,9 +64,7 @@ export const EVENT_PAYLOAD_SCHEMAS = {
       ]),
     })
     .strict(),
-  "command.handled": z
-    .object({ messageId: s, command: s, ok: b, note: s.optional() })
-    .strict(),
+  "command.handled": z.object({ messageId: s, command: s, ok: b, note: s.optional() }).strict(),
   "consent.changed": z
     .object({
       userId: s,
@@ -76,9 +73,7 @@ export const EVENT_PAYLOAD_SCHEMAS = {
       via: s,
     })
     .strict(),
-  "agent.status_changed": z
-    .object({ agentId: s, status: z.enum(["active", "paused"]) })
-    .strict(),
+  "agent.status_changed": z.object({ agentId: s, status: z.enum(["active", "paused"]) }).strict(),
   "intent.detected": z
     .object({
       intentId: s,
@@ -87,15 +82,10 @@ export const EVENT_PAYLOAD_SCHEMAS = {
       rationale: s,
       summary: s,
       detectorId: s,
-      llm: z
-        .object({ provider: s, model: s, latencyMs: n })
-        .strict()
-        .nullable(),
+      llm: z.object({ provider: s, model: s, latencyMs: n }).strict().nullable(),
     })
     .strict(),
-  "intent.rejected": z
-    .object({ messageId: s, detectorId: s, reason: s, detail: s })
-    .strict(),
+  "intent.rejected": z.object({ messageId: s, detectorId: s, reason: s, detail: s }).strict(),
   "intent.registered": z
     .object({
       intentId: s,
@@ -116,9 +106,7 @@ export const EVENT_PAYLOAD_SCHEMAS = {
     })
     .strict()
     .superRefine(validateSharedA2A),
-  "a2a.handled": z
-    .object({ a2aId: s, type: s, toAgentId: s, ok: b, error: s.optional() })
-    .strict(),
+  "a2a.handled": z.object({ a2aId: s, type: s, toAgentId: s, ok: b, error: s.optional() }).strict(),
   "approval.requested": z
     .object({
       approvalId: s,
@@ -128,13 +116,9 @@ export const EVENT_PAYLOAD_SCHEMAS = {
       summary: s,
     })
     .strict(),
-  "approval.decided": z
-    .object({ approvalId: s, kind: s, status: s, via: s })
-    .strict(),
+  "approval.decided": z.object({ approvalId: s, kind: s, status: s, via: s }).strict(),
   "approval.expired": z.object({ approvalId: s, kind: s }).strict(),
-  "outbox.queued": z
-    .object({ outboxId: s, userId: s, kind: s, preview: s })
-    .strict(),
+  "outbox.queued": z.object({ outboxId: s, userId: s, kind: s, preview: s }).strict(),
   "outbox.updated": z
     .object({
       outboxId: s,
@@ -145,9 +129,7 @@ export const EVENT_PAYLOAD_SCHEMAS = {
       error: s.optional(),
     })
     .strict(),
-  "opportunity.updated": z
-    .object({ opportunityId: s, type: s, status: s, headline: s })
-    .strict(),
+  "opportunity.updated": z.object({ opportunityId: s, type: s, status: s, headline: s }).strict(),
   "purchase.match.evaluated": z
     .object({
       conversationId: s,
@@ -183,9 +165,7 @@ export const EVENT_PAYLOAD_SCHEMAS = {
     .object({
       provider: s,
       mode: ProviderMode,
-      accounts: z.array(
-        z.object({ label: s, last4: s, balanceCents: Cents }).strict(),
-      ),
+      accounts: z.array(z.object({ label: s, last4: s, balanceCents: Cents }).strict()),
     })
     .strict(),
   "shortme.market.updated": z
@@ -225,9 +205,7 @@ export const EVENT_PAYLOAD_SCHEMAS = {
     })
     .strict(),
   "demo.reset": z.object({ runId: s }).strict(),
-  "eval.report": z
-    .object({ provider: z.enum(["chalk", "local"]), runId: s })
-    .strict(),
+  "eval.report": z.object({ provider: z.enum(["chalk", "local"]), runId: s }).strict(),
   "error.logged": z.object({ where: s, message: s }).strict(),
   "integration.status": IntegrationStatus.strict(),
 } as const;

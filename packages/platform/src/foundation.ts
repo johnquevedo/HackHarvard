@@ -23,11 +23,7 @@ import type {
 import type { PlatformContext } from "./context.ts";
 import { insert, row, rows } from "./storage.ts";
 import { createEventBus } from "./events.ts";
-import {
-  createConsent,
-  createIntentStore,
-  createOpportunityStore,
-} from "./stores.ts";
+import { createConsent, createIntentStore, createOpportunityStore } from "./stores.ts";
 import { createApprovals, createNotifier } from "./approvals.ts";
 import { createA2ABus } from "./a2a.ts";
 const silent: Logger = { debug() {}, info() {}, warn() {}, error() {} };
@@ -40,11 +36,7 @@ export function createIds(): IdFactory {
   };
 }
 export function createLogger(): Logger {
-  function write(
-    level: string,
-    msg: string,
-    meta?: Record<string, unknown>,
-  ): void {
+  function write(level: string, msg: string, meta?: Record<string, unknown>): void {
     const safe = JSON.stringify({ level, msg, ...meta })
       .replace(/(?:pho_sk_|sk-ant-)[a-zA-Z0-9_-]+/g, "[redacted]")
       .replace(/\+\d{8,15}/g, (v) => "***" + v.slice(-4))
@@ -62,11 +54,7 @@ export function createMockLlm(clock: Clock): StructuredLlm {
   return {
     name: "mock",
     async generate() {
-      throw new DennisError(
-        "integration_unavailable",
-        "Mock LLM has no configured response",
-        503,
-      );
+      throw new DennisError("integration_unavailable", "Mock LLM has no configured response", 503);
     },
     async health() {
       return {
@@ -84,10 +72,7 @@ const drainers = new WeakMap<PlatformContext, () => Promise<void>>();
 export async function drainPlatform(ctx: PlatformContext): Promise<void> {
   await drainers.get(ctx)?.();
 }
-export const commandHandlers = new WeakMap<
-  PlatformContext,
-  Map<string, CommandHandler>
->();
+export const commandHandlers = new WeakMap<PlatformContext, Map<string, CommandHandler>>();
 export async function createPlatform(opts: {
   config: AppConfig;
   messaging?: MessagingProvider;
@@ -109,14 +94,10 @@ export function buildPlatform(opts: {
   const ids = opts.ids ?? createIds();
   const log = opts.log ?? (config.nodeEnv === "test" ? silent : createLogger());
   const events = createEventBus(db, clock, ids);
-  const messaging =
-    opts.messaging ?? createMessagingProvider(config, { db, clock, ids, log });
+  const messaging = opts.messaging ?? createMessagingProvider(config, { db, clock, ids, log });
   const llm = opts.llm ?? createMockLlm(clock);
   const tails = new Map<string, Promise<unknown>>();
-  async function runExclusive<T>(
-    key: string,
-    fn: () => Promise<T>,
-  ): Promise<T> {
+  async function runExclusive<T>(key: string, fn: () => Promise<T>): Promise<T> {
     const previous = tails.get(key) ?? Promise.resolve();
     const job = previous.catch(() => {}).then(fn);
     tails.set(key, job);
@@ -126,14 +107,8 @@ export function buildPlatform(opts: {
       if (tails.get(key) === job) tails.delete(key);
     }
   }
-  const detectorsById = new Map<
-    string,
-    ReturnType<DetectorRegistry["list"]>[number]
-  >();
-  const detectionHandlers = new Map<
-    string,
-    ReturnType<DetectorRegistry["handlersFor"]>
-  >();
+  const detectorsById = new Map<string, ReturnType<DetectorRegistry["list"]>[number]>();
+  const detectionHandlers = new Map<string, ReturnType<DetectorRegistry["handlersFor"]>>();
   const detectors: DetectorRegistry = {
     register(d) {
       if (detectorsById.has(d.id))
@@ -147,10 +122,7 @@ export function buildPlatform(opts: {
     handlersFor: (k) => detectionHandlers.get(k) ?? [],
   };
   const commandsMap = new Map<string, CommandHandler>();
-  const statusByName = new Map<
-    string,
-    ReturnType<IntegrationRegistry["list"]>[number]
-  >();
+  const statusByName = new Map<string, ReturnType<IntegrationRegistry["list"]>[number]>();
   const integrations: IntegrationRegistry = {
     report(input) {
       const status = IntegrationStatus.parse(input);
@@ -176,11 +148,7 @@ export function buildPlatform(opts: {
       );
     },
     async get(userId: string) {
-      return row<ReturnType<typeof User.parse>>(
-        db,
-        "SELECT * FROM users WHERE id=?",
-        userId,
-      );
+      return row<ReturnType<typeof User.parse>>(db, "SELECT * FROM users WHERE id=?", userId);
     },
     async getAgentByUserId(userId: string) {
       return row<ReturnType<typeof Agent.parse>>(
@@ -190,11 +158,7 @@ export function buildPlatform(opts: {
       );
     },
     async getAgent(agentId: string) {
-      return row<ReturnType<typeof Agent.parse>>(
-        db,
-        "SELECT * FROM agents WHERE id=?",
-        agentId,
-      );
+      return row<ReturnType<typeof Agent.parse>>(db, "SELECT * FROM agents WHERE id=?", agentId);
     },
     async listFriends(userId: string, options?: { canInvite?: boolean }) {
       return rows<ReturnType<typeof User.parse>>(
@@ -311,10 +275,7 @@ export async function seedCore(ctx: PlatformContext): Promise<void> {
       .run("usr_demo_bob", "usr_demo_alice");
   })();
 }
-export async function resetCore(
-  ctx: PlatformContext,
-  opts: { keepUsers: boolean },
-): Promise<void> {
+export async function resetCore(ctx: PlatformContext, opts: { keepUsers: boolean }): Promise<void> {
   ctx.db.$client.transaction(() => {
     for (const table of [
       "a2a_messages",
@@ -329,13 +290,7 @@ export async function resetCore(
     ])
       ctx.db.$client.prepare(`DELETE FROM ${table}`).run();
     if (!opts.keepUsers)
-      for (const table of [
-        "photon_spaces",
-        "friend_links",
-        "consents",
-        "agents",
-        "users",
-      ])
+      for (const table of ["photon_spaces", "friend_links", "consents", "agents", "users"])
         ctx.db.$client.prepare(`DELETE FROM ${table}`).run();
   })();
 }

@@ -1,15 +1,8 @@
-import {
-  A2A_PAYLOAD_SCHEMAS,
-  DennisError,
-  hashPayload,
-} from "@dennis/contracts";
+import { A2A_PAYLOAD_SCHEMAS, DennisError, hashPayload } from "@dennis/contracts";
 import type { A2ABus, A2AHandler, A2AMessage } from "@dennis/contracts";
 import type { PlatformContext } from "./context.ts";
 import { insert, row, rows, update } from "./storage.ts";
-const deliveries = new WeakMap<
-  PlatformContext,
-  (id: string) => Promise<void>
->();
+const deliveries = new WeakMap<PlatformContext, (id: string) => Promise<void>>();
 export function createA2ABus(ctx: PlatformContext): A2ABus {
   const handlers = new Map<string, A2AHandler[]>();
   async function deliver(id: string): Promise<void> {
@@ -79,16 +72,10 @@ export function createA2ABus(ctx: PlatformContext): A2ABus {
   return {
     async send(input) {
       const schema = A2A_PAYLOAD_SCHEMAS[input.type];
-      if (!schema)
-        throw new DennisError("validation_error", "Unknown A2A type", 400);
+      if (!schema) throw new DennisError("validation_error", "Unknown A2A type", 400);
       const result = schema.safeParse(input.payload);
       if (!result.success)
-        throw new DennisError(
-          "validation_error",
-          "Invalid A2A payload",
-          400,
-          result.error.issues,
-        );
+        throw new DennisError("validation_error", "Invalid A2A payload", 400, result.error.issues);
       for (const id of [input.fromAgentId, input.toAgentId])
         if (!(await ctx.users.getAgent(id)))
           throw new DennisError("not_found", "A2A agent not found", 404);
@@ -105,11 +92,7 @@ export function createA2ABus(ctx: PlatformContext): A2ABus {
           previous.conversationId !== input.conversationId ||
           hashPayload(previous.payload) !== hashPayload(input.payload)
         )
-          throw new DennisError(
-            "idempotency_conflict",
-            "A2A key reused with different input",
-            409,
-          );
+          throw new DennisError("idempotency_conflict", "A2A key reused with different input", 409);
         return previous;
       }
       const value: A2AMessage = {
@@ -145,9 +128,7 @@ export function createA2ABus(ctx: PlatformContext): A2ABus {
         },
       });
       queueMicrotask(() => {
-        void deliver(value.id).catch(() =>
-          ctx.log.error("A2A delivery failed"),
-        );
+        void deliver(value.id).catch(() => ctx.log.error("A2A delivery failed"));
       });
       return value;
     },

@@ -1,16 +1,7 @@
 import { z } from "zod";
 import { IsoDateTime } from "./domain.ts";
-export const EvalSuite = z.enum([
-  "purchase_extraction",
-  "milestone_extraction",
-  "pair_match",
-]);
-export const EvalLabel = z.enum([
-  "positive",
-  "negative",
-  "ambiguous",
-  "privacy_restricted",
-]);
+export const EvalSuite = z.enum(["purchase_extraction", "milestone_extraction", "pair_match"]);
+export const EvalLabel = z.enum(["positive", "negative", "ambiguous", "privacy_restricted"]);
 export const EvalCase = z.object({
   id: z.string(),
   suite: EvalSuite,

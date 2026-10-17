@@ -36,18 +36,12 @@ export function rows<T>(db: Db, sql: string, ...params: unknown[]): T[] {
   return db.$client
     .prepare(sql)
     .all(...params)
-    .map((value) =>
-      decode(value, /\b(?:FROM|JOIN)\s+[`"]?kv\b/i.test(sql)),
-    ) as T[];
+    .map((value) => decode(value, /\b(?:FROM|JOIN)\s+[`"]?kv\b/i.test(sql))) as T[];
 }
 export function row<T>(db: Db, sql: string, ...params: unknown[]): T | null {
   return rows<T>(db, sql, ...params)[0] ?? null;
 }
-export function insert(
-  db: Db,
-  table: string,
-  data: Record<string, unknown>,
-): void {
+export function insert(db: Db, table: string, data: Record<string, unknown>): void {
   const entries = Object.entries(data).filter(([, v]) => v !== undefined);
   db.$client
     .prepare(

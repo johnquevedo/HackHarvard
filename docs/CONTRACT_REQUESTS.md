@@ -118,3 +118,19 @@ The active task is A1-02. The spike script now supports read-only catalog discov
 Live prerequisites are still unavailable in this session: project/key/demo environment settings are missing, and the Photon Beta dashboard opens at sign-in. No project, key, assignment, actual message, real fixture or live latency was fabricated. The lead has a pending setup-status question. Continue A1-02 when authenticated project access and both demo phones are available; do not advance the milestone status based on mock tests. All new commits and pushes remain on a1/a1-09-recovery-hardening per the lead's branch instruction.
 
 A1-02 runner validation: 233 tests passed across 13 files, including 10 synthetic spike tests; TypeScript and changed-file Prettier passed. The CLI help path works, and catalog-only preflight exits NOT VERIFIED with no live request when the project/key settings are absent. Local environment files are excluded through Git's local exclude file while A4's repository-wide ignore rules are pending. No live fixture or live measurement has been generated.
+
+## STATUS A1 root-tooling integration checkpoint
+
+Merged origin/main at c5e82a2 into the existing Agent 1 branch. The A4 root tooling now exists, replacing the temporary local root files. Updated only A1-owned files to the new printWidth 100 formatting. No functional changes in this formatting checkpoint. All commits and pushes remain on a1/a1-09-recovery-hardening; main is not a push target.
+
+Current root test command passes 233 tests across 15 files. This differs from the prior 233 across 13 files: the new Vitest configuration adds root-script tests but omits tests/cross, so it does not rerun the ShortMe cross-feature simulation. Earlier cross-feature validation remains historical evidence, not a claim about the current root command.
+
+Full pnpm verify is now available but fails. Frozen installation rejects the incoming lockfile because workspace dependency specifiers are missing. A local non-frozen install enabled validation; its lockfile change was discarded to preserve A4 ownership. Root TypeScript rejects existing .ts imports, lacks better-sqlite3 declarations, and cannot resolve the workspace imports in tests/cross. Global Prettier also flags existing files owned by other agents. A1-owned formatting is aligned; do not treat the full verification gate as passed.
+
+A1-02 remains the active milestone. The runner and synthetic tests are committed; live acceptance still needs a configured Photon project/key, authenticated dashboard and both assigned demo phones. No live success or latency measurement is claimed.
+
+## CR-A1-006 to A4: complete shared verification integration
+
+Please regenerate and commit the workspace lockfile against all current package manifests, enable allowImportingTsExtensions in the shared noEmit TypeScript configuration, resolve root workspace imports for cross-feature tests, and include tests/cross/**/*.test.ts in the default Vitest run. Coordinate baseline formatting for the A2/A3-owned files under the new Prettier configuration. packages/db/src/push.ts and packages/db/drizzle.config.ts also need an explicit owner in ownership.json before further edits; both came from A1's original M0 package-wide DB scope.
+
+The database package also needs pinned @types/better-sqlite3 for strict typing. A1 can add that package dependency with a coordinated lockfile update; the prior temporary root tooling supplied it. These are observed validation failures, not reasons to change milestone order or claim live acceptance.

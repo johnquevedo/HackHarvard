@@ -16,8 +16,7 @@ afterEach(async () => {
     await drainPlatform(ctx);
     if (ctx.db.$client.open) ctx.db.$client.close();
   }
-  for (const path of dirs.splice(0))
-    rmSync(path, { recursive: true, force: true });
+  for (const path of dirs.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 async function setup() {
   const ctx = await createTestPlatform();
@@ -52,9 +51,7 @@ it("does not emit an approval decision after a concurrent revocation wins", asyn
   await expect(deciding).rejects.toMatchObject({ code: "approval_invalid" });
   expect(hooks).toBe(0);
   expect(
-    ctx.events
-      .history({ judge: true, limit: 200 })
-      .filter((e) => e.type === "approval.decided"),
+    ctx.events.history({ judge: true, limit: 200 }).filter((e) => e.type === "approval.decided"),
   ).toHaveLength(0);
 });
 it("expires each approval and invokes its hook once under concurrent sweepers", async () => {
@@ -64,28 +61,16 @@ it("expires each approval and invokes its hook once under concurrent sweepers", 
     ...request,
     idempotencyKey: "race-two",
   });
-  update(
-    ctx.db,
-    "approvals",
-    { expiresAt: "2000-01-01T00:00:00.000Z" },
-    "id IN (?,?)",
-    a.id,
-    b.id,
-  );
+  update(ctx.db, "approvals", { expiresAt: "2000-01-01T00:00:00.000Z" }, "id IN (?,?)", a.id, b.id);
   let hooks = 0;
   ctx.approvals.onDecided(a.kind, async () => {
     hooks++;
   });
-  const counts = await Promise.all([
-    ctx.approvals.expireDue(),
-    ctx.approvals.expireDue(),
-  ]);
+  const counts = await Promise.all([ctx.approvals.expireDue(), ctx.approvals.expireDue()]);
   expect(counts.reduce((a, b) => a + b, 0)).toBe(2);
   expect(hooks).toBe(2);
   expect(
-    ctx.events
-      .history({ judge: true, limit: 200 })
-      .filter((e) => e.type === "approval.expired"),
+    ctx.events.history({ judge: true, limit: 200 }).filter((e) => e.type === "approval.expired"),
   ).toHaveLength(2);
 });
 it("stops the messaging listener if startup recovery fails", async () => {
@@ -143,9 +128,10 @@ it("reconciles an interrupted final outbox send after a database restart", async
   const second = await createPlatform({ config, messaging });
   contexts.push(second);
   await recoverPending(second);
-  expect(
-    row(second.db, "SELECT * FROM outbox WHERE id=?", queued.id),
-  ).toMatchObject({ status: "delivered", attempts: 5 });
+  expect(row(second.db, "SELECT * FROM outbox WHERE id=?", queued.id)).toMatchObject({
+    status: "delivered",
+    attempts: 5,
+  });
   expect(messaging.sent).toHaveLength(1);
   expect(rows(second.db, "SELECT id FROM outbox")).toHaveLength(1);
 });
@@ -153,22 +139,14 @@ it("bootstraps ShortMe invitation codes before a feature module registers", asyn
   const ctx = await setup();
   expect(
     ctx.db.$client
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='market_invites'",
-      )
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='market_invites'")
       .get(),
   ).toBeTruthy();
 });
 it("notifies the feature hook when a reply discovers an expired approval", async () => {
   const ctx = await setup();
   const a = await ctx.approvals.request(request);
-  update(
-    ctx.db,
-    "approvals",
-    { expiresAt: "2000-01-01T00:00:00.000Z" },
-    "id=?",
-    a.id,
-  );
+  update(ctx.db, "approvals", { expiresAt: "2000-01-01T00:00:00.000Z" }, "id=?", a.id);
   const statuses: string[] = [];
   ctx.approvals.onDecided(a.kind, async (approval) => {
     statuses.push(approval.status);
@@ -218,9 +196,7 @@ it("waits for an in-flight health check and makes shutdown idempotent", async ()
     release();
     await stopping;
     expect(stopped).toBe(true);
-    expect(ctx.events.history({ judge: true, limit: 200 })).toHaveLength(
-      before,
-    );
+    expect(ctx.events.history({ judge: true, limit: 200 })).toHaveLength(before);
   } finally {
     release();
     await runtime?.stop();

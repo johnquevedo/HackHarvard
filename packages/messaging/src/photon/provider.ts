@@ -28,20 +28,14 @@ export class PhotonBetaProvider implements MessagingProvider {
       source?: SocketIoEventSource;
     } = {},
   ) {
-    if (
-      !config.photonProjectId ||
-      !config.photonApiKey ||
-      !config.photonAgentUserId
-    )
+    if (!config.photonProjectId || !config.photonApiKey || !config.photonAgentUserId)
       throw new DennisError(
         "integration_unavailable",
         "Photon live configuration is incomplete",
         503,
       );
     this.client = options.client ?? createPhotonClient(config, options.fetch);
-    this.source =
-      options.source ??
-      new SocketIoEventSource(config, deps.db, deps.clock, deps.log);
+    this.source = options.source ?? new SocketIoEventSource(config, deps.db, deps.clock, deps.log);
   }
   async start(handler: InboundHandler): Promise<void> {
     this.handler = handler;
@@ -119,9 +113,7 @@ export class PhotonBetaProvider implements MessagingProvider {
       const message = await this.client.projects.getMessage({
         path: { id: this.config.photonProjectId!, messageId },
       });
-      return z
-        .enum(["dispatched", "accepted", "delivered", "failed"])
-        .parse(message?.status);
+      return z.enum(["dispatched", "accepted", "delivered", "failed"]).parse(message?.status);
     } catch (error) {
       throw photonError(error);
     }

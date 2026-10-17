@@ -115,14 +115,10 @@ it("discovers one agent across pages and refuses ambiguous identities", async ()
   const discovery = {
     async listUsers() {
       calls++;
-      return calls === 1
-        ? { items: [], nextPageToken: "next" }
-        : { items: [user] };
+      return calls === 1 ? { items: [], nextPageToken: "next" } : { items: [user] };
     },
   };
-  expect(await discoverPhotonAgent(discovery, "pho_prj_test")).toBe(
-    "pho_usr_agent",
-  );
+  expect(await discoverPhotonAgent(discovery, "pho_prj_test")).toBe("pho_usr_agent");
   expect(calls).toBe(2);
   await expect(
     discoverPhotonAgent(
@@ -134,20 +130,16 @@ it("discovers one agent across pages and refuses ambiguous identities", async ()
       "pho_prj_test",
     ),
   ).rejects.toThrow("2 possible");
-  expect(
-    await discoverPhotonAgent(discovery, "pho_prj_test", "pho_usr_configured"),
-  ).toBe("pho_usr_configured");
+  expect(await discoverPhotonAgent(discovery, "pho_prj_test", "pho_usr_configured")).toBe(
+    "pho_usr_configured",
+  );
   expect(calls).toBe(2);
 });
 it("captures the selected event catalog and rejects an unavailable version", async () => {
   const files = new Map<string, unknown>();
-  const catalog = await readPhotonCatalog(
-    api(),
-    "pho_prj_test",
-    async (name, value) => {
-      files.set(name, value);
-    },
-  );
+  const catalog = await readPhotonCatalog(api(), "pho_prj_test", async (name, value) => {
+    files.set(name, value);
+  });
   expect(catalog.apiVersion).toBe("2026-10-15");
   expect(files.get("event-catalog.json")).toMatchObject({
     mode: "live",
@@ -197,13 +189,9 @@ async function probe(
   simulated = false,
 ) {
   const files = new Map<string, unknown>();
-  const catalog = await readPhotonCatalog(
-    api(),
-    "pho_prj_test",
-    async (name, value) => {
-      files.set(name, value);
-    },
-  );
+  const catalog = await readPhotonCatalog(api(), "pho_prj_test", async (name, value) => {
+    files.set(name, value);
+  });
   let now = Date.parse(timestamp) + 1000;
   let handler: (raw: unknown) => Promise<void> = async () => {};
   let count = 0;
@@ -253,9 +241,7 @@ async function probe(
         void handler(
           event(
             count,
-            oneSender || count !== 2
-              ? config.demoAliceHandle
-              : config.demoBobHandle,
+            oneSender || count !== 2 ? config.demoAliceHandle : config.demoBobHandle,
             new Date(now - 10).toISOString(),
           ),
         );
@@ -287,17 +273,13 @@ it("captures three distinct live-shaped samples and confirms delivered with read
   expect(state.stops).toBe(1);
   expect(state.files.has("inbound-text.json")).toBe(true);
   expect(state.files.has("inbound-event-schema.json")).toBe(true);
-  expect(JSON.stringify([...state.files.values()])).not.toContain(
-    "PRIVATE LIVE TEXT",
-  );
+  expect(JSON.stringify([...state.files.values()])).not.toContain("PRIVATE LIVE TEXT");
 });
 it("does not report a passing sample when outbound remains accepted", async () => {
   const state = await probe("accepted");
   await expect(state.task).rejects.toThrow("not delivered");
   expect(state.files.has("spike-results.json")).toBe(false);
-  expect(state.lines.some((line) => line.startsWith("PASS outbound"))).toBe(
-    false,
-  );
+  expect(state.lines.some((line) => line.startsWith("PASS outbound"))).toBe(false);
   expect(state.stops).toBe(1);
 });
 it("records partial evidence but refuses to verify both demo senders from one phone", async () => {
@@ -318,11 +300,7 @@ it("refuses to label a simulated transport as a live spike", async () => {
 });
 it("captures an unsupported live envelope in redacted form and stops before sending", async () => {
   const files = new Map<string, unknown>();
-  const catalog = await readPhotonCatalog(
-    api(),
-    "pho_prj_test",
-    async () => {},
-  );
+  const catalog = await readPhotonCatalog(api(), "pho_prj_test", async () => {});
   let handler: (raw: unknown) => Promise<void> = async () => {};
   let sends = 0;
   let stops = 0;
@@ -358,18 +336,12 @@ it("captures an unsupported live envelope in redacted form and stops before send
   });
   await expect(task).rejects.toThrow("envelope does not match");
   expect(files.has("inbound-text.json")).toBe(true);
-  expect(JSON.stringify([...files.values()])).not.toContain(
-    "PRIVATE LIVE TEXT",
-  );
+  expect(JSON.stringify([...files.values()])).not.toContain("PRIVATE LIVE TEXT");
   expect(sends).toBe(0);
   expect(stops).toBe(1);
 });
 it("times out cleanly without a false inbound success", async () => {
-  const catalog = await readPhotonCatalog(
-    api(),
-    "pho_prj_test",
-    async () => {},
-  );
+  const catalog = await readPhotonCatalog(api(), "pho_prj_test", async () => {});
   let stops = 0;
   const lines: string[] = [];
   await expect(

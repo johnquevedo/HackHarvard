@@ -3,16 +3,9 @@ import { mkdir, writeFile, rename } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { createDb } from "../packages/db/src/index.ts";
-import {
-  loadConfig,
-  createClock,
-  createLogger,
-} from "../packages/platform/src/index.ts";
+import { loadConfig, createClock, createLogger } from "../packages/platform/src/index.ts";
 import { PhotonBetaProvider } from "../packages/messaging/src/index.ts";
-import {
-  createPhotonClient,
-  photonError,
-} from "../packages/messaging/src/photon/client.ts";
+import { createPhotonClient, photonError } from "../packages/messaging/src/photon/client.ts";
 import { SocketIoEventSource } from "../packages/messaging/src/photon/events-socketio.ts";
 import {
   PhotonSpikeError,
@@ -38,9 +31,7 @@ async function run(): Promise<void> {
     } else throw new PhotonSpikeError("Unknown spike option. Use --help.");
   }
   if (!Number.isInteger(samples) || samples < 1 || samples > 10)
-    throw new PhotonSpikeError(
-      "--samples requires an integer between 1 and 10.",
-    );
+    throw new PhotonSpikeError("--samples requires an integer between 1 and 10.");
   requireSpikeEnvironment(process.env, catalogOnly);
   let config = loadConfig({
     ...process.env,
@@ -58,11 +49,7 @@ async function run(): Promise<void> {
     });
     await rename(temporary, target);
   }
-  const catalog = await readPhotonCatalog(
-    client.projects,
-    config.photonProjectId!,
-    write,
-  );
+  const catalog = await readPhotonCatalog(client.projects, config.photonProjectId!, write);
   process.stdout.write(
     `PASS event type listing: ${catalog.events.length} types for API ${catalog.apiVersion}\n`,
   );
@@ -73,9 +60,7 @@ async function run(): Promise<void> {
     return;
   }
   if (config.photonInbound !== "socketio")
-    throw new PhotonSpikeError(
-      "This spike uses Socket.IO; configure PHOTON_INBOUND=socketio.",
-    );
+    throw new PhotonSpikeError("This spike uses Socket.IO; configure PHOTON_INBOUND=socketio.");
   const agentId = await discoverPhotonAgent(
     client.projects,
     config.photonProjectId!,
@@ -87,15 +72,10 @@ async function run(): Promise<void> {
   const clock = createClock();
   const log = createLogger();
   const source = new SocketIoEventSource(config, db, clock, log);
-  const provider = new PhotonBetaProvider(
-    config,
-    { db, clock, log },
-    { client, source },
-  );
+  const provider = new PhotonBetaProvider(config, { db, clock, log }, { client, source });
   try {
     const health = await provider.health();
-    if (!health.healthy)
-      throw new PhotonSpikeError("Photon Beta API health failed.");
+    if (!health.healthy) throw new PhotonSpikeError("Photon Beta API health failed.");
     process.stdout.write(
       "PASS Photon Beta API reachable. Stop any integration server before the single-listener spike.\n",
     );
@@ -127,9 +107,7 @@ try {
   await run();
 } catch (error) {
   process.stderr.write(
-    (error instanceof PhotonSpikeError
-      ? error.message
-      : photonError(error).message) + "\n",
+    (error instanceof PhotonSpikeError ? error.message : photonError(error).message) + "\n",
   );
   process.exitCode = 1;
 }

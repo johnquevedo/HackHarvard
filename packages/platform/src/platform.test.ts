@@ -93,9 +93,7 @@ describe("platform foundation", () => {
     expect(result.map((r) => r.outcome)).toEqual(["queued", "replay"]);
     await runPipeline(ctx, result[0]!.messageId!);
     expect(
-      ctx.events
-        .history({ judge: true, limit: 200 })
-        .filter((e) => e.type === "message.received"),
+      ctx.events.history({ judge: true, limit: 200 }).filter((e) => e.type === "message.received"),
     ).toHaveLength(1);
   });
   it("stores no unconsented text and still accepts AGREE", async () => {
@@ -107,15 +105,9 @@ describe("platform foundation", () => {
       via: "dashboard",
     });
     expect((await ingestInbound(ctx, inbound(ctx))).outcome).toBe("ignored");
-    expect(
-      row<{ text: null }>(ctx.db, "SELECT text FROM inbound_messages")?.text,
-    ).toBeNull();
-    expect(
-      (await ingestInbound(ctx, inbound(ctx, "agree_1", "AGREE"))).outcome,
-    ).toBe("command");
-    expect(await ctx.consent.has("usr_demo_alice", "messaging_context")).toBe(
-      true,
-    );
+    expect(row<{ text: null }>(ctx.db, "SELECT text FROM inbound_messages")?.text).toBeNull();
+    expect((await ingestInbound(ctx, inbound(ctx, "agree_1", "AGREE"))).outcome).toBe("command");
+    expect(await ctx.consent.has("usr_demo_alice", "messaging_context")).toBe(true);
   });
   it("drops unknown handles without storing their text", async () => {
     const ctx = await setup();
@@ -127,9 +119,7 @@ describe("platform foundation", () => {
         })
       ).outcome,
     ).toBe("ignored");
-    expect(rows(ctx.db, "SELECT text FROM inbound_messages")).toEqual([
-      { text: null },
-    ]);
+    expect(rows(ctx.db, "SELECT text FROM inbound_messages")).toEqual([{ text: null }]);
   });
   it("STOP revokes every scope, pauses, and removes shared intents", async () => {
     const ctx = await setup();
@@ -154,18 +144,15 @@ describe("platform foundation", () => {
   it("filters private events in history and live subscriptions", async () => {
     const ctx = await setup();
     const seen: string[] = [];
-    const unsubscribe = ctx.events.subscribe(
-      { viewerAgentId: "agt_demo_bob" },
-      (e) => seen.push(e.type),
+    const unsubscribe = ctx.events.subscribe({ viewerAgentId: "agt_demo_bob" }, (e) =>
+      seen.push(e.type),
     );
     const result = await ingestInbound(ctx, inbound(ctx));
     await runPipeline(ctx, result.messageId!);
     unsubscribe();
     expect(seen).not.toContain("message.received");
     expect(
-      ctx.events
-        .history({ viewerAgentId: "agt_demo_bob", limit: 200 })
-        .some((e) => e.payload.text),
+      ctx.events.history({ viewerAgentId: "agt_demo_bob", limit: 200 }).some((e) => e.payload.text),
     ).toBe(false);
     expect(
       ctx.events
@@ -214,9 +201,9 @@ describe("platform foundation", () => {
     expect(values).toHaveLength(1);
     expect(values[0]).not.toHaveProperty("userId");
     expect(values[0]).not.toHaveProperty("privatePayload");
-    await expect(
-      ctx.intents.revoke(i.id, { userId: "usr_demo_bob" }),
-    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(ctx.intents.revoke(i.id, { userId: "usr_demo_bob" })).rejects.toMatchObject({
+      code: "forbidden",
+    });
   });
   it("enforces approval user, kind, hash, single consumption, and one hook", async () => {
     const ctx = await setup();
@@ -291,13 +278,7 @@ describe("platform foundation", () => {
       decision: "approve",
       via: "sim_phone",
     });
-    update(
-      ctx.db,
-      "approvals",
-      { payload: { amountCents: 900 } },
-      "id=?",
-      b.id,
-    );
+    update(ctx.db, "approvals", { payload: { amountCents: 900 } }, "id=?", b.id);
     await expect(
       ctx.approvals.assertApproved({
         approvalId: b.id,
@@ -320,9 +301,9 @@ describe("platform foundation", () => {
     ).rejects.toMatchObject({ code: "idempotency_conflict" });
     await dispatchOutbox(ctx);
     await dispatchOutbox(ctx);
-    expect(
-      rows<{ status: string }>(ctx.db, "SELECT status FROM outbox"),
-    ).toEqual([{ status: "delivered" }]);
+    expect(rows<{ status: string }>(ctx.db, "SELECT status FROM outbox")).toEqual([
+      { status: "delivered" },
+    ]);
   });
   it("routes YES with the exact code and never guesses ambiguous approvals", async () => {
     const ctx = await setup();
@@ -342,8 +323,7 @@ describe("platform foundation", () => {
       max = Math.max(max, active);
       await Promise.resolve();
       active--;
-      if (msg.payload.response === "declined")
-        throw new Error("private failure text");
+      if (msg.payload.response === "declined") throw new Error("private failure text");
     });
     const input = {
       type: "market.invite_response" as const,
@@ -362,10 +342,7 @@ describe("platform foundation", () => {
     await recoverPending(ctx);
     expect(max).toBe(1);
     expect(
-      rows<{ status: string }>(
-        ctx.db,
-        "SELECT status FROM a2a_messages ORDER BY id",
-      )
+      rows<{ status: string }>(ctx.db, "SELECT status FROM a2a_messages ORDER BY id")
         .map((r) => r.status)
         .sort(),
     ).toEqual(["failed", "handled"]);
@@ -444,14 +421,10 @@ describe("platform foundation", () => {
     });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ accepted: true });
-    const bobEvents = await (
-      await app.request("/api/events?viewerAgentId=agt_demo_bob")
-    ).json();
-    expect(
-      bobEvents.events.some(
-        (e: { type: string }) => e.type === "message.received",
-      ),
-    ).toBe(false);
+    const bobEvents = await (await app.request("/api/events?viewerAgentId=agt_demo_bob")).json();
+    expect(bobEvents.events.some((e: { type: string }) => e.type === "message.received")).toBe(
+      false,
+    );
   });
   it("replays SSE history in sequence with event ids", async () => {
     const ctx = await setup();
@@ -459,10 +432,9 @@ describe("platform foundation", () => {
     const app = new Hono();
     mountPlatformRoutes(app, ctx);
     const controller = new AbortController();
-    const response = await app.request(
-      "/api/events/stream?viewerAgentId=agt_demo_alice",
-      { signal: controller.signal },
-    );
+    const response = await app.request("/api/events/stream?viewerAgentId=agt_demo_alice", {
+      signal: controller.signal,
+    });
     expect(response.headers.get("content-type")).toContain("text/event-stream");
     const reader = response.body!.getReader();
     let text = "";
@@ -502,9 +474,7 @@ it("consumes an approval in the same Drizzle transaction as the domain write", a
     tx.insert(kv).values({ key: "guarded-action", value: true }).run();
   });
   expect((await ctx.approvals.get(a.id))?.consumedAt).not.toBeNull();
-  expect(
-    row(ctx.db, "SELECT * FROM kv WHERE key='guarded-action'"),
-  ).toMatchObject({ value: true });
+  expect(row(ctx.db, "SELECT * FROM kv WHERE key='guarded-action'")).toMatchObject({ value: true });
 });
 it("deduplicates concurrent notifications", async () => {
   const ctx = await setup();
@@ -514,10 +484,7 @@ it("deduplicates concurrent notifications", async () => {
     text: "Ready",
     idempotencyKey: "concurrent",
   };
-  const values = await Promise.all([
-    ctx.notifier.send(input),
-    ctx.notifier.send(input),
-  ]);
+  const values = await Promise.all([ctx.notifier.send(input), ctx.notifier.send(input)]);
   expect(values[0]!.id).toBe(values[1]!.id);
   expect(rows(ctx.db, "SELECT * FROM outbox")).toHaveLength(1);
 });
@@ -627,9 +594,7 @@ it("keeps proposed and declined market opportunities private", async () => {
     headline: "Private question",
     participantAgentIds: ["agt_demo_alice", "agt_demo_bob"],
   });
-  expect(
-    await ctx.opportunities.list({ viewerAgentId: "agt_demo_bob" }),
-  ).toEqual([]);
+  expect(await ctx.opportunities.list({ viewerAgentId: "agt_demo_bob" })).toEqual([]);
   await ctx.opportunities.upsert({
     type: value.type,
     domainRefId: value.domainRefId,
@@ -646,11 +611,7 @@ it("keeps proposed and declined market opportunities private", async () => {
   mountPlatformRoutes(app, ctx);
   expect(await (await app.request("/api/opportunities")).json()).toEqual([]);
   expect(
-    (
-      await app.request(
-        "/api/opportunities/" + value.id + "?viewerAgentId=agt_demo_bob",
-      )
-    ).status,
+    (await app.request("/api/opportunities/" + value.id + "?viewerAgentId=agt_demo_bob")).status,
   ).toBe(404);
 });
 it("throttles unknown-handle onboarding for a rolling hour without storing text", async () => {
@@ -677,9 +638,7 @@ it("throttles unknown-handle onboarding for a rolling hour without storing text"
     { text: null },
   ]);
   expect(
-    JSON.stringify(
-      ctx.db.$client.prepare("SELECT * FROM photon_cursors").all(),
-    ),
+    JSON.stringify(ctx.db.$client.prepare("SELECT * FROM photon_cursors").all()),
   ).not.toContain("stranger@example.test");
 });
 it("blocks handles in free-form shared event fields", async () => {
@@ -694,9 +653,7 @@ it("blocks handles in free-form shared event fields", async () => {
         aAgentId: "agt_demo_alice",
         bAgentId: "agt_demo_bob",
         compatible: true,
-        checks: [
-          { rule: "region", passed: true, detail: "alice@example.test" },
-        ],
+        checks: [{ rule: "region", passed: true, detail: "alice@example.test" }],
       },
     }),
   ).toThrow();
@@ -710,10 +667,7 @@ it("verifies and deduplicates signed Photon webhook deliveries", async () => {
   });
   const fixture = JSON.parse(
     readFileSync(
-      new URL(
-        "../../../fixtures/photon/inbound-text.synthetic.json",
-        import.meta.url,
-      ),
+      new URL("../../../fixtures/photon/inbound-text.synthetic.json", import.meta.url),
       "utf8",
     ),
   );
@@ -745,10 +699,7 @@ it("verifies and deduplicates signed Photon webhook deliveries", async () => {
     ).toBe(200);
   expect(rows(ctx.db, "SELECT * FROM inbound_messages")).toHaveLength(1);
   expect(
-    rows(
-      ctx.db,
-      "SELECT * FROM photon_cursors WHERE key='webhook:webhook_test'",
-    ),
+    rows(ctx.db, "SELECT * FROM photon_cursors WHERE key='webhook:webhook_test'"),
   ).toHaveLength(1);
   expect(
     (

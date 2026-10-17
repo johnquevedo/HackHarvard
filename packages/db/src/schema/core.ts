@@ -62,9 +62,7 @@ export const friendLinks = sqliteTable(
     friendUserId: text("friend_user_id")
       .notNull()
       .references(() => users.id),
-    canInvite: integer("can_invite", { mode: "boolean" })
-      .notNull()
-      .default(true),
+    canInvite: integer("can_invite", { mode: "boolean" }).notNull().default(true),
   },
   (t) => [primaryKey({ columns: [t.userId, t.friendUserId] })],
 );
@@ -96,12 +94,7 @@ export const inboundMessages = sqliteTable(
     receivedAt: text("received_at").notNull(),
     processedAt: text("processed_at"),
   },
-  (t) => [
-    uniqueIndex("inbound_messages_unique_0").on(
-      t.provider,
-      t.providerMessageId,
-    ),
-  ],
+  (t) => [uniqueIndex("inbound_messages_unique_0").on(t.provider, t.providerMessageId)],
 );
 export const intents = sqliteTable(
   "intents",
@@ -115,9 +108,7 @@ export const intents = sqliteTable(
       .references(() => users.id),
     kind: text("kind").notNull(),
     status: text("status").notNull(),
-    sourceMessageId: text("source_message_id").references(
-      () => inboundMessages.id,
-    ),
+    sourceMessageId: text("source_message_id").references(() => inboundMessages.id),
     privatePayload: text("private_payload", { mode: "json" }).notNull(),
     publicPayload: text("public_payload", { mode: "json" }),
     shared: integer("shared", { mode: "boolean" }).notNull().default(false),

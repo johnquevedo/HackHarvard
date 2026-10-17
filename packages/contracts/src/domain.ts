@@ -11,13 +11,7 @@ export const ConsentScope = z.enum([
   "sandbox_payments",
 ]);
 export const IntentKind = z.enum(["purchase", "milestone"]);
-export const IntentStatus = z.enum([
-  "detected",
-  "shared",
-  "matched",
-  "closed",
-  "revoked",
-]);
+export const IntentStatus = z.enum(["detected", "shared", "matched", "closed", "revoked"]);
 export const OpportunityType = z.enum(["group_purchase", "shortme_market"]);
 export const ApprovalKind = z.enum([
   "join_group_purchase",
@@ -25,25 +19,9 @@ export const ApprovalKind = z.enum([
   "publish_market",
   "confirm_resolution",
 ]);
-export const ApprovalStatus = z.enum([
-  "pending",
-  "approved",
-  "declined",
-  "expired",
-  "revoked",
-]);
-export const DecisionChannel = z.enum([
-  "imessage",
-  "sim_phone",
-  "dashboard_fallback",
-]);
-export const OutboxStatus = z.enum([
-  "queued",
-  "sending",
-  "dispatched",
-  "delivered",
-  "failed",
-]);
+export const ApprovalStatus = z.enum(["pending", "approved", "declined", "expired", "revoked"]);
+export const DecisionChannel = z.enum(["imessage", "sim_phone", "dashboard_fallback"]);
+export const OutboxStatus = z.enum(["queued", "sending", "dispatched", "delivered", "failed"]);
 export const EventVisibility = z.enum(["private", "shared", "system"]);
 export const ProviderMode = z.enum(["live", "simulated", "replay", "fallback"]);
 export const IntegrationName = z.enum(["photon", "llm", "nessie", "chalk"]);
@@ -105,13 +83,7 @@ export const PurchaseCategory = z.enum([
   "other",
 ]);
 export const Timeframe = z.object({
-  kind: z.enum([
-    "this_weekend",
-    "this_week",
-    "this_month",
-    "flexible",
-    "unspecified",
-  ]),
+  kind: z.enum(["this_weekend", "this_week", "this_month", "flexible", "unspecified"]),
   from: IsoDate.nullable(),
   to: IsoDate.nullable(),
 });
@@ -220,9 +192,7 @@ export const OutboxRecord = z.object({
   status: OutboxStatus,
   provider: z.string().nullable(),
   providerMessageId: z.string().nullable(),
-  providerStatus: z
-    .enum(["dispatched", "accepted", "delivered", "failed"])
-    .nullable(),
+  providerStatus: z.enum(["dispatched", "accepted", "delivered", "failed"]).nullable(),
   attempts: z.number().int(),
   lastError: z.string().nullable(),
   createdAt: IsoDateTime,

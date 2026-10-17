@@ -14,10 +14,7 @@ import { verifyPhotonWebhook } from "./events-webhook.ts";
 import { normalizeHandle, createMessagingProvider } from "../index.ts";
 const fixture = JSON.parse(
   readFileSync(
-    new URL(
-      "../../../../fixtures/photon/inbound-text.synthetic.json",
-      import.meta.url,
-    ),
+    new URL("../../../../fixtures/photon/inbound-text.synthetic.json", import.meta.url),
     "utf8",
   ),
 );
@@ -51,9 +48,7 @@ it("normalizes documented resources from explicitly synthetic fixtures", () => {
     senderHandle: "alice@example.test",
     text: "Synthetic test message",
   });
-  expect(
-    normalizePhotonEvent({ data: { message: fixture } }, "pho_usr_agent"),
-  ).toBeTruthy();
+  expect(normalizePhotonEvent({ data: { message: fixture } }, "pho_usr_agent")).toBeTruthy();
   expect(
     normalizePhotonEvent(
       { ...fixture, sentBy: { ...fixture.sentBy, id: "pho_usr_agent" } },
@@ -61,10 +56,7 @@ it("normalizes documented resources from explicitly synthetic fixtures", () => {
     ),
   ).toBeNull();
   expect(
-    normalizePhotonEvent(
-      { ...fixture, content: { type: "attachment" } },
-      "pho_usr_agent",
-    ),
+    normalizePhotonEvent({ ...fixture, content: { type: "attachment" } }, "pho_usr_agent"),
   ).toBeNull();
   expect(
     normalizePhotonEvent(
@@ -72,21 +64,15 @@ it("normalizes documented resources from explicitly synthetic fixtures", () => {
       "pho_usr_agent",
     ),
   ).toBeNull();
-  expect(
-    normalizePhotonEvent({ ...fixture, status: "delivered" }, "pho_usr_agent"),
-  ).toBeNull();
-  expect(
-    normalizePhotonEvent({ unexpected: true }, "pho_usr_agent"),
-  ).toBeNull();
+  expect(normalizePhotonEvent({ ...fixture, status: "delivered" }, "pho_usr_agent")).toBeNull();
+  expect(normalizePhotonEvent({ unexpected: true }, "pho_usr_agent")).toBeNull();
 });
 it.each([
   ["(617) 555-0101", "+16175550101"],
   ["16175550101", "+16175550101"],
   ["+44 20 7946 0958", "+442079460958"],
   [" ALICE@EXAMPLE.TEST ", "alice@example.test"],
-])("normalizes %s", (input, output) =>
-  expect(normalizeHandle(input).handle).toBe(output),
-);
+])("normalizes %s", (input, output) => expect(normalizeHandle(input).handle).toBe(output));
 it("rejects invalid handles and labels missing-credential fallback", async () => {
   expect(() => normalizeHandle("not a handle")).toThrow();
   const provider = createMessagingProvider(
@@ -156,11 +142,7 @@ it("calls user, space and message endpoints with stable idempotency headers", as
       status: url.endsWith("/messages") ? 202 : 200,
     });
   };
-  const provider = new PhotonBetaProvider(
-    config,
-    { db: db(), clock, log },
-    { fetch: fake },
-  );
+  const provider = new PhotonBetaProvider(config, { db: db(), clock, log }, { fetch: fake });
   const result = await provider.send(req);
   expect(result).toMatchObject({
     providerMessageId: "pho_msg_test",
@@ -188,11 +170,7 @@ it("maps a 403 without retry or exposing provider body", async () => {
       { status: 403 },
     );
   };
-  const provider = new PhotonBetaProvider(
-    config,
-    { db: db(), clock, log },
-    { fetch: fake },
-  );
+  const provider = new PhotonBetaProvider(config, { db: db(), clock, log }, { fetch: fake });
   await expect(provider.send(req)).rejects.toMatchObject({
     code: "upstream_error",
     details: { retryable: false, providerStatus: 403 },
@@ -209,11 +187,7 @@ it("retries an idempotent 503 with the same key", async () => {
       ? Response.json({ title: "Unavailable", status: 503 }, { status: 503 })
       : Response.json(message, { status: 202 });
   };
-  const provider = new PhotonBetaProvider(
-    config,
-    { db: db(), clock, log },
-    { fetch: fake },
-  );
+  const provider = new PhotonBetaProvider(config, { db: db(), clock, log }, { fetch: fake });
   await expect(
     provider.send({ ...req, toPhotonUserId: user.id, spaceId: space.id }),
   ).resolves.toMatchObject({ status: "dispatched" });
@@ -270,14 +244,12 @@ it("checkpoints a Socket.IO cursor only after successful processing", async () =
   });
   socket.emit("delivery", fixture, { seq: 10 });
   await Promise.resolve();
-  expect(
-    database.$client.prepare("SELECT * FROM photon_cursors").all(),
-  ).toHaveLength(0);
+  expect(database.$client.prepare("SELECT * FROM photon_cursors").all()).toHaveLength(0);
   release();
   await source.stop();
-  expect(
-    database.$client.prepare("SELECT value FROM photon_cursors").get(),
-  ).toMatchObject({ value: "10" });
+  expect(database.$client.prepare("SELECT value FROM photon_cursors").get()).toMatchObject({
+    value: "10",
+  });
 });
 it("retains cursor on handler failure and rejects a second live listener", async () => {
   const database = db();
@@ -306,13 +278,10 @@ it("retains cursor on handler failure and rejects a second live listener", async
   });
   socket.emit("delivery", fixture, { seq: 1 });
   await source.stop();
-  expect(
-    database.$client.prepare("SELECT * FROM photon_cursors").all(),
-  ).toHaveLength(0);
+  expect(database.$client.prepare("SELECT * FROM photon_cursors").all()).toHaveLength(0);
 });
 it("verifies valid signatures and rejects tampered and stale webhooks", () => {
-  const secret =
-    "whsec_" + Buffer.from("synthetic-test-secret").toString("base64");
+  const secret = "whsec_" + Buffer.from("synthetic-test-secret").toString("base64");
   const signer = new Webhook(secret);
   const raw = JSON.stringify({ data: fixture });
   const now = new Date();

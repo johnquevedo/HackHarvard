@@ -6,12 +6,7 @@ import {
   DennisError,
   PurchaseIntentPublic,
 } from "@dennis/contracts";
-import type {
-  EventBus,
-  EventListener,
-  Clock,
-  IdFactory,
-} from "@dennis/contracts";
+import type { EventBus, EventListener, Clock, IdFactory } from "@dennis/contracts";
 import type { Db } from "@dennis/db";
 import { insert, rows } from "./storage.ts";
 type Filter = { viewerAgentId?: string; judge?: boolean };
@@ -39,11 +34,7 @@ function assertSharedSafe(payload: unknown): void {
     if (value && typeof value === "object")
       for (const [key, child] of Object.entries(value)) {
         if (forbidden.has(key))
-          throw new DennisError(
-            "internal",
-            "Shared event contains a private field",
-            500,
-          );
+          throw new DennisError("internal", "Shared event contains a private field", 500);
         scan(child);
       }
   }
@@ -51,10 +42,7 @@ function assertSharedSafe(payload: unknown): void {
 }
 export function createEventBus(db: Db, clock: Clock, ids: IdFactory): EventBus {
   const listeners = new Set<{ filter: Filter; listener: EventListener }>();
-  function visible(
-    event: ReturnType<typeof DomainEvent.parse>,
-    filter: Filter,
-  ): boolean {
+  function visible(event: ReturnType<typeof DomainEvent.parse>, filter: Filter): boolean {
     return (
       filter.judge === true ||
       event.visibility !== "private" ||
@@ -93,8 +81,7 @@ export function createEventBus(db: Db, clock: Clock, ids: IdFactory): EventBus {
   return {
     emit(input) {
       const e = NewEvent.parse(input);
-      const schema =
-        EVENT_PAYLOAD_SCHEMAS[e.type as keyof typeof EVENT_PAYLOAD_SCHEMAS];
+      const schema = EVENT_PAYLOAD_SCHEMAS[e.type as keyof typeof EVENT_PAYLOAD_SCHEMAS];
       if (!schema) throw new DennisError("internal", "Unknown event type", 500);
       if (e.visibility === "shared") assertSharedSafe(e.payload);
       const parsed = schema.safeParse(e.payload);
@@ -107,9 +94,7 @@ export function createEventBus(db: Db, clock: Clock, ids: IdFactory): EventBus {
         );
       if (e.type === "a2a.sent") {
         const payloadSchema =
-          A2A_PAYLOAD_SCHEMAS[
-            e.payload.type as keyof typeof A2A_PAYLOAD_SCHEMAS
-          ];
+          A2A_PAYLOAD_SCHEMAS[e.payload.type as keyof typeof A2A_PAYLOAD_SCHEMAS];
         if (!payloadSchema?.safeParse(e.payload.payload).success)
           throw new DennisError("internal", "Invalid shared A2A payload", 500);
       }
@@ -127,11 +112,7 @@ export function createEventBus(db: Db, clock: Clock, ids: IdFactory): EventBus {
           "purchase.payment.updated",
         ].includes(e.type)
       )
-        throw new DennisError(
-          "internal",
-          "Private event cannot be shared",
-          500,
-        );
+        throw new DennisError("internal", "Private event cannot be shared", 500);
       if (
         e.visibility === "shared" &&
         e.type === "shortme.market.updated" &&
@@ -144,19 +125,10 @@ export function createEventBus(db: Db, clock: Clock, ids: IdFactory): EventBus {
         e.payload.type === "shortme_market" &&
         ["proposed", "declined", "expired"].includes(String(e.payload.status))
       )
-        throw new DennisError(
-          "internal",
-          "Unpublished market opportunity is private",
-          500,
-        );
-      if (e.type === "intent.registered")
-        PurchaseIntentPublic.parse(e.payload.publicPayload);
+        throw new DennisError("internal", "Unpublished market opportunity is private", 500);
+      if (e.type === "intent.registered") PurchaseIntentPublic.parse(e.payload.publicPayload);
       if (e.visibility === "private" && !e.actor.agentId)
-        throw new DennisError(
-          "internal",
-          "Private event requires an agent",
-          500,
-        );
+        throw new DennisError("internal", "Private event requires an agent", 500);
       const data = {
         id: ids.next("event"),
         ts: clock.nowIso(),

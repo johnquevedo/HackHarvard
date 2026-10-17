@@ -38,9 +38,7 @@ it("supplies purchase categories so a category-gated detector can create an inte
       if (!input.enabledCategories.includes("monitor"))
         return {
           detections: [],
-          rejected: [
-            { reason: "category_disabled", detail: "Monitor disabled" },
-          ],
+          rejected: [{ reason: "category_disabled", detail: "Monitor disabled" }],
           llm: null,
         };
       return {

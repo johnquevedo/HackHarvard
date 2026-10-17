@@ -98,10 +98,7 @@ export interface BankingProvider {
   listAccounts(): Promise<BankAccountView[]>;
   transfer(req: BankTransferRequest): Promise<BankTransferResult>;
   getTransfer(providerTransferId: string): Promise<BankTransferRecord | null>;
-  findTransfersByMemo(
-    accountRef: string,
-    memoContains: string,
-  ): Promise<BankTransferRecord[]>;
+  findTransfersByMemo(accountRef: string, memoContains: string): Promise<BankTransferRecord[]>;
   health(): Promise<IntegrationStatusT>;
 }
 
@@ -311,11 +308,7 @@ export interface IntentStore {
     excludeAgentId: string;
   }): Promise<SharedIntentViewT[]>;
   markShared(id: string): Promise<IntentT>;
-  setStatus(
-    id: string,
-    status: IntentStatusT,
-    reason?: string,
-  ): Promise<IntentT>;
+  setStatus(id: string, status: IntentStatusT, reason?: string): Promise<IntentT>;
   revoke(id: string, by: { userId: string }): Promise<IntentT>; // clears shared flag, emits intent.revoked
 }
 export interface UpsertOpportunity {

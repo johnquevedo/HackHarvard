@@ -39,13 +39,7 @@ export const MarketParticipant = z.object({
   marketId: s,
   userId: s,
   role: z.enum(["subject", "friend"]),
-  inviteState: z.enum([
-    "invited",
-    "accepted",
-    "declined",
-    "expired",
-    "not_applicable",
-  ]),
+  inviteState: z.enum(["invited", "accepted", "declined", "expired", "not_applicable"]),
 });
 export type MarketParticipantT = z.infer<typeof MarketParticipant>;
 export const Position = z.object({

@@ -6,11 +6,8 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     const envKey = key.replace(/[A-Z]/g, (c) => "_" + c).toUpperCase();
     values[key] = env[envKey];
   }
-  if (!values.photonMode)
-    values.photonMode = values.dennisMode === "sim" ? "sim" : "live";
-  if (!values.nessieMode)
-    values.nessieMode = values.dennisMode === "sim" ? "sim" : "live";
-  if (!values.llmProvider)
-    values.llmProvider = values.dennisMode === "sim" ? "mock" : "anthropic";
+  if (!values.photonMode) values.photonMode = values.dennisMode === "sim" ? "sim" : "live";
+  if (!values.nessieMode) values.nessieMode = values.dennisMode === "sim" ? "sim" : "live";
+  if (!values.llmProvider) values.llmProvider = values.dennisMode === "sim" ? "mock" : "anthropic";
   return AppConfigSchema.parse(values);
 }

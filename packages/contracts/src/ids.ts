@@ -23,9 +23,7 @@ export type IdKind = keyof typeof ID_PREFIX;
 
 // Accepts generated IDs and fixed seed IDs such as usr_demo_alice.
 export function idSchema(kind: IdKind) {
-  return z
-    .string()
-    .regex(new RegExp("^" + ID_PREFIX[kind] + "_[a-z0-9_]{6,40}$"));
+  return z.string().regex(new RegExp("^" + ID_PREFIX[kind] + "_[a-z0-9_]{6,40}$"));
 }
 export interface IdFactory {
   next(kind: IdKind): string;

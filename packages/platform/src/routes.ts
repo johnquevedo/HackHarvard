@@ -38,12 +38,7 @@ async function body<T>(c: Context, schema: z.ZodType<T>): Promise<T> {
   }
   const parsed = schema.safeParse(value);
   if (!parsed.success)
-    throw new DennisError(
-      "validation_error",
-      "Invalid request",
-      400,
-      parsed.error.issues,
-    );
+    throw new DennisError("validation_error", "Invalid request", 400, parsed.error.issues);
   return parsed.data;
 }
 function limit(c: Context): number {
@@ -79,11 +74,9 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
   async function userSummary(id: string) {
     const user = await ctx.users.get(id);
     const agent = await ctx.users.getAgentByUserId(id);
-    if (!user || !agent)
-      throw new DennisError("not_found", "User not found", 404);
+    if (!user || !agent) throw new DennisError("not_found", "User not found", 404);
     const consents = {} as Record<z.infer<typeof ConsentScope>, boolean>;
-    for (const scope of ConsentScope.options)
-      consents[scope] = await ctx.consent.has(id, scope);
+    for (const scope of ConsentScope.options) consents[scope] = await ctx.consent.has(id, scope);
     return {
       user: { ...user, handle: "***" + user.handle.slice(-4) },
       agent,
@@ -115,10 +108,7 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
         error.status as 400,
       );
     ctx.log.error("Unhandled request failure");
-    return c.json(
-      { error: { code: "internal", message: "Internal server error" } },
-      500,
-    );
+    return c.json({ error: { code: "internal", message: "Internal server error" } }, 500);
   });
   app.get("/api/health", (c) => {
     ctx.db.$client.prepare("SELECT 1").get();
@@ -127,15 +117,9 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
       time: ctx.clock.nowIso(),
       dbOk: true,
       modes: {
-        photon:
-          ctx.integrations.list().find((s) => s.name === "photon")?.mode ??
-          "fallback",
-        llm:
-          ctx.integrations.list().find((s) => s.name === "llm")?.mode ??
-          "fallback",
-        nessie:
-          ctx.integrations.list().find((s) => s.name === "nessie")?.mode ??
-          "fallback",
+        photon: ctx.integrations.list().find((s) => s.name === "photon")?.mode ?? "fallback",
+        llm: ctx.integrations.list().find((s) => s.name === "llm")?.mode ?? "fallback",
+        nessie: ctx.integrations.list().find((s) => s.name === "nessie")?.mode ?? "fallback",
       },
     });
   });
@@ -143,26 +127,18 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
   app.get("/api/users", async (c) =>
     c.json(
       await Promise.all(
-        rows<UserT>(ctx.db, "SELECT * FROM users ORDER BY created_at").map(
-          (u) => userSummary(u.id),
+        rows<UserT>(ctx.db, "SELECT * FROM users ORDER BY created_at").map((u) =>
+          userSummary(u.id),
         ),
       ),
     ),
   );
-  app.get("/api/users/:userId", async (c) =>
-    c.json(await userSummary(c.req.param("userId"))),
-  );
+  app.get("/api/users/:userId", async (c) => c.json(await userSummary(c.req.param("userId"))));
   app.patch("/api/agents/:agentId/settings", async (c) => {
     const a = await ctx.users.getAgent(c.req.param("agentId"));
     if (!a) throw new DennisError("not_found", "Agent not found", 404);
     const settings = await body(c, SettingsRequest);
-    update(
-      ctx.db,
-      "agents",
-      { settings: { ...a.settings, ...settings } },
-      "id=?",
-      a.id,
-    );
+    update(ctx.db, "agents", { settings: { ...a.settings, ...settings } }, "id=?", a.id);
     return c.json(Agent.parse(await ctx.users.getAgent(a.id)));
   });
   app.post("/api/agents/:agentId/pause", async (c) => {
@@ -179,10 +155,7 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
     });
     return c.json(Agent.parse(await ctx.users.getAgent(a.id)));
   });
-  async function consentState(
-    userId: string,
-    scope: z.infer<typeof ConsentScope>,
-  ) {
+  async function consentState(userId: string, scope: z.infer<typeof ConsentScope>) {
     const latest = row<{ status: string; createdAt: string; via: string }>(
       ctx.db,
       "SELECT * FROM consents WHERE user_id=? AND scope=? ORDER BY id DESC LIMIT 1",
@@ -198,11 +171,8 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
   }
   app.get("/api/consents", async (c) => {
     const id = z.string().min(1).parse(c.req.query("userId"));
-    if (!(await ctx.users.get(id)))
-      throw new DennisError("not_found", "User not found", 404);
-    return c.json(
-      await Promise.all(ConsentScope.options.map((s) => consentState(id, s))),
-    );
+    if (!(await ctx.users.get(id))) throw new DennisError("not_found", "User not found", 404);
+    return c.json(await Promise.all(ConsentScope.options.map((s) => consentState(id, s))));
   });
   app.post("/api/consents", async (c) => {
     const input = await body(c, ConsentRequest);
@@ -218,11 +188,7 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
     const kind = c.req.query("kind");
     if (kind) IntentKind.parse(kind);
     if (lens.viewerAgentId && requested && requested !== lens.viewerAgentId)
-      throw new DennisError(
-        "forbidden",
-        "Private intents belong to their owner",
-        403,
-      );
+      throw new DennisError("forbidden", "Private intents belong to their owner", 403);
     const id = lens.viewerAgentId ?? requested;
     const values = rows<IntentT>(
       ctx.db,
@@ -236,12 +202,7 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
     return c.json(values);
   });
   app.post("/api/intents/:intentId/revoke", async (c) =>
-    c.json(
-      await ctx.intents.revoke(
-        c.req.param("intentId"),
-        await body(c, UserIdRequest),
-      ),
-    ),
+    c.json(await ctx.intents.revoke(c.req.param("intentId"), await body(c, UserIdRequest))),
   );
   app.get("/api/events", async (c) => {
     const lens = await viewer(c);
@@ -365,12 +326,7 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
         status ?? null,
         status ?? null,
         limit(c),
-      ).map(
-        ({
-          idempotencyKey: _,
-          ...a
-        }: ApprovalT & { idempotencyKey?: string }) => a,
-      ),
+      ).map(({ idempotencyKey: _, ...a }: ApprovalT & { idempotencyKey?: string }) => a),
     );
   });
   app.post("/api/approvals/:approvalId/decision", async (c) =>
@@ -389,12 +345,7 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
         "SELECT * FROM outbox WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
         z.string().min(1).parse(c.req.query("userId")),
         limit(c),
-      ).map(
-        ({
-          idempotencyKey: _,
-          ...o
-        }: OutboxRecordT & { idempotencyKey?: string }) => o,
-      ),
+      ).map(({ idempotencyKey: _, ...o }: OutboxRecordT & { idempotencyKey?: string }) => o),
     ),
   );
   app.get("/api/opportunities", async (c) => {
@@ -418,8 +369,7 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
   });
   app.get("/api/opportunities/:id", async (c) => {
     const value = await ctx.opportunities.get(c.req.param("id"));
-    if (!value)
-      throw new DennisError("not_found", "Opportunity not found", 404);
+    if (!value) throw new DennisError("not_found", "Opportunity not found", 404);
     const viewerId = c.req.query("viewerAgentId");
     if (
       ["proposed", "declined", "expired"].includes(value.status) &&
@@ -433,13 +383,9 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
   app.get("/api/opportunities/:id/explain", async (c) => {
     const id = c.req.param("id");
     const opportunity = await ctx.opportunities.get(id);
-    if (!opportunity)
-      throw new DennisError("not_found", "Opportunity not found", 404);
+    if (!opportunity) throw new DennisError("not_found", "Opportunity not found", 404);
     const lens = await viewer(c);
-    if (
-      lens.viewerAgentId &&
-      !opportunity.participantAgentIds.includes(lens.viewerAgentId)
-    )
+    if (lens.viewerAgentId && !opportunity.participantAgentIds.includes(lens.viewerAgentId))
       throw new DennisError("not_found", "Opportunity not found", 404);
     const events = ctx.events
       .history({ ...lens, limit: 200 })
@@ -452,20 +398,14 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
         type: e.type,
         ...(e.actor.agentId ? { agentId: e.actor.agentId } : {}),
         summary: e.type,
-        ...(Array.isArray(e.payload.checks)
-          ? { checks: e.payload.checks }
-          : {}),
+        ...(Array.isArray(e.payload.checks) ? { checks: e.payload.checks } : {}),
       })),
     });
   });
   app.post("/api/sim/inbound", async (c) => {
     admin(c);
     if (ctx.messaging.name !== "sim")
-      throw new DennisError(
-        "invalid_state",
-        "Simulator provider is not active",
-        409,
-      );
+      throw new DennisError("invalid_state", "Simulator provider is not active", 409);
     const input = await body(c, SimInboundRequest);
     const user = await ctx.users.get(input.fromUserId);
     if (!user) throw new DennisError("not_found", "User not found", 404);
@@ -487,8 +427,7 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
   });
   app.get("/api/sim/thread", async (c) => {
     const id = z.string().min(1).parse(c.req.query("userId"));
-    if (!(await ctx.users.get(id)))
-      throw new DennisError("not_found", "User not found", 404);
+    if (!(await ctx.users.get(id))) throw new DennisError("not_found", "User not found", 404);
     const incoming = rows<{ text: string; receivedAt: string; status: string }>(
       ctx.db,
       "SELECT text,received_at,status FROM inbound_messages WHERE user_id=? AND text IS NOT NULL",
@@ -499,57 +438,40 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
       ts: m.receivedAt,
       status: m.status,
     }));
-    const outgoing = rows<OutboxRecordT>(
-      ctx.db,
-      "SELECT * FROM outbox WHERE user_id=?",
-      id,
-    ).map((m) => ({
-      direction: "out" as const,
-      text: m.text,
-      ts: m.createdAt,
-      status: m.status,
-    }));
+    const outgoing = rows<OutboxRecordT>(ctx.db, "SELECT * FROM outbox WHERE user_id=?", id).map(
+      (m) => ({
+        direction: "out" as const,
+        text: m.text,
+        ts: m.createdAt,
+        status: m.status,
+      }),
+    );
     return c.json({
-      messages: [...incoming, ...outgoing].sort((a, b) =>
-        a.ts.localeCompare(b.ts),
-      ),
+      messages: [...incoming, ...outgoing].sort((a, b) => a.ts.localeCompare(b.ts)),
     });
   });
   app.post("/webhooks/photon", async (c) => {
     if (!ctx.config.photonWebhookSecret || !ctx.config.photonAgentUserId)
-      throw new DennisError(
-        "integration_unavailable",
-        "Photon webhook is not configured",
-        503,
-      );
+      throw new DennisError("integration_unavailable", "Photon webhook is not configured", 503);
     const raw = await c.req.text();
     const headers = {
       "webhook-id": c.req.header("webhook-id") ?? "",
       "webhook-timestamp": c.req.header("webhook-timestamp") ?? "",
       "webhook-signature": c.req.header("webhook-signature") ?? "",
     };
-    const event = verifyPhotonWebhook(
-      raw,
-      headers,
-      ctx.config.photonWebhookSecret,
-    );
+    const event = verifyPhotonWebhook(raw, headers, ctx.config.photonWebhookSecret);
     return ctx.runExclusive("webhook:" + headers["webhook-id"], async () => {
       const key = "webhook:" + headers["webhook-id"];
       if (row(ctx.db, "SELECT key FROM photon_cursors WHERE key=?", key))
         return c.json({ ok: true });
-      const message = normalizePhotonEvent(
-        event,
-        ctx.config.photonAgentUserId!,
-      );
+      const message = normalizePhotonEvent(event, ctx.config.photonAgentUserId!);
       if (message)
         await ingestInbound(ctx, {
           ...message,
           accountKey: ctx.config.photonAccountKey,
         });
       ctx.db.$client
-        .prepare(
-          "INSERT INTO photon_cursors (key,value,updated_at) VALUES (?,?,?)",
-        )
+        .prepare("INSERT INTO photon_cursors (key,value,updated_at) VALUES (?,?,?)")
         .run(key, "seen", ctx.clock.nowIso());
       return c.json({ ok: true });
     });

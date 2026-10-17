@@ -8,11 +8,7 @@ export function verifyPhotonWebhook(
   try {
     new Webhook(secret).verify(raw, headers, { jsonParse: false });
   } catch {
-    throw new DennisError(
-      "unauthorized",
-      "Invalid or stale webhook signature",
-      401,
-    );
+    throw new DennisError("unauthorized", "Invalid or stale webhook signature", 401);
   }
   try {
     return JSON.parse(raw);

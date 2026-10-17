@@ -2,18 +2,10 @@ import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { createDb } from "../packages/db/src/index.ts";
-import {
-  loadConfig,
-  createClock,
-  createLogger,
-} from "../packages/platform/src/index.ts";
+import { loadConfig, createClock, createLogger } from "../packages/platform/src/index.ts";
 import { PhotonBetaProvider } from "../packages/messaging/src/index.ts";
 export async function photonDoctor(): Promise<void> {
-  const required = [
-    "PHOTON_PROJECT_ID",
-    "PHOTON_API_KEY",
-    "PHOTON_AGENT_USER_ID",
-  ];
+  const required = ["PHOTON_PROJECT_ID", "PHOTON_API_KEY", "PHOTON_AGENT_USER_ID"];
   const missing = required.filter((key) => !process.env[key]);
   if (missing.length)
     throw new Error(
@@ -83,9 +75,7 @@ export async function photonDoctor(): Promise<void> {
         );
       }),
     ]);
-    process.stdout.write(
-      `PASS inbound received; observed receipt lag ${message.lagMs} ms\n`,
-    );
+    process.stdout.write(`PASS inbound received; observed receipt lag ${message.lagMs} ms\n`);
     const started = clock.now().getTime();
     const result = await provider.send({
       accountKey: config.photonAccountKey,
@@ -102,9 +92,7 @@ export async function photonDoctor(): Promise<void> {
       status = await provider.readStatus(result.providerMessageId);
     }
     if (status !== "delivered")
-      throw new Error(
-        "NOT VERIFIED: outbound status is " + status + ", not delivered",
-      );
+      throw new Error("NOT VERIFIED: outbound status is " + status + ", not delivered");
     process.stdout.write(
       `PASS outbound delivered; delivery latency ${clock.now().getTime() - started} ms\n`,
     );
@@ -117,16 +105,11 @@ export async function photonDoctor(): Promise<void> {
     db.$client.close();
   }
 }
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     await photonDoctor();
   } catch (error) {
-    process.stderr.write(
-      (error instanceof Error ? error.message : "Photon doctor failed") + "\n",
-    );
+    process.stderr.write((error instanceof Error ? error.message : "Photon doctor failed") + "\n");
     process.exitCode = 1;
   }
 }

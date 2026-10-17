@@ -1,16 +1,9 @@
 import { Photon, ApiError } from "@photon-ai/api";
 import { DennisError } from "@dennis/contracts";
 import type { AppConfig } from "@dennis/contracts";
-export function createPhotonClient(
-  config: AppConfig,
-  fetchImpl?: typeof fetch,
-): Photon {
+export function createPhotonClient(config: AppConfig, fetchImpl?: typeof fetch): Photon {
   if (!config.photonApiKey || !config.photonProjectId)
-    throw new DennisError(
-      "integration_unavailable",
-      "Photon credentials are missing",
-      503,
-    );
+    throw new DennisError("integration_unavailable", "Photon credentials are missing", 503);
   return new Photon({
     baseUrl: config.photonApiBaseUrl,
     headers: { Authorization: `Bearer ${config.photonApiKey}` },

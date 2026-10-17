@@ -11,18 +11,8 @@ import {
   Opportunity,
   IntegrationStatus,
 } from "./domain.ts";
-import {
-  MerchantOffer,
-  GroupPurchase,
-  GroupPurchaseMember,
-  PaymentAttempt,
-} from "./purchasing.ts";
-import {
-  Market,
-  MarketParticipant,
-  Position,
-  MarketResolution,
-} from "./shortme.ts";
+import { MerchantOffer, GroupPurchase, GroupPurchaseMember, PaymentAttempt } from "./purchasing.ts";
+import { Market, MarketParticipant, Position, MarketResolution } from "./shortme.ts";
 export const ConsentState = z.object({
   scope: ConsentScope,
   granted: z.boolean(),
@@ -62,9 +52,7 @@ export const ExplainTrace = z.object({
 export const PaymentAttemptView = PaymentAttempt.omit({ requestJson: true });
 export const GroupDetail = z.object({
   group: GroupPurchase,
-  members: z.array(
-    GroupPurchaseMember.extend({ firstName: z.string().optional() }),
-  ),
+  members: z.array(GroupPurchaseMember.extend({ firstName: z.string().optional() })),
   offer: MerchantOffer,
   savingsPerMemberCents: z.number().int(),
   payments: z.array(PaymentAttemptView),
@@ -75,16 +63,12 @@ export const MarketDetail = z.object({
   positions: z.array(Position),
   pools: z.object({ back: z.number().int(), fade: z.number().int() }),
   resolution: MarketResolution.nullable(),
-  payoutPreview: z.array(
-    z.object({ userId: z.string(), points: z.number().int() }),
-  ),
+  payoutPreview: z.array(z.object({ userId: z.string(), points: z.number().int() })),
 });
 export const DemoState = z.object({
   runId: z.string(),
   modes: z.record(z.string(), z.string()),
-  checklist: z.array(
-    z.object({ id: z.string(), label: z.string(), ok: z.boolean() }),
-  ),
+  checklist: z.array(z.object({ id: z.string(), label: z.string(), ok: z.boolean() })),
 });
 export const SettingsRequest = AgentSettings.partial().strict();
 export const PauseRequest = z.object({ paused: z.boolean() }).strict();
@@ -109,12 +93,8 @@ export const PositionRequest = z
     points: z.number().int().min(1).max(100),
   })
   .strict();
-export const ResolveRequest = z
-  .object({ outcome: z.enum(["yes", "no"]) })
-  .strict();
-export const AdminResolveRequest = z
-  .object({ outcome: z.enum(["yes", "no", "void"]) })
-  .strict();
+export const ResolveRequest = z.object({ outcome: z.enum(["yes", "no"]) }).strict();
+export const AdminResolveRequest = z.object({ outcome: z.enum(["yes", "no", "void"]) }).strict();
 export const HealthResponse = z.object({
   status: z.literal("ok"),
   time: IsoDateTime,

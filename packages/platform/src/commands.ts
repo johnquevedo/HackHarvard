@@ -6,8 +6,7 @@ import { row, update } from "./storage.ts";
 export const ONBOARDING =
   "Hi {first}, I'm Dennis, your personal agent. With your OK I can notice plans in this chat, like things you want to buy, and talk to other people's agents to find ways to save. I share only a minimal anonymous summary, never your messages, and I ask before anything involving your name or money. Reply AGREE to turn this on. STOP any time.";
 export async function forgetUser(ctx: PlatformContext, userId: string) {
-  if (!(await ctx.users.get(userId)))
-    throw new DennisError("not_found", "User not found", 404);
+  if (!(await ctx.users.get(userId))) throw new DennisError("not_found", "User not found", 404);
   const open = row(
     ctx.db,
     "SELECT p.id FROM market_positions p JOIN markets m ON m.id=p.market_id WHERE p.user_id=? AND m.status NOT IN ('resolved','void','declined','expired') LIMIT 1",
@@ -47,13 +46,7 @@ export async function forgetUser(ctx: PlatformContext, userId: string) {
     const intents = ctx.db.$client
       .prepare("DELETE FROM intents WHERE user_id=?")
       .run(userId).changes;
-    update(
-      ctx.db,
-      "approvals",
-      { promptText: "", payload: {} },
-      "user_id=?",
-      userId,
-    );
+    update(ctx.db, "approvals", { promptText: "", payload: {} }, "user_id=?", userId);
     update(
       ctx.db,
       "outbox",
@@ -71,8 +64,7 @@ export async function handleCommand(
   const { userId, agentId, command } = input;
   const kind = command.kind;
   const agent = await ctx.users.getAgent(agentId);
-  if (agent?.userId !== userId)
-    throw new DennisError("forbidden", "Command owner mismatch", 403);
+  if (agent?.userId !== userId) throw new DennisError("forbidden", "Command owner mismatch", 403);
   if (kind === "agree") {
     const scopes =
       command.scope === "base"
@@ -87,8 +79,7 @@ export async function handleCommand(
         granted: true,
         via: ctx.messaging.name === "sim" ? "sim_phone" : "imessage",
       });
-    if (command.scope === "base")
-      update(ctx.db, "agents", { status: "active" }, "id=?", agentId);
+    if (command.scope === "base") update(ctx.db, "agents", { status: "active" }, "id=?", agentId);
     return {
       reply:
         command.scope === "shortme"
@@ -125,8 +116,7 @@ export async function handleCommand(
   if (kind === "forget") {
     await forgetUser(ctx, userId);
     return {
-      reply:
-        "Your stored messages and intents have been deleted. Dennis is stopped.",
+      reply: "Your stored messages and intents have been deleted. Dennis is stopped.",
     };
   }
   if (kind === "status") {
@@ -142,10 +132,7 @@ export async function handleCommand(
       reply:
         "Commands: AGREE, AGREE SHORTME (18+ confirmation), AGREE PAYMENTS, PAUSE, RESUME, STATUS, STOP, FORGET. Approvals: YES or NO followed by the four-character code.",
     };
-  if (
-    ["approve", "decline", "confirm", "dispute"].includes(kind) &&
-    "code" in command
-  ) {
+  if (["approve", "decline", "confirm", "dispute"].includes(kind) && "code" in command) {
     const pending = await ctx.approvals.findPending(userId, command.code);
     const matches =
       kind === "confirm" || kind === "dispute"
@@ -159,8 +146,7 @@ export async function handleCommand(
       return {
         reply: "Which one? Reply YES followed by the 4-character code.",
       };
-    const decision =
-      kind === "approve" || kind === "confirm" ? "approve" : "decline";
+    const decision = kind === "approve" || kind === "confirm" ? "approve" : "decline";
     await ctx.approvals.decide({
       approvalId: matches[0]!.id,
       userId,

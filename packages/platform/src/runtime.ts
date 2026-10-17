@@ -18,11 +18,7 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
         item.lastError === "interrupted_send"
           ? 0
           : ([0, 5000, 15000, 45000][item.attempts] ?? 45000);
-      if (
-        item.sentAt &&
-        Date.parse(item.sentAt) + retryMs > ctx.clock.now().getTime()
-      )
-        continue;
+      if (item.sentAt && Date.parse(item.sentAt) + retryMs > ctx.clock.now().getTime()) continue;
       if (item.approvalId) {
         const a = await ctx.approvals.get(item.approvalId);
         if (!a || a.status !== "pending" || a.expiresAt <= ctx.clock.nowIso()) {
@@ -88,8 +84,7 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
             providerStatus: result.status,
             lastError: result.status === "failed" ? "provider_failed" : null,
             ...(result.status === "failed" ? { attempts: 4 } : {}),
-            deliveredAt:
-              result.status === "delivered" ? ctx.clock.nowIso() : null,
+            deliveredAt: result.status === "delivered" ? ctx.clock.nowIso() : null,
           },
           "id=?",
           item.id,
@@ -110,8 +105,7 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
       } catch (error) {
         const permanent =
           error instanceof DennisError &&
-          (error.details as { retryable?: boolean } | undefined)?.retryable ===
-            false;
+          (error.details as { retryable?: boolean } | undefined)?.retryable === false;
         update(
           ctx.db,
           "outbox",
@@ -140,12 +134,7 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
   });
 }
 export async function recoverPending(ctx: PlatformContext): Promise<void> {
-  update(
-    ctx.db,
-    "outbox",
-    { status: "queued", lastError: "interrupted_send" },
-    "status='sending'",
-  );
+  update(ctx.db, "outbox", { status: "queued", lastError: "interrupted_send" }, "status='sending'");
   for (const { id } of rows<{ id: string }>(
     ctx.db,
     "SELECT id FROM inbound_messages WHERE status='received' ORDER BY received_at",
@@ -156,9 +145,7 @@ export async function recoverPending(ctx: PlatformContext): Promise<void> {
   await dispatchOutbox(ctx);
   await confirmOutbox(ctx);
 }
-export async function startRuntime(
-  ctx: PlatformContext,
-): Promise<{ stop(): Promise<void> }> {
+export async function startRuntime(ctx: PlatformContext): Promise<{ stop(): Promise<void> }> {
   let stopped = false;
   let stopTask: Promise<void> | null = null;
   const timers: ReturnType<typeof setInterval>[] = [];
@@ -204,9 +191,7 @@ export async function startRuntime(
       }, 1000),
       setInterval(() => {
         if (!stopped)
-          void ctx.approvals
-            .expireDue()
-            .catch(() => ctx.log.error("Approval sweep failed"));
+          void ctx.approvals.expireDue().catch(() => ctx.log.error("Approval sweep failed"));
       }, 30000),
       setInterval(() => {
         if (!stopped) void health();
@@ -231,9 +216,7 @@ export async function confirmOutbox(
   const provider = ctx.messaging;
   const read =
     readStatus ??
-    (provider instanceof PhotonBetaProvider
-      ? (id: string) => provider.readStatus(id)
-      : null);
+    (provider instanceof PhotonBetaProvider ? (id: string) => provider.readStatus(id) : null);
   if (!read) return;
   await ctx.runExclusive("delivery-confirmation", async () => {
     for (const item of rows<OutboxRecordT>(
@@ -243,16 +226,14 @@ export async function confirmOutbox(
       const key = "delivery:" + item.id;
       const count = Number(
         (
-          ctx.db.$client
-            .prepare("SELECT value FROM photon_cursors WHERE key=?")
-            .get(key) as { value: string } | undefined
+          ctx.db.$client.prepare("SELECT value FROM photon_cursors WHERE key=?").get(key) as
+            { value: string } | undefined
         )?.value ?? 0,
       );
       if (
         count >= 3 ||
         !item.sentAt ||
-        ctx.clock.now().getTime() <
-          Date.parse(item.sentAt) + ([2000, 5000, 10000][count] ?? 10000)
+        ctx.clock.now().getTime() < Date.parse(item.sentAt) + ([2000, 5000, 10000][count] ?? 10000)
       )
         continue;
       ctx.db.$client
@@ -296,9 +277,7 @@ export async function confirmOutbox(
             },
           });
       } catch {
-        ctx.log.warn(
-          "Delivery confirmation unavailable; delivery remains unconfirmed",
-        );
+        ctx.log.warn("Delivery confirmation unavailable; delivery remains unconfirmed");
       }
     }
   });

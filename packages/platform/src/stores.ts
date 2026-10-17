@@ -36,11 +36,7 @@ export function createConsent(ctx: PlatformContext): ConsentService {
     has,
     async require(userId, scope) {
       if (!(await has(userId, scope)))
-        throw new DennisError(
-          "consent_required",
-          "Consent required: " + scope,
-          403,
-        );
+        throw new DennisError("consent_required", "Consent required: " + scope, 403);
     },
     onRevoked(h) {
       hooks.push(h);
@@ -70,14 +66,10 @@ export function createConsent(ctx: PlatformContext): ConsentService {
         },
       });
       if (!input.granted) {
-        if (
-          input.scope === "messaging_context" ||
-          input.scope === "purchase_matching"
-        ) {
+        if (input.scope === "messaging_context" || input.scope === "purchase_matching") {
           for (const intent of await ctx.intents.listByAgent(agent.id))
             if (
-              (input.scope === "messaging_context" ||
-                intent.kind === "purchase") &&
+              (input.scope === "messaging_context" || intent.kind === "purchase") &&
               ["detected", "shared", "matched"].includes(intent.status)
             )
               await ctx.intents.revoke(intent.id, { userId: input.userId });
@@ -99,13 +91,7 @@ export function createConsent(ctx: PlatformContext): ConsentService {
           input.userId,
         ))
           if (scopeKinds[input.scope]?.includes(approval.kind))
-            update(
-              ctx.db,
-              "approvals",
-              { status: "revoked" },
-              "id=?",
-              approval.id,
-            );
+            update(ctx.db, "approvals", { status: "revoked" }, "id=?", approval.id);
         for (const hook of hooks) await hook(input.userId, input.scope);
       }
     },
@@ -136,11 +122,7 @@ export function createIntentStore(ctx: PlatformContext): IntentStore {
           : input.kind === "purchase"
             ? PurchaseIntentPublic.parse(input.publicPayload)
             : (() => {
-                throw new DennisError(
-                  "validation_error",
-                  "Milestones have no public payload",
-                  400,
-                );
+                throw new DennisError("validation_error", "Milestones have no public payload", 400);
               })();
       const now = ctx.clock.nowIso();
       const value = Intent.parse({
@@ -212,11 +194,7 @@ export function createIntentStore(ctx: PlatformContext): IntentStore {
     async setStatus(id, status) {
       const i = await required(id);
       if (i.status === "revoked" && status !== "revoked")
-        throw new DennisError(
-          "invalid_state",
-          "Revoked intent cannot be reopened",
-          409,
-        );
+        throw new DennisError("invalid_state", "Revoked intent cannot be reopened", 409);
       update(
         ctx.db,
         "intents",
@@ -233,11 +211,7 @@ export function createIntentStore(ctx: PlatformContext): IntentStore {
     async revoke(id, by) {
       const i = await required(id);
       if (i.userId !== by.userId)
-        throw new DennisError(
-          "forbidden",
-          "Intent belongs to another user",
-          403,
-        );
+        throw new DennisError("forbidden", "Intent belongs to another user", 403);
       if (i.status === "revoked") return i;
       update(
         ctx.db,
@@ -267,11 +241,7 @@ export function createIntentStore(ctx: PlatformContext): IntentStore {
 }
 export function createOpportunityStore(ctx: PlatformContext): OpportunityStore {
   async function get(id: string) {
-    return row<OpportunityT>(
-      ctx.db,
-      "SELECT * FROM opportunities WHERE id=?",
-      id,
-    );
+    return row<OpportunityT>(ctx.db, "SELECT * FROM opportunities WHERE id=?", id);
   }
   return {
     get,
@@ -325,8 +295,7 @@ export function createOpportunityStore(ctx: PlatformContext): OpportunityStore {
         .filter(
           (o) =>
             !filter?.viewerAgentId ||
-            (o.type === "shortme_market" &&
-            ["proposed", "declined", "expired"].includes(o.status)
+            (o.type === "shortme_market" && ["proposed", "declined", "expired"].includes(o.status)
               ? o.participantAgentIds[0] === filter.viewerAgentId
               : o.participantAgentIds.includes(filter.viewerAgentId)),
         )

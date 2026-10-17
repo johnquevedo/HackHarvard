@@ -2,12 +2,7 @@ import { approvals as approvalTable } from "@dennis/db";
 import type { DbTransaction } from "@dennis/db";
 import { and, eq, isNull, gt } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
-import {
-  Approval,
-  OutboxRecord,
-  DennisError,
-  hashPayload,
-} from "@dennis/contracts";
+import { Approval, OutboxRecord, DennisError, hashPayload } from "@dennis/contracts";
 import type {
   ApprovalService,
   ApprovalDecidedHandler,
@@ -35,11 +30,7 @@ function persistNotification(
       previous.approvalId !== (req.approvalId ?? null) ||
       previous.opportunityId !== (req.opportunityId ?? null)
     )
-      throw new DennisError(
-        "idempotency_conflict",
-        "Outbox key reused with different input",
-        409,
-      );
+      throw new DennisError("idempotency_conflict", "Outbox key reused with different input", 409);
     return { record: OutboxRecord.parse(previous), created: false };
   }
   if (!row(ctx.db, "SELECT id FROM users WHERE id=?", req.userId))
@@ -63,11 +54,7 @@ function persistNotification(
   return { record, created: true };
 }
 function emitQueued(ctx: PlatformContext, value: OutboxRecordT): void {
-  const agent = row<{ id: string }>(
-    ctx.db,
-    "SELECT id FROM agents WHERE user_id=?",
-    value.userId,
-  );
+  const agent = row<{ id: string }>(ctx.db, "SELECT id FROM agents WHERE user_id=?", value.userId);
   if (agent)
     ctx.events.emit({
       type: "outbox.queued",
@@ -95,11 +82,7 @@ export function createNotifier(ctx: PlatformContext): Notifier {
 export function createApprovals(ctx: PlatformContext): ApprovalService {
   const hooks = new Map<string, ApprovalDecidedHandler[]>();
   async function get(id: string) {
-    const value = row<ApprovalT>(
-      ctx.db,
-      "SELECT * FROM approvals WHERE id=?",
-      id,
-    );
+    const value = row<ApprovalT>(ctx.db, "SELECT * FROM approvals WHERE id=?", id);
     return value ? Approval.parse(value) : null;
   }
   async function required(id: string) {
@@ -131,8 +114,7 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
             existing.kind !== input.kind ||
             existing.payloadHash !== hashPayload(input.payload) ||
             existing.opportunityId !== (input.opportunityId ?? null) ||
-            existing.promptText !==
-              input.promptText.replaceAll("{code}", existing.shortCode)
+            existing.promptText !== input.promptText.replaceAll("{code}", existing.shortCode)
           )
             throw new DennisError(
               "idempotency_conflict",
@@ -173,9 +155,7 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
           payloadHash: hashPayload(input.payload),
           promptText: input.promptText.replaceAll("{code}", code),
           opportunityId: input.opportunityId ?? null,
-          expiresAt: new Date(
-            ctx.clock.now().getTime() + input.ttlMinutes * 60000,
-          ).toISOString(),
+          expiresAt: new Date(ctx.clock.now().getTime() + input.ttlMinutes * 60000).toISOString(),
           createdAt: ctx.clock.nowIso(),
           decidedAt: null,
           decidedVia: null,
@@ -191,9 +171,7 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
             kind: "approval_request",
             text: value.promptText,
             approvalId: value.id,
-            ...(input.opportunityId
-              ? { opportunityId: input.opportunityId }
-              : {}),
+            ...(input.opportunityId ? { opportunityId: input.opportunityId } : {}),
             idempotencyKey: "approval:" + value.id,
           });
         })();
@@ -217,19 +195,11 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
       return ctx.runExclusive("approval:" + input.approvalId, async () => {
         const a = await required(input.approvalId);
         if (a.userId !== input.userId)
-          throw new DennisError(
-            "forbidden",
-            "Approval belongs to another user",
-            403,
-          );
+          throw new DennisError("forbidden", "Approval belongs to another user", 403);
         const status = input.decision === "approve" ? "approved" : "declined";
         if (a.status === status) return a;
         if (a.status !== "pending")
-          throw new DennisError(
-            "approval_invalid",
-            "Approval is already decided",
-            409,
-          );
+          throw new DennisError("approval_invalid", "Approval is already decided", 409);
         if (a.expiresAt <= ctx.clock.nowIso()) {
           const changed = update(
             ctx.db,
@@ -242,8 +212,7 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
           if (changed === 1) {
             emitExpired(a);
             const expired = await required(a.id);
-            for (const handler of hooks.get(a.kind) ?? [])
-              await handler(expired);
+            for (const handler of hooks.get(a.kind) ?? []) await handler(expired);
           }
           throw new DennisError("approval_invalid", "Approval expired", 409);
         }
@@ -305,8 +274,7 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
         !transaction ||
         typeof transaction !== "object" ||
         !("update" in transaction) ||
-        (transaction as { session?: { client?: unknown } }).session?.client !==
-          ctx.db.$client
+        (transaction as { session?: { client?: unknown } }).session?.client !== ctx.db.$client
       )
         throw new DennisError(
           "approval_invalid",
@@ -314,11 +282,7 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
           409,
         );
       const tx = transaction as DbTransaction;
-      const value = row<ApprovalT>(
-        ctx.db,
-        "SELECT * FROM approvals WHERE id=?",
-        id,
-      );
+      const value = row<ApprovalT>(ctx.db, "SELECT * FROM approvals WHERE id=?", id);
       if (
         !value ||
         value.status !== "approved" ||
@@ -326,11 +290,7 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
         value.expiresAt <= ctx.clock.nowIso() ||
         hashPayload(value.payload) !== value.payloadHash
       )
-        throw new DennisError(
-          "approval_invalid",
-          "Approval cannot be consumed",
-          409,
-        );
+        throw new DennisError("approval_invalid", "Approval cannot be consumed", 409);
       const result = tx
         .update(approvalTable)
         .set({ consumedAt: ctx.clock.nowIso() })
@@ -344,11 +304,7 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
         )
         .run();
       if (result.changes !== 1)
-        throw new DennisError(
-          "approval_invalid",
-          "Approval cannot be consumed",
-          409,
-        );
+        throw new DennisError("approval_invalid", "Approval cannot be consumed", 409);
     },
     async consume(id) {
       const count = update(
@@ -360,11 +316,7 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
         ctx.clock.nowIso(),
       );
       if (count !== 1)
-        throw new DennisError(
-          "approval_invalid",
-          "Approval cannot be consumed",
-          409,
-        );
+        throw new DennisError("approval_invalid", "Approval cannot be consumed", 409);
     },
     onDecided(kind, handler) {
       hooks.set(kind, [...(hooks.get(kind) ?? []), handler]);
@@ -379,8 +331,7 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
       for (const { id } of due)
         count += await ctx.runExclusive("approval:" + id, async () => {
           const a = await required(id);
-          if (a.status !== "pending" || a.expiresAt > ctx.clock.nowIso())
-            return 0;
+          if (a.status !== "pending" || a.expiresAt > ctx.clock.nowIso()) return 0;
           const changed = update(
             ctx.db,
             "approvals",

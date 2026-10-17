@@ -23,13 +23,9 @@ const Resource = z.object({
   }),
   timestamps: z.object({ receivedAt: z.iso.datetime() }),
 });
-export function normalizePhotonEvent(
-  raw: unknown,
-  agentUserId: string,
-): InboundMessageT | null {
+export function normalizePhotonEvent(raw: unknown, agentUserId: string): InboundMessageT | null {
   // Resource shape is documented. Envelope variants remain subject to a live spike.
-  const envelope =
-    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const envelope = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const data =
     envelope.data && typeof envelope.data === "object"
       ? (envelope.data as Record<string, unknown>)
@@ -38,16 +34,9 @@ export function normalizePhotonEvent(
   const parsed = Resource.safeParse(candidate);
   if (!parsed.success) return null;
   const msg = parsed.data;
-  if (
-    msg.sentBy.id === agentUserId ||
-    (msg.receivedBy && msg.receivedBy.id !== agentUserId)
-  )
+  if (msg.sentBy.id === agentUserId || (msg.receivedBy && msg.receivedBy.id !== agentUserId))
     return null;
-  if (
-    msg.space.participantIds &&
-    !msg.space.participantIds.includes(agentUserId)
-  )
-    return null;
+  if (msg.space.participantIds && !msg.space.participantIds.includes(agentUserId)) return null;
   return InboundMessage.parse({
     provider: "photon",
     accountKey: "primary",
