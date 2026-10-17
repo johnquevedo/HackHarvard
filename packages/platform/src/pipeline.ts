@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
-import { InboundMessage, parseCommand, DennisError } from "@dennis/contracts";
+import {
+  InboundMessage,
+  parseCommand,
+  DennisError,
+  PurchaseCategory,
+  MarketCategory,
+} from "@dennis/contracts";
 import type {
   InboundMessageT,
   DetectorInput,
@@ -257,7 +263,7 @@ export async function runPipeline(
     )
       .map((r) => r.text)
       .reverse();
-    const input: DetectorInput = {
+    const input: Omit<DetectorInput, "enabledCategories"> = {
       agentId: agent.id,
       userId: user.id,
       messageId,
@@ -265,7 +271,6 @@ export async function runPipeline(
       receivedAt: m.receivedAt,
       recentContext: recent,
       regionCode: user.regionCode,
-      enabledCategories: [],
     };
     try {
       for (const detector of ctx.detectors.list()) {
@@ -281,11 +286,20 @@ export async function runPipeline(
           continue;
         let outcome: DetectorOutcome;
         try {
-          outcome = await detector.detect(input, {
-            llm: ctx.llm,
-            clock: ctx.clock,
-            log: ctx.log,
-          });
+          outcome = await detector.detect(
+            {
+              ...input,
+              enabledCategories:
+                kind === "purchase"
+                  ? [...PurchaseCategory.options]
+                  : [...MarketCategory.options],
+            },
+            {
+              llm: ctx.llm,
+              clock: ctx.clock,
+              log: ctx.log,
+            },
+          );
         } catch {
           outcome = {
             detections: [],

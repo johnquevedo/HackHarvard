@@ -80,6 +80,7 @@ packages/platform/src/pipeline.ts builds DetectorInput with `enabledCategories: 
 ## STATUS A3 eval mirrors live detectors
 
 services/chalk-eval now ports A2's live purchase detector exactly (PurchaseExtraction schema, inline SYSTEM_PROMPT read from purchase.ts at run time and verified identical, JSON user message, gate order, product key normalization, timeframe and budget band, isCompatible, priceGroup on the demo offer, evaluateProposal with each private budget). Purchase eval decisions: create_intent when all gates pass; blocked for sensitive; no_intent for not_an_intent, not_subject_owned, low_confidence, category_disabled, schema_invalid, llm_unavailable. Pair decision `match` means public compatibility plus both members accepting the simulated group offer. The Chalk integration badge is now reported by ShortMe from data/eval/chalk-latest.json (LIVE only for a provider chalk report, otherwise LOCAL RUN (NOT CHALK)), and eval.report is emitted once per new Chalk run id.
+
 ## CR-A3-001 resolved by A1
 
 Regenerated packages/db/src/client.ts from the current schemas. market_invites and its unique indexes now exist immediately after createDb, including in createTestPlatform, before ShortMe registers. The existing feature-level IF NOT EXISTS fallback remains compatible. Database reset followed by repeated pushes is part of the validation.
@@ -95,3 +96,15 @@ Branch: a1/a1-09-recovery-hardening, based on the merged A3 implementation. Repr
 Eight new regression tests cover these paths plus the bootstrap invitation table. The combined platform and A3 suites are validated together, including tests/cross/a3-shortme-sim.test.ts. Local root tooling needs workspace dependencies for the cross tests; the temporary root files remain uncommitted for A4 to replace. Full pnpm verify still awaits A4's root script and ownership checker. Live Photon checks still await credentials and assigned demo lines; the new recovery tests use mocks and a real temporary SQLite file, not a live provider.
 
 Validation for the A1 recovery branch: 212 tests passed across 10 test files, including the complete ShortMe text-command simulation; TypeScript, changed-file Prettier, frozen-lockfile install, database reset and two subsequent pushes passed. Photon doctor was rerun and exited NOT VERIFIED because PHOTON_PROJECT_ID, PHOTON_API_KEY and PHOTON_AGENT_USER_ID are absent. No live send was attempted.
+
+## A1 branch policy from the human lead
+
+Keep Agent 1 changes on a1/a1-09-recovery-hardening with regular commits and branch pushes. Do not push Agent 1 changes to main. The original foundation was merged before this instruction; recovery hardening and subsequent work remain on the separate branch.
+
+## CR-A3-005 resolved by A1 on the recovery branch
+
+The platform now supplies the canonical PurchaseCategory values to an authorized purchase detector and MarketCategory values to an authorized milestone detector. Feature-specific policy files still apply their own allowlists, and the existing consent and agent-settings gates still run before detection. No contracts changed. Two regression tests cover purchase intent creation, category separation, and matchingEnabled=false.
+
+Also verified the actual PurchaseDetector from origin/a2/a2-09-live-rehearsal in a temporary scratch directory against the real A1 ingest and pipeline, using MockStructuredLlm with synthetic extraction data. The pipeline created the expected monitor_27in_4k intent. This check used no network and does not claim live LLM or banking success.
+
+Final validation after rebasing onto the newer A3 main commit and fixing CR-A3-005: 223 tests passed across 12 files; TypeScript and changed-file Prettier passed. Recovery commit f5e4b2f and the category correction are published only on the Agent 1 recovery branch, per the human lead's instruction.
