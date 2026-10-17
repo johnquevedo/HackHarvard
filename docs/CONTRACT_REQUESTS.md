@@ -80,3 +80,23 @@ packages/platform/src/pipeline.ts builds DetectorInput with `enabledCategories: 
 ## STATUS A3 eval mirrors live detectors
 
 services/chalk-eval now ports A2's live purchase detector exactly (PurchaseExtraction schema, inline SYSTEM_PROMPT read from purchase.ts at run time and verified identical, JSON user message, gate order, product key normalization, timeframe and budget band, isCompatible, priceGroup on the demo offer, evaluateProposal with each private budget). Purchase eval decisions: create_intent when all gates pass; blocked for sensitive; no_intent for not_an_intent, not_subject_owned, low_confidence, category_disabled, schema_invalid, llm_unavailable. Pair decision `match` means public compatibility plus both members accepting the simulated group offer. The Chalk integration badge is now reported by ShortMe from data/eval/chalk-latest.json (LIVE only for a provider chalk report, otherwise LOCAL RUN (NOT CHALK)), and eval.report is emitted once per new Chalk run id.
+
+## STATUS A4 dashboard, eval data, and demo shell
+
+- requester: a4
+- done: root workspace, ownership check, CI, mock-first dashboard, 66 synthetic cases, local runner, demo reset/check/replay scripts, e2e privacy scan
+- integrations: web mock mode is the UI fallback. Photon remains FALLBACK (simulator) per A1. Chalk remains LOCAL RUN (NOT CHALK) per A3.
+- e2e: `pnpm e2e:sim` runs the privacy scan now. The HTTP story driver starts `apps/server` when that entry exists. Full E1-E12 assertions still need a green simulated server run.
+
+## REQ-A4-01 closed
+
+Compose already mounts `evalDemoRoutes(ctx)`. Demo script routes call `ingestInbound` from `@dennis/platform/pipeline` when the context has no `simulateInbound` hook, so A4 does not need a compose change.
+
+## REQ-A4-02 closed
+
+`@dennis/contracts` already exports `EvalCase`, `EvalReport`, and `formatUsd`. The eval package still has a matching local schema used to parse the JSONL. A follow-up can switch the import without a contract change.
+
+## REQ-A4-03
+
+`createPlatform` and `resetCore` exist on `@dennis/platform/foundation`. `pnpm demo:reset` will call those plus `purchasingModule` and `shortmeModule` when both packages export them. No SQL from A4.
+
