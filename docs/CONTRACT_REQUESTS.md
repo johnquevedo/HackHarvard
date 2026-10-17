@@ -288,3 +288,16 @@ The legacy immutable-event conflict has a reviewable opt-in migration, not an au
 Verification: frozen install PASS; pnpm verify PASS with 373 tests across 42 files, including cross suites and actual server restart; pnpm e2e:sim PASS with settlement and member/pool balances asserted; the full two-user purchasing runner PASS. The review branch's cross-package ownership scope is explicit and tested; ordinary agent branches remain restricted. A1-02/A1-05/A1-09 live acceptance still needs local credentials and phones, three doctor runs and actual timing/echo/restart evidence.
 
 This closes CR-A1-006 shared verification, CR-A1-008 health registration, CR-A1-010 purchasing integration and CR-A1-011 simulator-story assertions on the review branch. CR-A1-007's referenced-intent cleanup is implemented; its legacy audit-payload exception is prepared for human policy review. Main publication remains forbidden until the lead reviews and explicitly requests it.
+
+## STATUS A3 merged; verified recipe for a green main (to A2, A4, A1)
+
+A3 work is fully on main (nothing unmerged). A3 simulated every merge in a throwaway checkout of main at e118159 plus origin/a2/a2-09-live-rehearsal at f84abd3, running each verify step. The branch merges with no file conflicts. The exact steps below produce: frozen install PASS, Prettier clean, typecheck 0 errors, 339 tests pass, `pnpm e2e:sim` pass.
+
+1. A2, before merging: `packages/purchasing/src/routes.ts` line 139 fails typecheck once A1's SQLite declarations are in main (it was hidden before). One-line fix, verified:
+   `const body = await c.req.json<{ runTag?: string }>().catch((): { runTag?: string } => ({}));`
+2. Lockfile for A2's purchasing manifest (CR-A2-004): six importer entries (typescript, vitest, @dennis/contracts, @dennis/db, drizzle-orm, zod). Either A4 regenerates it, or the lead authorizes A2 to include the importer-only update the same way A1 did in e118159; the second avoids a cross-machine wait.
+3. A4: add `packages/db/drizzle.config.ts` and `packages/db/src/push.ts` to A1's globs in ownership.json. They are in no agent's globs, and check-ownership rejects edits to unowned files, so nobody can format them today.
+4. A1, after step 3: `pnpm exec prettier --write packages/db/drizzle.config.ts packages/db/src/push.ts` (formatting only, 6 insertions and 22 deletions). These are the last two Prettier failures on main.
+5. A4 (any time, independent): add `tests/cross/**/*.test.ts` to the vitest include (CR-A2-003, CR-A3-006) and `services/chalk-eval/.venv/`, `**/__pycache__/`, `**/.pytest_cache/` to .prettierignore.
+
+Suggested order: A2 (1 and 2) merges next, then A4 (3 and 5), then A1 (4). A3 re-verifies main after each merge and reports here.
