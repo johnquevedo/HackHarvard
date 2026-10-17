@@ -1,0 +1,57 @@
+{
+  "provider": "local",
+  "runId": "eval_mock",
+  "startedAt": "2026-10-17T19:00:00.000Z",
+  "finishedAt": "2026-10-17T19:00:02.000Z",
+  "datasetVersion": "synthetic-v1",
+  "dashboardUrl": null,
+  "suites": [
+    {
+      "suite": "purchase_extraction",
+      "total": 24,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositives": 0,
+      "privacyLeaks": 0
+    },
+    {
+      "suite": "milestone_extraction",
+      "total": 24,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositives": 0,
+      "privacyLeaks": 0
+    },
+    {
+      "suite": "pair_match",
+      "total": 18,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositives": 0,
+      "privacyLeaks": 0
+    }
+  ],
+  "successes": [
+    {
+      "caseId": "pur_pos_01",
+      "suite": "purchase_extraction",
+      "label": "positive",
+      "expected": "create_intent",
+      "actual": "create_intent",
+      "note": "fixture"
+    }
+  ],
+  "failures": [
+    {
+      "caseId": "pur_neg_01",
+      "suite": "purchase_extraction",
+      "label": "negative",
+      "expected": "no_intent",
+      "actual": "create_intent",
+      "note": "representative failure fixture"
+    }
+  ]
+}

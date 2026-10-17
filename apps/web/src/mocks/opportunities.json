@@ -1,0 +1,22 @@
+[
+  {
+    "id": "opp_monitor",
+    "type": "group_purchase",
+    "domainRefId": "grp_monitor",
+    "status": "settled",
+    "headline": "27-inch 4K monitor group",
+    "participantAgentIds": ["agt_demo_alice", "agt_demo_bob"],
+    "createdAt": "2026-10-17T19:00:03.000Z",
+    "updatedAt": "2026-10-17T19:00:20.000Z"
+  },
+  {
+    "id": "opp_market",
+    "type": "shortme_market",
+    "domainRefId": "mkt_offer",
+    "status": "proposed",
+    "headline": "Will the final round turn into an offer?",
+    "participantAgentIds": ["agt_demo_alice"],
+    "createdAt": "2026-10-17T19:00:06.000Z",
+    "updatedAt": "2026-10-17T19:00:06.000Z"
+  }
+]

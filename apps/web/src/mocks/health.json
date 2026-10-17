@@ -1,0 +1,6 @@
+{
+  "status": "ok",
+  "time": "2026-10-17T19:00:00.000Z",
+  "dbOk": true,
+  "modes": { "photon": "simulated", "llm": "simulated", "nessie": "simulated" }
+}

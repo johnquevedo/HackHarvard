@@ -1,0 +1,84 @@
+{
+  "proposed": {
+    "marketId": "mkt_offer",
+    "status": "proposed",
+    "question": "Will the final round turn into an offer?",
+    "subject": "Alice",
+    "pools": { "back": 0, "fade": 0 },
+    "positions": [],
+    "resolution": "none",
+    "invariantOk": true,
+    "leaderboard": [
+      { "firstName": "Alice", "balance": 1000, "delta": 0 },
+      { "firstName": "Bob", "balance": 1000, "delta": 0 }
+    ],
+    "ledger": []
+  },
+  "open": {
+    "marketId": "mkt_offer",
+    "status": "open",
+    "question": "Will the final round turn into an offer?",
+    "subject": "Alice",
+    "pools": { "back": 50, "fade": 50 },
+    "positions": [
+      { "name": "Bob", "side": "back", "points": 50, "selfShort": false },
+      { "name": "Alice", "side": "fade", "points": 50, "selfShort": true }
+    ],
+    "resolution": "none",
+    "invariantOk": true,
+    "leaderboard": [
+      { "firstName": "Alice", "balance": 950, "delta": -50 },
+      { "firstName": "Bob", "balance": 950, "delta": -50 }
+    ],
+    "ledger": [
+      { "name": "Alice", "kind": "stake", "delta": -50, "balanceAfter": 950 },
+      { "name": "Bob", "kind": "stake", "delta": -50, "balanceAfter": 950 },
+      { "name": "Pool", "kind": "stake", "delta": 100, "balanceAfter": 100 }
+    ]
+  },
+  "resolved": {
+    "marketId": "mkt_offer",
+    "status": "resolved",
+    "question": "Will the final round turn into an offer?",
+    "subject": "Alice",
+    "pools": { "back": 50, "fade": 50 },
+    "positions": [
+      { "name": "Bob", "side": "back", "points": 50, "selfShort": false },
+      { "name": "Alice", "side": "fade", "points": 50, "selfShort": true }
+    ],
+    "resolution": "no",
+    "invariantOk": true,
+    "leaderboard": [
+      { "firstName": "Alice", "balance": 1050, "delta": 50 },
+      { "firstName": "Bob", "balance": 950, "delta": -50 }
+    ],
+    "ledger": [
+      { "name": "Alice", "kind": "stake", "delta": -50, "balanceAfter": 950 },
+      { "name": "Bob", "kind": "stake", "delta": -50, "balanceAfter": 950 },
+      { "name": "Alice", "kind": "payout", "delta": 100, "balanceAfter": 1050 }
+    ]
+  },
+  "disputed": {
+    "marketId": "mkt_offer",
+    "status": "disputed",
+    "question": "Will the final round turn into an offer?",
+    "subject": "Alice",
+    "pools": { "back": 50, "fade": 50 },
+    "positions": [
+      { "name": "Bob", "side": "back", "points": 50, "selfShort": false },
+      { "name": "Alice", "side": "fade", "points": 50, "selfShort": true }
+    ],
+    "resolution": "void",
+    "invariantOk": true,
+    "leaderboard": [
+      { "firstName": "Alice", "balance": 1000, "delta": 0 },
+      { "firstName": "Bob", "balance": 1000, "delta": 0 }
+    ],
+    "ledger": [
+      { "name": "Alice", "kind": "stake", "delta": -50, "balanceAfter": 950 },
+      { "name": "Bob", "kind": "stake", "delta": -50, "balanceAfter": 950 },
+      { "name": "Alice", "kind": "refund", "delta": 50, "balanceAfter": 1000 },
+      { "name": "Bob", "kind": "refund", "delta": 50, "balanceAfter": 1000 }
+    ]
+  }
+}

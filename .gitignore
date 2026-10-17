@@ -1,0 +1,10 @@
+node_modules
+.env
+.env.local
+data
+.next
+dist
+coverage
+*.log
+*.tsbuildinfo
+apps/web/AGENTS.md

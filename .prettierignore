@@ -1,0 +1,11 @@
+dennis-build-spec.md
+agent-1-platform-photon.md
+agent-2-purchasing-nessie.md
+agent-3-shortme-llm-chalk.md
+agent-4-frontend-demo-eval.md
+pnpm-lock.yaml
+node_modules
+.next
+data
+dist
+coverage

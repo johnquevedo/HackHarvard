@@ -1,0 +1,42 @@
+{
+  "users": [
+    {
+      "userId": "usr_demo_alice",
+      "agentId": "agt_demo_alice",
+      "firstName": "Alice",
+      "paused": false
+    },
+    { "userId": "usr_demo_bob", "agentId": "agt_demo_bob", "firstName": "Bob", "paused": false }
+  ],
+  "scopes": ["messaging_context", "purchase_matching", "shortme_free_play", "sandbox_payments"],
+  "thread": [
+    {
+      "direction": "in",
+      "text": "I'm thinking about getting a new 27 inch 4K monitor for my setup, maybe $350 or under.",
+      "ts": "2026-10-17T19:00:01.000Z",
+      "status": "accepted"
+    },
+    {
+      "direction": "out",
+      "text": "Dennis for Alice: another Dennis user is also shopping for a 27-inch 4K monitor. SIMULATED group offer.",
+      "ts": "2026-10-17T19:00:08.000Z",
+      "status": "delivered"
+    }
+  ],
+  "approvals": [
+    {
+      "id": "apr_join_alice",
+      "userId": "usr_demo_alice",
+      "kind": "join_group_purchase",
+      "status": "pending",
+      "shortCode": "1842"
+    },
+    {
+      "id": "apr_join_bob",
+      "userId": "usr_demo_bob",
+      "kind": "join_group_purchase",
+      "status": "pending",
+      "shortCode": "2291"
+    }
+  ]
+}
