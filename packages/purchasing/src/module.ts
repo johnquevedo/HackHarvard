@@ -67,7 +67,7 @@ export const purchasingModule: FeatureModule = {
     return new Hono();
   },
   async seed(ctx) {
-    await ctx.db
+    ctx.db
       .insert(merchantOffers)
       .values(DEMO_MONITOR_OFFER)
       .onConflictDoUpdate({
@@ -82,7 +82,8 @@ export const purchasingModule: FeatureModule = {
           sourceLabel: DEMO_MONITOR_OFFER.sourceLabel,
           validUntil: DEMO_MONITOR_OFFER.validUntil,
         },
-      });
+      })
+      .run();
   },
   async reset() {},
   async recover() {},
