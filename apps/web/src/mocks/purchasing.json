@@ -1,0 +1,122 @@
+{
+  "verified": {
+    "offerLabel": "SIMULATED OFFER",
+    "merchant": "DemoMart (simulated)",
+    "individualCents": 32999,
+    "groupCents": 28499,
+    "savingsCents": 4500,
+    "members": [
+      { "name": "Alice", "join": "approved", "pay": "verified" },
+      { "name": "Bob", "join": "approved", "pay": "verified" }
+    ],
+    "bankMode": "simulated",
+    "accounts": [
+      {
+        "label": "Alice",
+        "last4": "1111",
+        "before": 150000,
+        "after": 121501,
+        "providerTransferId": "sim_xfer_alice",
+        "status": "verified"
+      },
+      {
+        "label": "Bob",
+        "last4": "2222",
+        "before": 120000,
+        "after": 91501,
+        "providerTransferId": "sim_xfer_bob",
+        "status": "verified"
+      }
+    ]
+  },
+  "unverified": {
+    "offerLabel": "SIMULATED OFFER",
+    "merchant": "DemoMart (simulated)",
+    "individualCents": 32999,
+    "groupCents": 28499,
+    "savingsCents": 4500,
+    "members": [
+      { "name": "Alice", "join": "approved", "pay": "unverified" },
+      { "name": "Bob", "join": "approved", "pay": "pending" }
+    ],
+    "bankMode": "live",
+    "accounts": [
+      {
+        "label": "Alice",
+        "last4": "1111",
+        "before": 150000,
+        "after": 150000,
+        "providerTransferId": "nessie_1",
+        "status": "unverified"
+      },
+      {
+        "label": "Bob",
+        "last4": "2222",
+        "before": 120000,
+        "after": 120000,
+        "providerTransferId": null,
+        "status": "pending"
+      }
+    ]
+  },
+  "failed": {
+    "offerLabel": "SIMULATED OFFER",
+    "merchant": "DemoMart (simulated)",
+    "individualCents": 32999,
+    "groupCents": 28499,
+    "savingsCents": 4500,
+    "members": [
+      { "name": "Alice", "join": "approved", "pay": "failed" },
+      { "name": "Bob", "join": "approved", "pay": "pending" }
+    ],
+    "bankMode": "live",
+    "accounts": [
+      {
+        "label": "Alice",
+        "last4": "1111",
+        "before": 1000,
+        "after": 1000,
+        "providerTransferId": null,
+        "status": "failed"
+      },
+      {
+        "label": "Bob",
+        "last4": "2222",
+        "before": 120000,
+        "after": 120000,
+        "providerTransferId": null,
+        "status": "pending"
+      }
+    ]
+  },
+  "simulated": {
+    "offerLabel": "SIMULATED OFFER",
+    "merchant": "DemoMart (simulated)",
+    "individualCents": 32999,
+    "groupCents": 28499,
+    "savingsCents": 4500,
+    "members": [
+      { "name": "Alice", "join": "approved", "pay": "verified" },
+      { "name": "Bob", "join": "approved", "pay": "verified" }
+    ],
+    "bankMode": "simulated",
+    "accounts": [
+      {
+        "label": "Alice",
+        "last4": "1111",
+        "before": 150000,
+        "after": 121501,
+        "providerTransferId": "sim_xfer_alice",
+        "status": "verified"
+      },
+      {
+        "label": "Bob",
+        "last4": "2222",
+        "before": 120000,
+        "after": 91501,
+        "providerTransferId": "sim_xfer_bob",
+        "status": "verified"
+      }
+    ]
+  }
+}

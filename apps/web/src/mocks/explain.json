@@ -1,0 +1,18 @@
+{
+  "opportunityId": "opp_monitor",
+  "steps": [
+    {
+      "seq": 1,
+      "ts": "2026-10-17T19:00:05.000Z",
+      "type": "purchase.match.evaluated",
+      "summary": "Compared Alice and Bob public intents",
+      "checks": [
+        { "rule": "same_product", "passed": true, "detail": "monitor_27in_4k" },
+        { "rule": "budget_overlap", "passed": true, "detail": "both at or under $350" },
+        { "rule": "window_overlap", "passed": true, "detail": "this weekend" },
+        { "rule": "same_region", "passed": true, "detail": "boston-cambridge" },
+        { "rule": "consent_purchase_matching", "passed": true, "detail": "both granted" }
+      ]
+    }
+  ]
+}

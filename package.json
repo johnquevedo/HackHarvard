@@ -1,0 +1,41 @@
+{
+  "name": "dennis",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.7",
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"tsx scripts/dev-server.ts\" \"node apps/web/dev.mjs dev\"",
+    "dev:server": "tsx scripts/dev-server.ts",
+    "dev:web": "node apps/web/dev.mjs dev",
+    "db:push": "tsx scripts/db-push.ts",
+    "db:reset": "tsx scripts/db-reset.ts",
+    "typecheck": "tsx scripts/typecheck-all.ts",
+    "test": "vitest run",
+    "verify": "bash scripts/verify.sh",
+    "spike:photon": "tsx scripts/spike-photon.ts",
+    "spike:nessie": "tsx scripts/spike-nessie.ts",
+    "spike:llm": "tsx scripts/spike-llm.ts",
+    "spike:chalk": "bash scripts/spike-chalk.sh",
+    "demo:reset": "tsx scripts/reset-demo.ts",
+    "demo:check": "tsx scripts/check-env.ts",
+    "demo:record": "tsx scripts/replay-demo.ts record",
+    "demo:replay": "tsx scripts/replay-demo.ts replay",
+    "eval:local": "tsx packages/eval-data/src/cli.ts",
+    "eval:chalk": "bash services/chalk-eval/run.sh",
+    "photon:doctor": "tsx scripts/photon-doctor.ts",
+    "nessie:doctor": "tsx scripts/nessie-doctor.ts",
+    "e2e:sim": "tsx tests/e2e/run.ts",
+    "build:web": "node apps/web/dev.mjs build",
+    "start": "concurrently -n server,web \"tsx apps/server/src/main.ts\" \"node apps/web/dev.mjs start\"",
+    "start:server": "tsx apps/server/src/main.ts",
+    "start:web": "node apps/web/dev.mjs start"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "concurrently": "10.0.6",
+    "prettier": "3.9.10",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
+  }
+}

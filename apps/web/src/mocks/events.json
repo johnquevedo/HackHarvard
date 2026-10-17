@@ -1,0 +1,118 @@
+[
+  {
+    "seq": 1,
+    "id": "evt_1",
+    "ts": "2026-10-17T19:00:01.000Z",
+    "type": "message.received",
+    "actor": { "kind": "user", "agentId": "agt_demo_alice", "userId": "usr_demo_alice" },
+    "visibility": "private",
+    "opportunityId": null,
+    "traceId": "trc_demo",
+    "mode": "simulated",
+    "payload": {
+      "messageId": "msg_alice_1",
+      "provider": "sim",
+      "text": "I'm thinking about getting a new 27 inch 4K monitor for my setup, maybe $350 or under."
+    }
+  },
+  {
+    "seq": 2,
+    "id": "evt_2",
+    "ts": "2026-10-17T19:00:02.000Z",
+    "type": "intent.detected",
+    "actor": { "kind": "agent", "agentId": "agt_demo_alice", "userId": "usr_demo_alice" },
+    "visibility": "private",
+    "opportunityId": "opp_monitor",
+    "traceId": "trc_demo",
+    "mode": "simulated",
+    "payload": {
+      "intentId": "int_alice_monitor",
+      "kind": "purchase",
+      "confidence": 0.91,
+      "summary": "27 inch 4K monitor, max $350",
+      "productKey": "monitor_27in_4k"
+    }
+  },
+  {
+    "seq": 3,
+    "id": "evt_3",
+    "ts": "2026-10-17T19:00:03.000Z",
+    "type": "intent.registered",
+    "actor": { "kind": "agent", "agentId": "agt_demo_alice" },
+    "visibility": "shared",
+    "opportunityId": "opp_monitor",
+    "traceId": "trc_demo",
+    "mode": "simulated",
+    "payload": {
+      "intentId": "int_alice_monitor",
+      "agentId": "agt_demo_alice",
+      "kind": "purchase",
+      "publicPayload": {
+        "category": "monitor",
+        "productKey": "monitor_27in_4k",
+        "budgetBandMaxCents": 35000,
+        "regionCode": "boston"
+      }
+    }
+  },
+  {
+    "seq": 4,
+    "id": "evt_4",
+    "ts": "2026-10-17T19:00:04.000Z",
+    "type": "message.received",
+    "actor": { "kind": "user", "agentId": "agt_demo_bob", "userId": "usr_demo_bob" },
+    "visibility": "private",
+    "opportunityId": null,
+    "traceId": "trc_demo",
+    "mode": "simulated",
+    "payload": {
+      "messageId": "msg_bob_1",
+      "provider": "sim",
+      "text": "I need a monitor too, probably this weekend. 4K if I can find one."
+    }
+  },
+  {
+    "seq": 5,
+    "id": "evt_5",
+    "ts": "2026-10-17T19:00:05.000Z",
+    "type": "purchase.match.found",
+    "actor": { "kind": "system" },
+    "visibility": "shared",
+    "opportunityId": "opp_monitor",
+    "traceId": "trc_demo",
+    "mode": "simulated",
+    "payload": {
+      "compatible": true,
+      "checks": [{ "rule": "same_product", "passed": true, "detail": "monitor_27in_4k" }]
+    }
+  },
+  {
+    "seq": 6,
+    "id": "evt_6",
+    "ts": "2026-10-17T19:00:06.000Z",
+    "type": "shortme.market.updated",
+    "actor": { "kind": "agent", "agentId": "agt_demo_alice", "userId": "usr_demo_alice" },
+    "visibility": "private",
+    "opportunityId": "opp_market",
+    "traceId": "trc_short",
+    "mode": "simulated",
+    "payload": {
+      "marketId": "mkt_offer",
+      "status": "proposed",
+      "question": "Will the final round turn into an offer?",
+      "subjectAgentId": "agt_demo_alice"
+    }
+  },
+  {
+    "seq": 7,
+    "id": "evt_7",
+    "ts": "2026-10-17T19:00:07.000Z",
+    "type": "demo.reset",
+    "actor": { "kind": "system" },
+    "visibility": "system",
+    "opportunityId": null,
+    "traceId": "trc_reset",
+    "mode": "simulated",
+    "payload": { "runId": "run_mock" }
+  }
+]

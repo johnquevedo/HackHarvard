@@ -1,0 +1,34 @@
+[
+  {
+    "name": "photon",
+    "mode": "simulated",
+    "healthy": true,
+    "detail": "SIMULATED INBOUND. Mock mode does not open a Photon socket.",
+    "lastCheckedAt": "2026-10-17T19:00:00.000Z",
+    "lastSuccessAt": null
+  },
+  {
+    "name": "llm",
+    "mode": "simulated",
+    "healthy": true,
+    "detail": "SIMULATED LLM. Keyword stand-in, not a model call.",
+    "lastCheckedAt": "2026-10-17T19:00:00.000Z",
+    "lastSuccessAt": "2026-10-17T19:00:00.000Z"
+  },
+  {
+    "name": "nessie",
+    "mode": "simulated",
+    "healthy": true,
+    "detail": "SIMULATED BANK. Balances are fixture values.",
+    "lastCheckedAt": "2026-10-17T19:00:00.000Z",
+    "lastSuccessAt": null
+  },
+  {
+    "name": "chalk",
+    "mode": "fallback",
+    "healthy": true,
+    "detail": "LOCAL RUN (NOT CHALK). No Chalk run id in mock mode.",
+    "lastCheckedAt": "2026-10-17T19:00:00.000Z",
+    "lastSuccessAt": null
+  }
+]

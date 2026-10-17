@@ -1,0 +1,28 @@
+import { describe, expect, it } from "vitest";
+import { globMatch, isPathAllowed, type OwnershipMap } from "./check-ownership";
+
+const ownership: OwnershipMap = {
+  agents: {
+    a1: ["packages/platform/**", "packages/contracts/**"],
+    a4: ["apps/web/**", "package.json", "scripts/check-ownership.ts"],
+  },
+};
+
+describe("ownership globs", () => {
+  it("allows a file inside the agent glob", () => {
+    expect(globMatch("apps/web/**", "apps/web/src/app/page.tsx")).toBe(true);
+    expect(isPathAllowed("a4", "apps/web/src/app/page.tsx", "M", ownership)).toBe(true);
+  });
+
+  it("rejects a file outside the agent glob", () => {
+    expect(isPathAllowed("a4", "packages/platform/src/index.ts", "M", ownership)).toBe(false);
+    expect(isPathAllowed("a1", "apps/web/src/app/page.tsx", "A", ownership)).toBe(false);
+  });
+
+  it("lets any agent append contract requests and add cross tests", () => {
+    expect(isPathAllowed("a2", "docs/CONTRACT_REQUESTS.md", "M", ownership)).toBe(true);
+    expect(isPathAllowed("a2", "docs/CONTRACT_REQUESTS.md", "D", ownership)).toBe(false);
+    expect(isPathAllowed("a3", "tests/cross/a3-flow.test.ts", "A", ownership)).toBe(true);
+    expect(isPathAllowed("a3", "tests/cross/a1-flow.test.ts", "M", ownership)).toBe(false);
+  });
+});
