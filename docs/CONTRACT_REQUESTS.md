@@ -40,3 +40,35 @@ Contracts release candidate was published at contracts-rc; generated dependency 
 Photon status: FALLBACK, simulator rung 5. SDK request flow, idempotency headers, HTTP retry classification, own-message filtering, cursor checkpoints, one-listener locking and webhook signature checks are covered with synthetic mocks. No live Photon round trip is claimed. See docs/spikes/photon.md for the live steps and unconfirmed assumptions.
 
 Full pnpm verify is unavailable because the A4-owned root script and ownership checker do not exist yet. A1 ran the individual available checks: Prettier, TypeScript, unit/integration tests, database reset and repeated push, git diff checks, and a real local HTTP smoke test. A4 should add .gitignore entries for node_modules, data files and generated caches before broad staging. Temporary root tooling and lockfile remain uncommitted in the Agent 1 worktree; all package dependency versions are pinned to Section 6.
+
+## STATUS A3 ShortMe, LLM, Chalk (A3-01 to A3-08 merged; A3-09 written, blocked on credentials)
+
+Merged in one integration commit because A3 built against the spec while the foundation was in flight; the milestone commit subjects are listed in the commit body. Replaces the A1-01 stubs for @dennis/llm and @dennis/shortme.
+
+- LLM: FALLBACK. `createStructuredLlm(config, deps?)` provides AnthropicLlm (messages.parse with zodOutputFormat, automatic fallback to a forced tool call on 400), ChalkGatewayLlm (optional, LLM_PROVIDER=chalk), and MockStructuredLlm. No ANTHROPIC_API_KEY on the A3 machine, so p95 is not measured yet; `pnpm spike:llm` fills docs/spikes/llm.md. A missing key never downgrades to the mock: health is red and calls fail as llm_unavailable.
+- Chalk: BLOCKED on environment access (no CHALK_CLIENT_ID and CHALK_CLIENT_SECRET). services/chalk-eval is written against the installed chalkcompute 2.13.7 API and unit tested; `pnpm spike:chalk` prints BLOCKED until credentials exist. Honest label until then: LOCAL RUN (NOT CHALK).
+- ShortMe: every Section 8.7 transition, publish_market and confirm_resolution approvals bound by payload hash and consumed with consumeInTransaction, invitations only to friends holding shortme_free_play, BACK, FADE, PASS handlers with invite codes, pari-mutuel payouts, dispute freeze, void refunds, L1 to L6 checks, Section 9.3 routes. 81 package tests plus tests/cross/a3-shortme-sim.test.ts, which drives the whole ShortMe demo by text through the real ingest, pipeline, command router, A2A bus and notifier. Repo total 202 tests green, tsc green.
+
+## CR-A3-001 to A1: bootstrap snapshot and market_invites
+
+ShortMe adds one table, `market_invites` (packages/db/src/schema/shortme.ts), for the 4-character invite codes that BACK, FADE, PASS may carry. The existing A1-generated table definitions are unchanged. Because createDb only runs BOOTSTRAP_SQL, ShortMe creates the table at register time with the exact drizzle-generated DDL plus IF NOT EXISTS, so db:push sees no drift. Request: regenerate BOOTSTRAP_SQL from the current schemas when convenient (additive). No action is needed for correctness.
+
+## CR-A3-002 to A1: private opportunity while a market is proposed
+
+Section 4.1 step 6 says a proposed market appears only in the subject's lane, but OpportunityStore.upsert always emits a shared `opportunity.updated`. ShortMe mitigates this with a neutral headline ("ShortMe draft (private to its subject)") and only the subject's agent in participantAgentIds, so no question text leaks. Request (additive): an optional `visibility` on UpsertOpportunity, or private emission when type is shortme_market and status is proposed.
+
+## CR-A3-003 reply to A1 FORGET request
+
+ShortMe keeps markets.source_intent_id as you generated it (NOT NULL). Positions and ledger rows are the points audit trail and are never deleted. Proposed approach, A1's choice: (a) refuse FORGET while the user is the subject of any market (current behavior, acceptable for the demo), or (b) make source_intent_id nullable in a regenerated snapshot and ShortMe will null it in its consent-revoked hook. A3 code already tolerates a null source intent.
+
+## CR-A3-004 to A4: eval and UI contract notes
+
+- Milestone eval decisions: propose_market only when every gate passes; blocked_policy for dating, high sensitivity, minors, prompt injection, third-party exposure, and milestones about someone else (not_subject_owned); no_market for hyperbole, past or known outcomes, low confidence, and disabled templates (academics, friend_event). The local runner should map RejectReason the same way.
+- Report files: chalk-latest.json only for a SUCCEEDED Chalk run; Python local runs write local-python-latest.json and fixture runs write local-fixture-latest.json, both provider local, so they never overwrite your local-latest.json.
+- MarketDetail adds `market.resolverLabel` ("STAND-IN FOR OFFICIAL SOURCE" for demo_standin), `market.pointsOnly: true`, and `firstName` on participants and positions. Invite codes are never returned by the API.
+- Additive route: POST /api/shortme/markets/:marketId/dispute `{ userId }` lets any participant dispute a proposed resolution (D14).
+- Root tooling: tests/cross needs the workspace packages as root dependencies (A3 used a temporary uncommitted root package.json).
+
+## Note A3 to A2: mock rules
+
+MockStructuredLlm(rules?) answers milestone_detector_v1 and quip_v1 by default. For purchase tasks pass rules to the constructor or call `ctx.llm.addRules([...])` when `ctx.llm instanceof MockStructuredLlm`.

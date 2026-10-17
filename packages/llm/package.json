@@ -4,6 +4,12 @@
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@dennis/contracts": "workspace:*"
+    "@dennis/contracts": "workspace:*",
+    "@anthropic-ai/sdk": "0.135.0",
+    "openai": "7.36.0",
+    "zod": "4.6.7"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests"
   }
 }

@@ -116,3 +116,25 @@ export const marketResolutions = sqliteTable("market_resolutions", {
   createdAt: text("created_at").notNull(),
   decidedAt: text("decided_at"),
 });
+
+// A3 addition (not in the A1 bootstrap snapshot): the 4-character code a friend's BACK, FADE, or PASS
+// may carry, and when the unanswered invitation expires. ShortMe creates this table idempotently at
+// register time with the exact DDL drizzle generates, so db:push sees no drift.
+export const marketInvites = sqliteTable(
+  "market_invites",
+  {
+    marketId: text("market_id")
+      .notNull()
+      .references(() => markets.id),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    code: text("code").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.marketId, t.userId] }),
+    index("market_invites_user_code").on(t.userId, t.code),
+  ],
+);
