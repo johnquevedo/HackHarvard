@@ -252,3 +252,9 @@ pnpm e2e:sim passes its three tests in the integrated checkout, but logs schema_
 ## STATUS A1 external gates remain unchanged
 
 PHOTON_PROJECT_ID, PHOTON_API_KEY, PHOTON_AGENT_USER_ID and both demo handles are absent from the environment; neither workspace has .env or .env.local. A1-02 remains the first blocked live gate. The human lead has been asked to configure the local environment and phones, and separately to clarify whether A1 may edit the remaining A2/A3/A4-owned blockers. No response or authorization is inferred from elapsed time. No pushes to main were made.
+
+## STATUS A1 publication authorized by the human lead
+
+The lead explicitly authorized publishing the current Agent 1 branch to main so the other agents can continue. This supersedes the earlier no-main-push instruction for this publication. Subsequent work remains on the Agent 1 branch unless the lead requests another publication.
+
+Included the minimal lockfile update for A1's already-pinned @types/better-sqlite3 dependency so other agents can install with --frozen-lockfile. Frozen installation passes. The separate A2 implementation and the proposed purchasing patch tested in the detached checkout are not included as applied feature changes; the patch and reproduction runner remain available for A2 to review. Full verify still has the three previously documented DB formatting blockers. Live Photon and FORGET acceptance exceptions remain unchanged.
