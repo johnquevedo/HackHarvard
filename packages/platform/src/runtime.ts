@@ -11,10 +11,13 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
   await ctx.runExclusive("outbox-dispatch", async () => {
     const pending = rows<OutboxRecordT>(
       ctx.db,
-      "SELECT * FROM outbox WHERE status IN ('queued','failed') AND attempts < 4 ORDER BY created_at",
+      "SELECT * FROM outbox WHERE (status IN ('queued','failed') AND attempts < 4) OR (status='queued' AND last_error='interrupted_send') ORDER BY created_at",
     );
     for (const item of pending) {
-      const retryMs = [0, 5000, 15000, 45000][item.attempts] ?? 45000;
+      const retryMs =
+        item.lastError === "interrupted_send"
+          ? 0
+          : ([0, 5000, 15000, 45000][item.attempts] ?? 45000);
       if (
         item.sentAt &&
         Date.parse(item.sentAt) + retryMs > ctx.clock.now().getTime()
@@ -137,7 +140,12 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
   });
 }
 export async function recoverPending(ctx: PlatformContext): Promise<void> {
-  update(ctx.db, "outbox", { status: "queued" }, "status='sending'");
+  update(
+    ctx.db,
+    "outbox",
+    { status: "queued", lastError: "interrupted_send" },
+    "status='sending'",
+  );
   for (const { id } of rows<{ id: string }>(
     ctx.db,
     "SELECT id FROM inbound_messages WHERE status='received' ORDER BY received_at",
@@ -151,43 +159,69 @@ export async function recoverPending(ctx: PlatformContext): Promise<void> {
 export async function startRuntime(
   ctx: PlatformContext,
 ): Promise<{ stop(): Promise<void> }> {
-  await ctx.messaging.start(async (msg) => {
-    await ingestInbound(ctx, msg);
-  });
-  await recoverPending(ctx);
-  async function health() {
-    for (const provider of [ctx.messaging, ctx.llm]) {
-      try {
-        ctx.integrations.report(await provider.health());
-      } catch {
-        ctx.log.warn("Provider health unavailable");
+  let stopped = false;
+  let stopTask: Promise<void> | null = null;
+  const timers: ReturnType<typeof setInterval>[] = [];
+  async function health(): Promise<void> {
+    await ctx.runExclusive("runtime-health", async () => {
+      if (stopped) return;
+      for (const provider of [ctx.messaging, ctx.llm]) {
+        if (stopped) return;
+        try {
+          const status = await provider.health();
+          if (!stopped) ctx.integrations.report(status);
+        } catch {
+          ctx.log.warn("Provider health unavailable");
+        }
       }
-    }
+    });
   }
-  await health();
-  const timers = [
-    setInterval(() => {
-      void dispatchOutbox(ctx)
-        .then(() => confirmOutbox(ctx))
-        .catch(() => ctx.log.error("Outbox dispatch failed"));
-    }, 1000),
-    setInterval(() => {
-      void ctx.approvals
-        .expireDue()
-        .catch(() => ctx.log.error("Approval sweep failed"));
-    }, 30000),
-    setInterval(() => {
-      void health();
-    }, 15000),
-  ];
-  for (const timer of timers) timer.unref();
-  return {
-    async stop() {
-      for (const timer of timers) clearInterval(timer);
-      await ctx.messaging.stop();
-      await drainPlatform(ctx);
-    },
-  };
+  function stop(): Promise<void> {
+    if (stopTask) return stopTask;
+    stopped = true;
+    for (const timer of timers) clearInterval(timer);
+    stopTask = (async () => {
+      try {
+        await ctx.messaging.stop();
+      } finally {
+        await drainPlatform(ctx);
+      }
+    })();
+    return stopTask;
+  }
+  try {
+    await ctx.messaging.start(async (message) => {
+      if (!stopped) await ingestInbound(ctx, message);
+    });
+    await recoverPending(ctx);
+    await health();
+    timers.push(
+      setInterval(() => {
+        if (!stopped)
+          void dispatchOutbox(ctx)
+            .then(() => (stopped ? undefined : confirmOutbox(ctx)))
+            .catch(() => ctx.log.error("Outbox dispatch failed"));
+      }, 1000),
+      setInterval(() => {
+        if (!stopped)
+          void ctx.approvals
+            .expireDue()
+            .catch(() => ctx.log.error("Approval sweep failed"));
+      }, 30000),
+      setInterval(() => {
+        if (!stopped) void health();
+      }, 15000),
+    );
+    for (const timer of timers) timer.unref();
+    return { stop };
+  } catch (error) {
+    try {
+      await stop();
+    } catch {
+      ctx.log.error("Runtime cleanup failed after startup error");
+    }
+    throw error;
+  }
 }
 
 export async function confirmOutbox(

@@ -231,17 +231,35 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
             409,
           );
         if (a.expiresAt <= ctx.clock.nowIso()) {
-          update(ctx.db, "approvals", { status: "expired" }, "id=?", a.id);
-          emitExpired(a);
+          const changed = update(
+            ctx.db,
+            "approvals",
+            { status: "expired" },
+            "id=? AND status='pending' AND expires_at<=?",
+            a.id,
+            ctx.clock.nowIso(),
+          );
+          if (changed === 1) {
+            emitExpired(a);
+            const expired = await required(a.id);
+            for (const handler of hooks.get(a.kind) ?? [])
+              await handler(expired);
+          }
           throw new DennisError("approval_invalid", "Approval expired", 409);
         }
-        update(
+        const changed = update(
           ctx.db,
           "approvals",
           { status, decidedAt: ctx.clock.nowIso(), decidedVia: input.via },
           "id=? AND status='pending'",
           a.id,
         );
+        if (changed !== 1)
+          throw new DennisError(
+            "approval_invalid",
+            "Approval changed before the decision could be recorded",
+            409,
+          );
         const decided = await required(a.id);
         ctx.events.emit({
           type: "approval.decided",
@@ -352,24 +370,32 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
       hooks.set(kind, [...(hooks.get(kind) ?? []), handler]);
     },
     async expireDue() {
-      const due = rows<ApprovalT>(
+      const due = rows<{ id: string }>(
         ctx.db,
-        "SELECT * FROM approvals WHERE status='pending' AND expires_at<=?",
+        "SELECT id FROM approvals WHERE status='pending' AND expires_at<=?",
         ctx.clock.nowIso(),
       );
-      for (const a of due) {
-        update(
-          ctx.db,
-          "approvals",
-          { status: "expired" },
-          "id=? AND status='pending'",
-          a.id,
-        );
-        emitExpired(a);
-        const expired = await required(a.id);
-        for (const h of hooks.get(a.kind) ?? []) await h(expired);
-      }
-      return due.length;
+      let count = 0;
+      for (const { id } of due)
+        count += await ctx.runExclusive("approval:" + id, async () => {
+          const a = await required(id);
+          if (a.status !== "pending" || a.expiresAt > ctx.clock.nowIso())
+            return 0;
+          const changed = update(
+            ctx.db,
+            "approvals",
+            { status: "expired" },
+            "id=? AND status='pending' AND expires_at<=?",
+            id,
+            ctx.clock.nowIso(),
+          );
+          if (changed !== 1) return 0;
+          emitExpired(a);
+          const expired = await required(id);
+          for (const handler of hooks.get(a.kind) ?? []) await handler(expired);
+          return 1;
+        });
+      return count;
     },
   };
 }

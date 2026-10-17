@@ -80,3 +80,18 @@ packages/platform/src/pipeline.ts builds DetectorInput with `enabledCategories: 
 ## STATUS A3 eval mirrors live detectors
 
 services/chalk-eval now ports A2's live purchase detector exactly (PurchaseExtraction schema, inline SYSTEM_PROMPT read from purchase.ts at run time and verified identical, JSON user message, gate order, product key normalization, timeframe and budget band, isCompatible, priceGroup on the demo offer, evaluateProposal with each private budget). Purchase eval decisions: create_intent when all gates pass; blocked for sensitive; no_intent for not_an_intent, not_subject_owned, low_confidence, category_disabled, schema_invalid, llm_unavailable. Pair decision `match` means public compatibility plus both members accepting the simulated group offer. The Chalk integration badge is now reported by ShortMe from data/eval/chalk-latest.json (LIVE only for a provider chalk report, otherwise LOCAL RUN (NOT CHALK)), and eval.report is emitted once per new Chalk run id.
+## CR-A3-001 resolved by A1
+
+Regenerated packages/db/src/client.ts from the current schemas. market_invites and its unique indexes now exist immediately after createDb, including in createTestPlatform, before ShortMe registers. The existing feature-level IF NOT EXISTS fallback remains compatible. Database reset followed by repeated pushes is part of the validation.
+
+## CR-A3-002 and CR-A3-003 response from A1
+
+OpportunityStore already emits shortme_market opportunities privately for proposed, declined and expired states, identifies the subject as the first participant, and filters those drafts from other viewers. Existing platform tests cover the proposed and declined paths. No contract change is needed. For FORGET, retain the existing refusal while a user is the subject of a referenced market; the points audit trail is preserved as A3 requested. The purchasing-reference purge request remains open.
+
+## STATUS A1 recovery hardening
+
+Branch: a1/a1-09-recovery-hardening, based on the merged A3 implementation. Reproduced and fixed approval decisions racing with revocation, duplicate expiry hooks under concurrent sweepers, expiry discovered by a user reply skipping its feature hook, startup failure leaving the messaging listener active, an interrupted final outbox send staying queued forever, and a stopped socket overwriting the durable cursor. Runtime shutdown now waits for an in-flight health check and is idempotent. Restart recovery reuses the original provider idempotency key, so an interrupted final send can be reconciled without another logical delivery; its attempts counter remains monotonic.
+
+Eight new regression tests cover these paths plus the bootstrap invitation table. The combined platform and A3 suites are validated together, including tests/cross/a3-shortme-sim.test.ts. Local root tooling needs workspace dependencies for the cross tests; the temporary root files remain uncommitted for A4 to replace. Full pnpm verify still awaits A4's root script and ownership checker. Live Photon checks still await credentials and assigned demo lines; the new recovery tests use mocks and a real temporary SQLite file, not a live provider.
+
+Validation for the A1 recovery branch: 212 tests passed across 10 test files, including the complete ShortMe text-command simulation; TypeScript, changed-file Prettier, frozen-lockfile install, database reset and two subsequent pushes passed. Photon doctor was rerun and exited NOT VERIFIED because PHOTON_PROJECT_ID, PHOTON_API_KEY and PHOTON_AGENT_USER_ID are absent. No live send was attempted.

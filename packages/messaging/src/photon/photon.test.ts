@@ -221,6 +221,7 @@ it("retries an idempotent 503 with the same key", async () => {
   expect(keys).toEqual(["out_test", "out_test"]);
 });
 class FakeSocket extends EventEmitter {
+  subscriptions: number[] = [];
   io = {
     engine: {
       close: () => {
@@ -234,7 +235,10 @@ class FakeSocket extends EventEmitter {
         _event: string,
         _input: unknown,
         callback: (error: unknown, result: { ok: boolean }) => void,
-      ) => callback(null, { ok: true }),
+      ) => {
+        this.subscriptions.push((_input as { startSeq: number }).startSeq);
+        callback(null, { ok: true });
+      },
     };
   }
   connect() {
@@ -333,4 +337,60 @@ it("verifies valid signatures and rejects tampered and stale webhooks", () => {
       secret,
     ),
   ).toThrow();
+});
+
+it("resumes the durable cursor after restart and ignores the stopped socket", async () => {
+  const database = db();
+  const firstSocket = new FakeSocket();
+  const first = new SocketIoEventSource(
+    config,
+    database,
+    clock,
+    log,
+    (() => firstSocket) as unknown as typeof io,
+  );
+  sources.push(first);
+  let firstHandled: () => void = () => {};
+  const received = new Promise<void>((resolve) => {
+    firstHandled = resolve;
+  });
+  await first.start(async () => {
+    firstHandled();
+  });
+  expect(firstSocket.subscriptions).toEqual([0]);
+  firstSocket.emit("delivery", fixture, { seq: 7 });
+  await received;
+  await first.stop();
+  const secondSocket = new FakeSocket();
+  const second = new SocketIoEventSource(
+    config,
+    database,
+    clock,
+    log,
+    (() => secondSocket) as unknown as typeof io,
+  );
+  sources.push(second);
+  let calls = 0;
+  let nextHandled: () => void = () => {};
+  const next = new Promise<void>((resolve) => {
+    nextHandled = resolve;
+  });
+  await second.start(async () => {
+    calls++;
+    nextHandled();
+  });
+  expect(secondSocket.subscriptions).toEqual([7]);
+  secondSocket.emit("delivery", fixture, { seq: 7 });
+  secondSocket.emit("delivery", fixture, { seq: 8 });
+  await next;
+  await second.stop();
+  expect(calls).toBe(1);
+  firstSocket.emit("delivery", fixture, { seq: 99 });
+  await Promise.resolve();
+  await first.stop();
+  expect(
+    database.$client
+      .prepare("SELECT value FROM photon_cursors WHERE key=?")
+      .get("socketio:" + config.photonProjectId),
+  ).toMatchObject({ value: "8" });
 });

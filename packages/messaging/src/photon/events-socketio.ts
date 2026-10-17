@@ -88,6 +88,7 @@ export class SocketIoEventSource {
     );
     this.socket = socket;
     socket.on("connect", () => {
+      if (this.socket !== socket) return;
       socket
         .timeout(10000)
         .emit(
@@ -102,9 +103,10 @@ export class SocketIoEventSource {
         );
     });
     socket.on("disconnect", () => {
-      this.epoch++;
+      if (this.socket === socket) this.epoch++;
     });
     socket.on("delivery", (event: unknown, metadata: { seq: number }) => {
+      if (this.socket !== socket) return;
       const generation = this.epoch;
       const seq = metadata?.seq;
       if (!Number.isSafeInteger(seq) || seq < 0) {
@@ -145,8 +147,10 @@ export class SocketIoEventSource {
   }
   async stop(): Promise<void> {
     this.epoch++;
-    this.socket?.disconnect();
+    const socket = this.socket;
     this.socket = null;
+    socket?.disconnect();
+    socket?.removeAllListeners();
     await this.queue;
     this.release?.();
     this.release = null;
