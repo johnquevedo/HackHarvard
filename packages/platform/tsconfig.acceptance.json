@@ -14,5 +14,10 @@
       "hono": ["./node_modules/hono/dist/types/index.d.ts"]
     }
   },
-  "include": ["src/**/*.ts", "../../tests/cross/a1-*.test.ts", "vitest.acceptance.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "../../tests/cross/a1-*.test.ts",
+    "vitest.acceptance.config.ts",
+    "rehearse-purchasing.ts"
+  ]
 }

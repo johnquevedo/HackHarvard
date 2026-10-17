@@ -1,0 +1,33 @@
+diff --git a/packages/purchasing/src/groups/service.ts b/packages/purchasing/src/groups/service.ts
+index 29e0517..651abc2 100644
+--- a/packages/purchasing/src/groups/service.ts
++++ b/packages/purchasing/src/groups/service.ts
+@@ -109,0 +110,6 @@ export async function createGroupFromCompatibleProbe(
++  const pool = ctx.db
++    .select()
++    .from(bankLinks)
++    .where(and(eq(bankLinks.linkKey, "pool"), eq(bankLinks.role, "pool")))
++    .get();
++  if (!pool) throw new Error("Required pool account is missing from the bank allowlist");
+@@ -131 +137 @@ export async function createGroupFromCompatibleProbe(
+-        poolAccountRef: null,
++        poolAccountRef: pool.accountRef,
+@@ -191,6 +197,12 @@ export async function handleProposal(ctx: PlatformContext, msg: A2AMessage): Pro
+-  const ownIntents = await ctx.intents.listByAgent(msg.toAgentId, {
+-    kind: "purchase",
+-    status: "shared",
+-  });
+-  const own = ownIntents.at(-1);
+-  if (!own) throw new Error("Candidate purchase intent not found");
++  const group = groupRow(ctx, groupId);
++  const member = memberRows(ctx, groupId).find((value) => value.agentId === msg.toAgentId);
++  const own = member ? await ctx.intents.get(member.intentId) : null;
++  if (
++    !group ||
++    group.leadAgentId !== msg.fromAgentId ||
++    group.status !== "proposed" ||
++    !own ||
++    own.agentId !== msg.toAgentId ||
++    !["shared", "matched"].includes(own.status)
++  )
++    throw new Error("Candidate purchase intent not found for this proposal");

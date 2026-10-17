@@ -95,3 +95,11 @@ Preflight reads the iMessage line configuration, active shared assignments and t
 New messaging.latency events are private, mode-labeled and measure outbox_send_to_delivered only. Optional MessagingProvider acknowledgement/typing capabilities use the typed pinned SDK, stable keys and the owner's ackMode=reaction setting. Default none sends no acknowledgement. Synthetic tests do not establish live support.
 
 New private event prose uses removable overlays so FORGET can erase it while preserving immutable event rows. Existing databases with raw prose already embedded in immutable private events explicitly refuse FORGET pending a migration policy. Feature-referenced intents retain the previously documented refusal pending A2/A3 purge paths; financial and points audit records are not silently deleted.
+
+## Follow-up integration evidence
+
+Latest main through 053944e is integrated on the Agent 1 branch. Root TypeScript now passes after local dependency installation. Full verify is still blocked by three DB formatting files and the DB types lockfile importer, with ownership scope clarification pending. Server composition now registers banking and Chalk health sources when their implementations are present.
+
+A detached checkout combining A2 at 984f209 with this branch exposed two real purchasing blockers despite its existing suite passing: a null required pool reference, and proposal lookup excluding already-matched intents. The tested proposed patch is packages/platform/integration/purchasing-984f209.patch; its companion runner is packages/platform/rehearse-purchasing.ts. With the patch applied only in that detached checkout, the full two-member simulated purchase reaches settled with exactly two simulated transfers, and 364 tests pass. This evidence does not mean the A2 implementation or proposed patch has been merged into the published Agent 1 branch.
+
+The first live gate remains A1-02. Local credentials and phones are still unavailable. Referenced-intent FORGET and legacy-event migration exceptions remain open pending the documented policy and ownership decisions.

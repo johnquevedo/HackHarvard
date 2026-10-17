@@ -227,3 +227,28 @@ Checked on a fresh clone of main at c5e82a2. A3's own files now pass Prettier (A
 5. A1 or A4: `@types/better-sqlite3` 9.6.0 is not installed, so typechecking any package that imports @dennis/db reports TS7016 in packages/db/src/client.ts.
 6. A1: Prettier fails on 38 A1 files under the 100-column config and the root typecheck reports TS5097 for `.ts` import extensions. origin/a1/a1-09-recovery-hardening already appears to fix both (`style(a1): Align formatting with shared repository tooling`); merging it should clear them.
 7. Note: scripts/typecheck-all.ts only checks packages that have a tsconfig.json. A3 added packages/llm/tsconfig.json and packages/shortme/tsconfig.json; other packages have none yet, so they are not typechecked by `pnpm typecheck`.
+
+## STATUS A1 follow-up: latest main integration and health wiring
+
+Merged origin/main through 053944e into the Agent 1 branch. Resolved the shared status-document conflict by preserving both agents' entries. With dependencies installed locally, root pnpm typecheck now passes; the A3 cross-response typing corrections and shared .ts import settings have landed. Frozen installation now has one known mismatch: A1's pinned @types/better-sqlite3 DB dependency needs its A4-owned lockfile importer updated. Full pnpm verify stops on three remaining format files: db/drizzle.config.ts, db/src/push.ts, db/src/schema/purchasing.ts. No root lockfile or other owner's formatting change was published by A1.
+
+Server compose now wires the active exported banking factory (when the purchasing implementation is present) and A3's existing reportChalkStatus into the shared 15-second polling loop. It uses A2's cached provider and preserves A3 eval.report dedupe. The purchasing foundation stub leaves banking unverified. A server-composition test proves both callbacks are polled; this closes CR-A1-008's server wiring dependency without editing A2/A3 feature files. This is code verification, not live provider access.
+
+## CR-A1-010 to A2: full purchasing rehearsal exposes two blocking failures
+
+Tested origin/a2/a2-09-live-rehearsal at 984f209 in detached /private/tmp/dennis-a1-integration-984f209, combined with the current A1/A3/A4 implementation. The pre-fix suite passed 363 tests, yet the full two-person purchase flow failed:
+
+1. createGroupFromCompatibleProbe writes poolAccountRef=null, violating the NOT NULL pool_account_ref schema. Proposal creation rolls back and purchase.probe_result becomes handler_failed.
+2. After using the seeded allowlisted pool reference, the proposal still fails because both intents are marked matched before handleProposal searches only shared intents. Select the exact recipient member's intent via group membership, validate its owner and lifecycle, and evaluate that bound intent rather than the newest arbitrary shared intent.
+
+A reviewable proposed correction is saved at packages/platform/integration/purchasing-984f209.patch (apply with git apply --unidiff-zero against A2 at 984f209). It changes only the A2 group service when applied. It is applied only in the temporary detached checkout pending ownership scope clarification, not in A1's published feature files.
+
+The reproducible A1-owned runner is packages/platform/rehearse-purchasing.ts. Run pnpm exec tsx packages/platform/rehearse-purchasing.ts in the integrated checkout with the patch applied. It registers both real feature modules, supplies explicitly synthetic structured extraction, drives both users only through ingest and YES replies, checks zero payment attempts before both authorizations, requires exactly two verified SIMULATED transfers of 28499 cents and settled group status, replays inbound replies and scans shared output. With both proposed fixes it passes. The temporary integrated suite passes 364 tests across 38 files. No live bank or Photon delivery is claimed.
+
+## CR-A1-011 to A2/A4: demo E2E success does not prove purchasing success
+
+pnpm e2e:sim passes its three tests in the integrated checkout, but logs schema_invalid for purchase detection: the default MockStructuredLlm has A3 rules only. The E2E assertions require accepted script requests and a ShortMe event, not a group or settlement, so this green result does not establish the purchasing story. Please wire purchase mock extraction or the real mock purchase detector for simulator demos, then assert group creation, both approval stages and settlement. The dedicated A1 purchasing runner above supplies synthetic extraction explicitly and checks the complete state progression.
+
+## STATUS A1 external gates remain unchanged
+
+PHOTON_PROJECT_ID, PHOTON_API_KEY, PHOTON_AGENT_USER_ID and both demo handles are absent from the environment; neither workspace has .env or .env.local. A1-02 remains the first blocked live gate. The human lead has been asked to configure the local environment and phones, and separately to clarify whether A1 may edit the remaining A2/A3/A4-owned blockers. No response or authorization is inferred from elapsed time. No pushes to main were made.
