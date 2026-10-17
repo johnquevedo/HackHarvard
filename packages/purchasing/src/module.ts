@@ -14,6 +14,7 @@ import {
 import { isCompatible } from "./matching/matcher.js";
 import { matchingRules } from "./matching/rules.js";
 import { DEMO_MONITOR_OFFER } from "./offers/demo.js";
+import { handlePaymentDecision, recoverSubmittingPayments } from "./payments/index.js";
 
 const PROBE_REASON_BY_RULE: Record<string, string> = {
   budget_overlap: "budget_overlap",
@@ -126,6 +127,7 @@ export const purchasingModule: FeatureModule = {
     ctx.a2a.on("purchase.proposal", (msg) => handleProposal(ctx, msg));
     ctx.a2a.on("purchase.proposal_result", (msg) => handleProposalResult(ctx, msg));
     ctx.approvals.onDecided("join_group_purchase", (approval) => handleJoinDecision(ctx, approval));
+    ctx.approvals.onDecided("authorize_payment", (approval) => handlePaymentDecision(ctx, approval));
     ctx.consent.onRevoked((userId, scope) => handlePurchaseConsentRevoked(ctx, userId, scope));
   },
   routes() {
@@ -151,5 +153,7 @@ export const purchasingModule: FeatureModule = {
       .run();
   },
   async reset() {},
-  async recover() {},
+  async recover(ctx) {
+    await recoverSubmittingPayments(ctx);
+  },
 };

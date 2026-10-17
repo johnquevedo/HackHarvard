@@ -6,8 +6,10 @@ export {
 } from "./state-machine.js";
 export {
   createGroupFromCompatibleProbe,
+  emitGroupUpdated,
   handleJoinDecision,
   handleProposal,
   handleProposalResult,
   handlePurchaseConsentRevoked,
+  setGroupStatus,
 } from "./service.js";

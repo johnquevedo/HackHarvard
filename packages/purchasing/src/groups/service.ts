@@ -39,7 +39,7 @@ function offerRow(ctx: PlatformContext, offerId: string) {
   return ctx.db.select().from(merchantOffers).where(eq(merchantOffers.id, offerId)).get();
 }
 
-async function emitGroupUpdated(ctx: PlatformContext, groupId: string): Promise<void> {
+export async function emitGroupUpdated(ctx: PlatformContext, groupId: string): Promise<void> {
   const group = groupRow(ctx, groupId);
   if (!group) throw new Error(`Unknown group ${groupId}`);
   const members = memberRows(ctx, groupId);
@@ -68,7 +68,12 @@ async function emitGroupUpdated(ctx: PlatformContext, groupId: string): Promise<
   });
 }
 
-function setGroupStatus(ctx: PlatformContext, groupId: string, status: GroupStatus, failureReason?: string): void {
+export function setGroupStatus(
+  ctx: PlatformContext,
+  groupId: string,
+  status: GroupStatus,
+  failureReason?: string,
+): void {
   ctx.db
     .update(groupPurchases)
     .set({ status, failureReason: failureReason ?? null, updatedAt: ctx.clock.nowIso() })
