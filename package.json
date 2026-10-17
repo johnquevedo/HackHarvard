@@ -10,9 +10,9 @@
     ]
   },
   "scripts": {
-    "dev": "concurrently -n server,web -c blue,green \"tsx scripts/dev-server.ts\" \"node apps/web/dev.mjs dev\"",
-    "dev:server": "tsx scripts/dev-server.ts",
-    "dev:web": "node apps/web/dev.mjs dev",
+    "dev": "concurrently -n server,web -c blue,green \"tsx --env-file=.env scripts/dev-server.ts\" \"node --env-file=.env apps/web/dev.mjs dev\"",
+    "dev:server": "tsx --env-file=.env scripts/dev-server.ts",
+    "dev:web": "node --env-file=.env apps/web/dev.mjs dev",
     "db:push": "tsx scripts/db-push.ts",
     "db:reset": "tsx scripts/db-reset.ts",
     "typecheck": "tsx scripts/typecheck-all.ts",
@@ -32,9 +32,9 @@
     "nessie:doctor": "tsx scripts/nessie-doctor.ts",
     "e2e:sim": "tsx tests/e2e/run.ts",
     "build:web": "node apps/web/dev.mjs build",
-    "start": "concurrently -n server,web \"tsx apps/server/src/main.ts\" \"node apps/web/dev.mjs start\"",
-    "start:server": "tsx apps/server/src/main.ts",
-    "start:web": "node apps/web/dev.mjs start"
+    "start": "concurrently -n server,web \"tsx --env-file=.env apps/server/src/main.ts\" \"node --env-file=.env apps/web/dev.mjs start\"",
+    "start:server": "tsx --env-file=.env apps/server/src/main.ts",
+    "start:web": "node --env-file=.env apps/web/dev.mjs start"
   },
   "devDependencies": {
     "@dennis/platform": "workspace:*",
