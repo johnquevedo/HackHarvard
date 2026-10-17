@@ -140,3 +140,7 @@ The database package also needs pinned @types/better-sqlite3 for strict typing. 
 A1-02 remains NOT LIVE VERIFIED on the documented rung 5 simulated fallback because credentials and assigned phones are unavailable. Per the work order fallback, continue code acceptance without fabricating a live milestone pass.
 
 A1-06: added a two-agent mock-detector rehearsal through real ingest, anonymous IntentStore views, A2A probe/response delivery and GET /api/a2a. Added queued-A2A recovery after handler registration and opportunity binding for retry keys. Fixed pipeline gates to reload status and feature settings before each detector and after inference. Pause, disable and consent revocation during inference now suppress stale detections and subsequent detector calls. Five new tests pass. This is platform acceptance with synthetic detectors, not a full purchasing or live-provider claim.
+
+## STATUS A1 ordered acceptance: A1-03
+
+The deterministic command-contract suite and new simulated conversation checks pass (83 tests combined). Rehearsed STOP, unconsented hi, a single onboarding reply, AGREE enabling only base scopes, explicit AGREE SHORTME with age/points copy, and AGREE PAYMENTS. Unconsented content remains null, a replay adds no consent rows, previous consent history is unchanged, and PAUSE/RESUME preserve consent while RESUME after STOP does not grant it. Cross-feature FORGET is audited under A1-08.
