@@ -22,8 +22,8 @@
     "spike:nessie": "tsx scripts/spike-nessie.ts",
     "spike:llm": "tsx scripts/spike-llm.ts",
     "spike:chalk": "bash scripts/spike-chalk.sh",
-    "demo:reset": "tsx scripts/reset-demo.ts",
-    "demo:check": "tsx scripts/check-env.ts",
+    "demo:reset": "tsx --env-file=.env scripts/reset-demo.ts",
+    "demo:check": "tsx --env-file=.env scripts/check-env.ts",
     "demo:record": "tsx scripts/replay-demo.ts record",
     "demo:replay": "tsx scripts/replay-demo.ts replay",
     "eval:local": "tsx packages/eval-data/src/cli.ts",
@@ -37,6 +37,9 @@
     "start:web": "node apps/web/dev.mjs start"
   },
   "devDependencies": {
+    "@dennis/platform": "workspace:*",
+    "@dennis/purchasing": "workspace:*",
+    "@dennis/shortme": "workspace:*",
     "@types/node": "22.20.5",
     "concurrently": "10.0.6",
     "prettier": "3.9.10",
