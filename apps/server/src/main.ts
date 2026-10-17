@@ -8,13 +8,17 @@ await seedCore(ctx);
 const app = await compose(ctx);
 for (const module of featureModules) await module.recover(ctx);
 const runtime = await startRuntime(ctx);
-const server = serve({
-  fetch: app.fetch,
-  port: config.portServer,
-  hostname: "127.0.0.1",
-});
-process.stdout.write(
-  `Dennis server listening on http://127.0.0.1:${config.portServer}; messaging=${ctx.messaging.name}\n`,
+const server = serve(
+  {
+    fetch: app.fetch,
+    port: config.portServer,
+    hostname: "127.0.0.1",
+  },
+  (info) => {
+    process.stdout.write(
+      `Dennis server listening on http://127.0.0.1:${info.port}; messaging=${ctx.messaging.name}\n`,
+    );
+  },
 );
 let stopping: Promise<void> | undefined;
 function stop(): Promise<void> {

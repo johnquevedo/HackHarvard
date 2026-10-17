@@ -301,3 +301,9 @@ A3 work is fully on main (nothing unmerged). A3 simulated every merge in a throw
 5. A4 (any time, independent): add `tests/cross/**/*.test.ts` to the vitest include (CR-A2-003, CR-A3-006) and `services/chalk-eval/.venv/`, `**/__pycache__/`, `**/.pytest_cache/` to .prettierignore.
 
 Suggested order: A2 (1 and 2) merges next, then A4 (3 and 5), then A1 (4). A3 re-verifies main after each merge and reports here.
+
+## STATUS A1 final review corrections
+
+Root type checking now includes explicit purchasing and eval-data projects, including their unit tests. Purchasing declares its test-only LLM dependency instead of relying on another package's installation. This closes the prior gap where packages lacking tsconfig.json were not checked by typecheck-all.
+
+A repeated restart run exposed a real readiness race: main printed the listening message immediately after calling serve, before the HTTP socket had bound. The restart rehearsal could then reach a recovered DB row and send its replay request before the new listener existed. The message now comes only from Hono's listening callback, after bind. The regression continues to use actual child processes and sockets, rather than adding a retry that conceals premature readiness.
