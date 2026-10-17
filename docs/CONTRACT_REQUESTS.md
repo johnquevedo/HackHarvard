@@ -108,3 +108,13 @@ The platform now supplies the canonical PurchaseCategory values to an authorized
 Also verified the actual PurchaseDetector from origin/a2/a2-09-live-rehearsal in a temporary scratch directory against the real A1 ingest and pipeline, using MockStructuredLlm with synthetic extraction data. The pipeline created the expected monitor_27in_4k intent. This check used no network and does not claim live LLM or banking success.
 
 Final validation after rebasing onto the newer A3 main commit and fixing CR-A3-005: 223 tests passed across 12 files; TypeScript and changed-file Prettier passed. Recovery commit f5e4b2f and the category correction are published only on the Agent 1 recovery branch, per the human lead's instruction.
+
+## STATUS A1 sequence correction and active A1-02
+
+The human lead correctly identified that the previous work skipped ahead in the planned order. A1-09 is not complete: recovery fixes and mock reconnect tests were implemented early, while live doctor runs and actual server-restart acceptance remain outstanding. A1-01's functional vertical slice was verified; full root verify still awaits A4. A milestone-by-milestone implementation and acceptance audit is now in docs/spikes/photon.md.
+
+The active task is A1-02. The spike script now supports read-only catalog discovery, unambiguous agent-ID discovery, redacted actual-envelope capture, incoming schema capture, and three-sample outbound delivery confirmation using both demo senders. Synthetic tests verify redaction and refusal to report accepted, simulated, unsupported-envelope or one-phone results as a successful live spike. Provider receipt-to-delivery timing is labeled separately from the specification's device round-trip target.
+
+Live prerequisites are still unavailable in this session: project/key/demo environment settings are missing, and the Photon Beta dashboard opens at sign-in. No project, key, assignment, actual message, real fixture or live latency was fabricated. The lead has a pending setup-status question. Continue A1-02 when authenticated project access and both demo phones are available; do not advance the milestone status based on mock tests. All new commits and pushes remain on a1/a1-09-recovery-hardening per the lead's branch instruction.
+
+A1-02 runner validation: 233 tests passed across 13 files, including 10 synthetic spike tests; TypeScript and changed-file Prettier passed. The CLI help path works, and catalog-only preflight exits NOT VERIFIED with no live request when the project/key settings are absent. Local environment files are excluded through Git's local exclude file while A4's repository-wide ignore rules are pending. No live fixture or live measurement has been generated.
