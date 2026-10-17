@@ -4,6 +4,13 @@ import type { FeatureModule, PlatformContext } from "@dennis/platform";
 import { Hono } from "hono";
 
 import { purchaseDetector } from "./detector/purchase.js";
+import {
+  createGroupFromCompatibleProbe,
+  handleJoinDecision,
+  handleProposal,
+  handleProposalResult,
+  handlePurchaseConsentRevoked,
+} from "./groups/service.js";
 import { isCompatible } from "./matching/matcher.js";
 import { matchingRules } from "./matching/rules.js";
 import { DEMO_MONITOR_OFFER } from "./offers/demo.js";
@@ -16,15 +23,6 @@ const PROBE_REASON_BY_RULE: Record<string, string> = {
   matching_enabled: "matching_disabled",
   already_matched: "already_matched",
 };
-
-function stubGroupId(intentIds: string[]): string {
-  const suffix = intentIds
-    .sort()
-    .map((id) => id.replace(/^int_/, "").replace(/[^a-z0-9_]/g, "").slice(-10))
-    .join("_")
-    .slice(0, 30);
-  return `grp_stub_${suffix}`;
-}
 
 async function sendCandidateProbes(ctx: PlatformContext, intent: IntentT): Promise<void> {
   if (!intent.publicPayload) return;
@@ -115,17 +113,7 @@ async function handleProbe(ctx: PlatformContext, msg: A2AMessage): Promise<void>
 }
 
 async function handleProbeResult(ctx: PlatformContext, msg: A2AMessage): Promise<void> {
-  if (msg.payload.compatible !== true) return;
-  const intentRef = typeof msg.payload.intentRef === "string" ? msg.payload.intentRef : null;
-  if (!intentRef) throw new Error("Invalid purchase.probe_result payload");
-  const groupId = stubGroupId([intentRef, msg.fromAgentId]);
-  await ctx.opportunities.upsert({
-    type: "group_purchase",
-    domainRefId: groupId,
-    status: "proposed",
-    headline: "SIMULATED OFFER: two Dennis users may save on a monitor",
-    participantAgentIds: [msg.fromAgentId, msg.toAgentId].sort(),
-  });
+  await createGroupFromCompatibleProbe(ctx, msg);
 }
 
 export const purchasingModule: FeatureModule = {
@@ -135,6 +123,10 @@ export const purchasingModule: FeatureModule = {
     ctx.detectors.onDetection("purchase", (input) => handlePurchaseDetection(ctx, input));
     ctx.a2a.on("purchase.probe", (msg) => handleProbe(ctx, msg));
     ctx.a2a.on("purchase.probe_result", (msg) => handleProbeResult(ctx, msg));
+    ctx.a2a.on("purchase.proposal", (msg) => handleProposal(ctx, msg));
+    ctx.a2a.on("purchase.proposal_result", (msg) => handleProposalResult(ctx, msg));
+    ctx.approvals.onDecided("join_group_purchase", (approval) => handleJoinDecision(ctx, approval));
+    ctx.consent.onRevoked((userId, scope) => handlePurchaseConsentRevoked(ctx, userId, scope));
   },
   routes() {
     return new Hono();

@@ -8,4 +8,4 @@ export const DEMO_MONITOR_OFFER = {
   isSimulated: true,
   sourceLabel: "SIMULATED OFFER, not a real merchant quote",
   validUntil: "2026-10-19T12:00:00.000Z",
-} as const;
+};
