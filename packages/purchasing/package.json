@@ -3,8 +3,18 @@
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
+    "@dennis/contracts": "workspace:*",
+    "@dennis/db": "workspace:*",
     "@dennis/platform": "workspace:*",
     "hono": "4.13.13"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
   }
 }

@@ -1,13 +1,4 @@
-import { Hono } from "hono";
-import type { FeatureModule } from "@dennis/platform";
-// A1-01 foundation stub. The feature owner replaces this module in M0.
-export const purchasingModule: FeatureModule = {
-  name: "purchasing",
-  async register() {},
-  routes() {
-    return new Hono();
-  },
-  async seed() {},
-  async reset() {},
-  async recover() {},
-};
+export { MockPurchaseDetector, purchaseDetector } from "./detector/mock.js";
+export { resolveTimeframe, roundBudgetBand } from "./detector/timeframe.js";
+export { purchasingModule } from "./module.js";
+export { DEMO_MONITOR_OFFER } from "./offers/demo.js";

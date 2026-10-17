@@ -1,0 +1,5 @@
+{
+  "minConfidence": 0.7,
+  "enabledCategories": ["monitor"],
+  "blockSensitive": true
+}

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "minSavingsCents": 1000,
+  "minSavingsPercent": 5,
+  "windowOverlapDays": 1,
+  "requireSameRegion": true,
+  "requireProductMatch": "same_or_generic"
+}
