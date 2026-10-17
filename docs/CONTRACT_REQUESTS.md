@@ -196,3 +196,34 @@ Remaining acceptance gates are explicit: A1-02/A1-05/A1-09 live Photon access/ph
 ## CR-A1-009 to A3: cross-test response types
 
 With workspace aliases resolved and strict checking enabled, tests/cross/a3-shortme-sim.test.ts lines 124 and 125 access an unknown JSON response named detail. Please validate or type that response before accessing it. All cross tests pass at runtime; this is a strict TypeScript issue. A1 did not edit A3-owned tests.
+
+## STATUS A4 dashboard, eval data, and demo shell
+
+- requester: a4
+- done: root workspace, ownership check, CI, mock-first dashboard, 66 synthetic cases, local runner, demo reset/check/replay scripts, e2e privacy scan
+- integrations: web mock mode is the UI fallback. Photon remains FALLBACK (simulator) per A1. Chalk remains LOCAL RUN (NOT CHALK) per A3.
+- e2e: `pnpm e2e:sim` runs the privacy scan now. The HTTP story driver starts `apps/server` when that entry exists. Full E1-E12 assertions still need a green simulated server run.
+
+## REQ-A4-01 closed
+
+Compose already mounts `evalDemoRoutes(ctx)`. Demo script routes call `ingestInbound` from `@dennis/platform/pipeline` when the context has no `simulateInbound` hook, so A4 does not need a compose change.
+
+## REQ-A4-02 closed
+
+`@dennis/contracts` already exports `EvalCase`, `EvalReport`, and `formatUsd`. The eval package still has a matching local schema used to parse the JSONL. A follow-up can switch the import without a contract change.
+
+## REQ-A4-03
+
+`createPlatform` and `resetCore` exist on `@dennis/platform/foundation`. `pnpm demo:reset` will call those plus `purchasingModule` and `shortmeModule` when both packages export them. No SQL from A4.
+
+## CR-A3-006 to A4 (and A1): main is red after the root tooling merge
+
+Checked on a fresh clone of main at c5e82a2. A3's own files now pass Prettier (A4 config), typecheck, tests, and the ownership check. Remaining blockers, none in A3 files:
+
+1. A4: `pnpm install --frozen-lockfile` fails. pnpm-lock.yaml was generated before the other packages existed (apps/server, contracts, db, platform, messaging, llm, shortme, purchasing are missing). Please regenerate it from main with every package present and commit it.
+2. A4: vitest.config.ts does not include `tests/cross/**/*.test.ts`, so cross tests never run in `pnpm test` or CI. Please add it (tests/cross/a3-shortme-sim.test.ts has 11 tests and passes).
+3. A4: the root tsconfig typechecks tests/** but the root package.json has no workspace dependencies, so `@dennis/*` imports cannot resolve there. A3's cross test now uses relative imports as a workaround; adding the workspace packages as root dependencies would let tests import by package name.
+4. A4: please add `services/chalk-eval/.venv/`, `**/__pycache__/`, `**/.pytest_cache/` to .prettierignore; a local `uv sync` otherwise makes `prettier --check .` scan site-packages.
+5. A1 or A4: `@types/better-sqlite3` 9.6.0 is not installed, so typechecking any package that imports @dennis/db reports TS7016 in packages/db/src/client.ts.
+6. A1: Prettier fails on 38 A1 files under the 100-column config and the root typecheck reports TS5097 for `.ts` import extensions. origin/a1/a1-09-recovery-hardening already appears to fix both (`style(a1): Align formatting with shared repository tooling`); merging it should clear them.
+7. Note: scripts/typecheck-all.ts only checks packages that have a tsconfig.json. A3 added packages/llm/tsconfig.json and packages/shortme/tsconfig.json; other packages have none yet, so they are not typechecked by `pnpm typecheck`.

@@ -1,35 +1,28 @@
 import { describe, expect, it } from "vitest";
-import type { InboundMessageT } from "@dennis/contracts";
-import { createTestPlatform } from "@dennis/platform/testing";
+import type { InboundMessageT } from "../../packages/contracts/src/index";
+import { createTestPlatform } from "../../packages/platform/src/testing";
 import {
   drainPlatform,
   ingestInbound,
   type PlatformContext,
-} from "@dennis/platform";
-import { MockStructuredLlm } from "@dennis/llm";
-import {
-  checkLedgerInvariants,
-  getBalance,
-  shortmeModule,
-} from "@dennis/shortme";
+} from "../../packages/platform/src/index";
+import { MockStructuredLlm } from "../../packages/llm/src/index";
+import { checkLedgerInvariants, getBalance, shortmeModule } from "../../packages/shortme/src/index";
 
+// Relative imports keep this file resolvable from the root tsconfig, which has no workspace
+// dependencies (CR-A3-006).
 // A3 cross test: the ShortMe demo story (Section 4.1 steps 6 to 9) driven only by inbound text through
 // the real platform ingest, pipeline, command router, approvals, A2A bus, and notifier.
 
 let n = 0;
-function text(
-  ctx: PlatformContext,
-  who: "alice" | "bob",
-  body: string,
-): InboundMessageT {
+function text(ctx: PlatformContext, who: "alice" | "bob", body: string): InboundMessageT {
   return {
     provider: "sim",
     accountKey: "primary",
     providerMessageId: `a3_sim_${++n}`,
     providerSpaceId: null,
     providerSenderId: null,
-    senderHandle:
-      who === "alice" ? ctx.config.demoAliceHandle : ctx.config.demoBobHandle,
+    senderHandle: who === "alice" ? ctx.config.demoAliceHandle : ctx.config.demoBobHandle,
     text: body,
     receivedAt: ctx.clock.nowIso(),
     mode: "simulated",
@@ -45,25 +38,16 @@ async function say(ctx: PlatformContext, who: "alice" | "bob", body: string) {
   return r;
 }
 
-function outbox(
-  ctx: PlatformContext,
-  userId: string,
-): { kind: string; text: string }[] {
+function outbox(ctx: PlatformContext, userId: string): { kind: string; text: string }[] {
   return ctx.db.$client
-    .prepare(
-      "SELECT kind, text FROM outbox WHERE user_id=? ORDER BY created_at, id",
-    )
+    .prepare("SELECT kind, text FROM outbox WHERE user_id=? ORDER BY created_at, id")
     .all(userId) as never;
 }
 
 function marketRow(ctx: PlatformContext) {
   return ctx.db.$client
-    .prepare(
-      "SELECT id, status, question, outcome FROM markets ORDER BY created_at DESC LIMIT 1",
-    )
-    .get() as
-    | { id: string; status: string; question: string; outcome: string | null }
-    | undefined;
+    .prepare("SELECT id, status, question, outcome FROM markets ORDER BY created_at DESC LIMIT 1")
+    .get() as { id: string; status: string; question: string; outcome: string | null } | undefined;
 }
 
 async function setup() {
@@ -82,32 +66,22 @@ describe("a3 ShortMe by text through the platform", () => {
       "just finished my final round interview at a quant firm. i either get the offer or im cooked",
     );
     expect(marketRow(ctx)?.status).toBe("proposed");
-    const proposal = outbox(ctx, "usr_demo_alice").find(
-      (o) => o.kind === "approval_request",
-    )!;
-    expect(proposal.text).toContain(
-      '"Will Alice get the offer after the final round?"',
-    );
-    expect(proposal.text).toContain(
-      "Invited: Bob. Points only, no money, no prizes.",
-    );
+    const proposal = outbox(ctx, "usr_demo_alice").find((o) => o.kind === "approval_request")!;
+    expect(proposal.text).toContain('"Will Alice get the offer after the final round?"');
+    expect(proposal.text).toContain("Invited: Bob. Points only, no money, no prizes.");
     expect(outbox(ctx, "usr_demo_bob")).toHaveLength(0);
 
     await say(ctx, "alice", "YES");
     expect(marketRow(ctx)?.status).toBe("open");
-    const invite = outbox(ctx, "usr_demo_bob").find(
-      (o) => o.kind === "invite",
-    )!;
+    const invite = outbox(ctx, "usr_demo_bob").find((o) => o.kind === "invite")!;
     expect(invite.text).toContain("Fictional points only, you have 1000.");
     expect(invite.text).not.toContain("quant firm");
 
     await say(ctx, "bob", "BACK 50");
     await say(ctx, "alice", "FADE 50");
-    expect(
-      outbox(ctx, "usr_demo_alice").some((o) =>
-        o.text.includes("You shorted yourself"),
-      ),
-    ).toBe(true);
+    expect(outbox(ctx, "usr_demo_alice").some((o) => o.text.includes("You shorted yourself"))).toBe(
+      true,
+    );
 
     const app = shortmeModule.routes(ctx);
     const m = marketRow(ctx)!;
@@ -120,7 +94,10 @@ describe("a3 ShortMe by text through the platform", () => {
       body: JSON.stringify({ outcome: "no" }),
     });
     expect(res.status).toBe(200);
-    const detail = await res.json();
+    const detail = (await res.json()) as {
+      market: { resolverLabel: string };
+      pools: { back: number; fade: number };
+    };
     expect(detail.market.resolverLabel).toBe("STAND-IN FOR OFFICIAL SOURCE");
     expect(detail.pools).toEqual({ back: 50, fade: 50 });
 
@@ -129,18 +106,12 @@ describe("a3 ShortMe by text through the platform", () => {
     expect(getBalance(ctx, "usr_demo_alice")).toBe(1050);
     expect(getBalance(ctx, "usr_demo_bob")).toBe(950);
     expect((await checkLedgerInvariants(ctx)).every((c) => c.ok)).toBe(true);
-    const result = outbox(ctx, "usr_demo_bob").find(
-      (o) => o.kind === "result",
-    )!;
-    expect(result.text).toMatch(
-      /Points: Alice \+50, Bob -50\. \(Fictional points, no value\.\)$/,
-    );
+    const result = outbox(ctx, "usr_demo_bob").find((o) => o.kind === "result")!;
+    expect(result.text).toMatch(/Points: Alice \+50, Bob -50\. \(Fictional points, no value\.\)$/);
 
     // Privacy scan: no shared event carries the source text or a handle.
     const shared = JSON.stringify(
-      ctx.events
-        .history({ judge: true, limit: 10_000 })
-        .filter((e) => e.visibility === "shared"),
+      ctx.events.history({ judge: true, limit: 10_000 }).filter((e) => e.visibility === "shared"),
     );
     expect(shared).not.toContain("quant firm");
     expect(shared).not.toContain(ctx.config.demoAliceHandle);
@@ -148,11 +119,7 @@ describe("a3 ShortMe by text through the platform", () => {
 
   it("DISPUTE by text freezes the market", async () => {
     const ctx = await setup();
-    await say(
-      ctx,
-      "alice",
-      "superday tomorrow, either I get the offer or I don't",
-    );
+    await say(ctx, "alice", "superday tomorrow, either I get the offer or I don't");
     await say(ctx, "alice", "YES");
     await say(ctx, "bob", "BACK 20");
     await say(ctx, "alice", "FADE 30");
@@ -167,9 +134,7 @@ describe("a3 ShortMe by text through the platform", () => {
     });
     await say(ctx, "alice", "DISPUTE");
     expect(marketRow(ctx)?.status).toBe("disputed");
-    expect(
-      getBalance(ctx, "usr_demo_alice") + getBalance(ctx, "usr_demo_bob"),
-    ).toBe(1950);
+    expect(getBalance(ctx, "usr_demo_alice") + getBalance(ctx, "usr_demo_bob")).toBe(1950);
   });
 
   it("a prompt injection creates no market", async () => {
@@ -205,18 +170,14 @@ describe("a3 ShortMe by text through the platform", () => {
     );
     await say(ctx, "alice", "YES");
     const shared = JSON.stringify(
-      ctx.events
-        .history({ judge: true, limit: 10_000 })
-        .filter((e) => e.visibility === "shared"),
+      ctx.events.history({ judge: true, limit: 10_000 }).filter((e) => e.visibility === "shared"),
     );
     const bob = JSON.stringify(outbox(ctx, "usr_demo_bob"));
     for (const needle of ["617-555-0142", "Jane Street"]) {
       expect(shared).not.toContain(needle);
       expect(bob).not.toContain(needle);
     }
-    expect(marketRow(ctx)?.question).toBe(
-      "Will Alice get the offer after the final round?",
-    );
+    expect(marketRow(ctx)?.question).toBe("Will Alice get the offer after the final round?");
   });
 });
 
@@ -247,11 +208,7 @@ describe("a3 policy gates through the pipeline (E9 and Section 15.5)", () => {
       { subjectIsAuthor: false, mentionsThirdParty: true },
       "not_subject_owned",
     ],
-    [
-      "academics template is disabled",
-      { category: "academics" },
-      "category_disabled",
-    ],
+    ["academics template is disabled", { category: "academics" }, "category_disabled"],
     ["a stated minor is blocked", { minorIndicated: true }, "policy_blocked"],
     ["low confidence", { confidence: 0.5 }, "low_confidence"],
   ] as const)("%s", async (_name, over, reason) => {

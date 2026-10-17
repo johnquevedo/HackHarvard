@@ -75,21 +75,12 @@ export class MockStructuredLlm implements StructuredLlm {
       (r) =>
         r.task === req.task &&
         (r.match === undefined ||
-          (typeof r.match === "function"
-            ? r.match(req.user)
-            : r.match.test(req.user))),
+          (typeof r.match === "function" ? r.match(req.user) : r.match.test(req.user))),
     );
-    if (!rule)
-      throw new LlmSchemaError(req.task, "no mock rule for this task", 1);
-    const parsed = req.schema.safeParse(
-      rule.respond({ user: req.user, system: req.system }),
-    );
+    if (!rule) throw new LlmSchemaError(req.task, "no mock rule for this task", 1);
+    const parsed = req.schema.safeParse(rule.respond({ user: req.user, system: req.system }));
     if (!parsed.success)
-      throw new LlmSchemaError(
-        req.task,
-        "mock output does not match the schema",
-        1,
-      );
+      throw new LlmSchemaError(req.task, "mock output does not match the schema", 1);
     return {
       value: parsed.data,
       usage: { inputTokens: 0, outputTokens: 0 },

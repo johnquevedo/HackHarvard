@@ -4,13 +4,13 @@ Status: code paths verified against the pinned SDK; live latency NOT yet measure
 
 ## Verified from the pinned SDK (`@anthropic-ai/sdk` 0.135.0)
 
-| Fact | Evidence |
-| --- | --- |
-| `client.messages.parse(params, options)` exists and returns `parsed_output` | `resources/messages/messages.d.ts` line 52, `lib/parser.d.ts` |
-| `output_config.format` accepts `zodOutputFormat(schema)` from `@anthropic-ai/sdk/helpers/zod` | `helpers/zod.d.ts` |
-| Forced tool call: `tool_choice: { type: "tool", name }` | `ToolChoiceTool` type |
-| Typed errors: `APIConnectionTimeoutError`, `RateLimitError`, `InternalServerError`, `BadRequestError` | `core/error.d.ts` |
-| `client.models.retrieve(model)` for a token-free health check | `resources/models.d.ts` |
+| Fact                                                                                                  | Evidence                                                      |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `client.messages.parse(params, options)` exists and returns `parsed_output`                           | `resources/messages/messages.d.ts` line 52, `lib/parser.d.ts` |
+| `output_config.format` accepts `zodOutputFormat(schema)` from `@anthropic-ai/sdk/helpers/zod`         | `helpers/zod.d.ts`                                            |
+| Forced tool call: `tool_choice: { type: "tool", name }`                                               | `ToolChoiceTool` type                                         |
+| Typed errors: `APIConnectionTimeoutError`, `RateLimitError`, `InternalServerError`, `BadRequestError` | `core/error.d.ts`                                             |
+| `client.models.retrieve(model)` for a token-free health check                                         | `resources/models.d.ts`                                       |
 
 ## Decision
 
@@ -22,11 +22,11 @@ Status: code paths verified against the pinned SDK; live latency NOT yet measure
 
 ## To measure (fill in after `pnpm spike:llm`)
 
-| Model | Path | Correct of 10 | p50 ms | p95 ms |
-| --- | --- | --- | --- | --- |
-| claude-sonnet-5-5 | output_format | | | |
-| claude-sonnet-5-5 | tool | | | |
-| claude-haiku-5-5 | output_format | | | |
-| claude-haiku-5-5 | tool | | | |
+| Model             | Path          | Correct of 10 | p50 ms | p95 ms |
+| ----------------- | ------------- | ------------- | ------ | ------ |
+| claude-sonnet-5-5 | output_format |               |        |        |
+| claude-sonnet-5-5 | tool          |               |        |        |
+| claude-haiku-5-5  | output_format |               |        |        |
+| claude-haiku-5-5  | tool          |               |        |        |
 
 Switch `LLM_MODEL` to Haiku only if Sonnet p95 is above 4 seconds and eval F1 holds (Section 10.4).

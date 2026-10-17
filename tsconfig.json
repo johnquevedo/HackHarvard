@@ -4,6 +4,22 @@
     "noEmit": true,
     "composite": false
   },
-  "include": ["scripts/**/*.ts", "tests/**/*.ts", "vitest.config.ts"],
-  "exclude": ["node_modules", "apps", "packages"]
+  "include": [
+    "scripts/check-ownership.ts",
+    "scripts/check-ownership.test.ts",
+    "scripts/typecheck-all.ts",
+    "scripts/dev-server.ts",
+    "scripts/db-push.ts",
+    "scripts/db-reset.ts",
+    "scripts/reset-demo.ts",
+    "scripts/reset-demo.test.ts",
+    "scripts/seed-demo.ts",
+    "scripts/check-env.ts",
+    "scripts/check-env.test.ts",
+    "scripts/replay-demo.ts",
+    "scripts/replay-demo.test.ts",
+    "tests/e2e/**/*.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "apps", "packages", "tests/cross"]
 }

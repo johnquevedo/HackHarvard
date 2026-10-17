@@ -39,18 +39,12 @@ export const shortmeModule: FeatureModule = {
       await handleMilestoneDetection(ctx, input);
     });
     ctx.a2a.on("market.invite", async (msg) => onMarketInvite(ctx, msg));
-    ctx.a2a.on("market.invite_response", async (msg) =>
-      onInviteResponse(ctx, msg),
-    );
-    ctx.approvals.onDecided("publish_market", async (approval) =>
-      onPublishDecided(ctx, approval),
-    );
+    ctx.a2a.on("market.invite_response", async (msg) => onInviteResponse(ctx, msg));
+    ctx.approvals.onDecided("publish_market", async (approval) => onPublishDecided(ctx, approval));
     ctx.approvals.onDecided("confirm_resolution", async (approval) =>
       onConfirmDecided(ctx, approval),
     );
-    ctx.consent.onRevoked(async (userId, scope) =>
-      onShortmeConsentRevoked(ctx, userId, scope),
-    );
+    ctx.consent.onRevoked(async (userId, scope) => onShortmeConsentRevoked(ctx, userId, scope));
     ctx.commands.register("back", backFadeHandler(ctx, "back"));
     ctx.commands.register("fade", backFadeHandler(ctx, "fade"));
     ctx.commands.register("pass", passHandler(ctx));

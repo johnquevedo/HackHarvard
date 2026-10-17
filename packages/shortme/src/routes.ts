@@ -5,12 +5,7 @@ import { DennisError } from "@dennis/contracts";
 import { pointsAccounts, pointsLedger } from "@dennis/db";
 import type { PlatformContext } from "@dennis/platform";
 import { eq, sql } from "drizzle-orm";
-import {
-  checkLedgerInvariants,
-  getBalance,
-  ledgerFor,
-  positionsFor,
-} from "./ledger/ledger";
+import { checkLedgerInvariants, getBalance, ledgerFor, positionsFor } from "./ledger/ledger";
 import { computePayouts } from "./ledger/payouts";
 import { placePosition } from "./markets/positions";
 import {
@@ -23,11 +18,7 @@ import {
   requireMarket,
   type MarketRow,
 } from "./markets/service";
-import {
-  adminResolve,
-  disputeResolution,
-  proposeResolution,
-} from "./resolution/service";
+import { adminResolve, disputeResolution, proposeResolution } from "./resolution/service";
 import { DEMO_RESOLVER, GATES, STAND_IN_LABEL } from "./rules";
 
 const STATUS: Record<string, number> = {
@@ -48,13 +39,7 @@ const STATUS: Record<string, number> = {
 
 function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const r = schema.safeParse(value);
-  if (!r.success)
-    throw new DennisError(
-      "validation_error",
-      "invalid request",
-      400,
-      r.error.issues,
-    );
+  if (!r.success) throw new DennisError("validation_error", "invalid request", 400, r.error.issues);
   return r.data;
 }
 
@@ -67,9 +52,7 @@ const PositionBody = z
   .strict();
 const UserBody = z.object({ userId: z.string().min(1) }).strict();
 const DemoResolveBody = z.object({ outcome: z.enum(["yes", "no"]) }).strict();
-const AdminResolveBody = z
-  .object({ outcome: z.enum(["yes", "no", "void"]) })
-  .strict();
+const AdminResolveBody = z.object({ outcome: z.enum(["yes", "no", "void"]) }).strict();
 
 function marketView(m: MarketRow) {
   return {
@@ -83,10 +66,7 @@ export async function marketDetail(ctx: PlatformContext, m: MarketRow) {
   const parts = participantsOf(ctx, m.id);
   const positions = positionsFor(ctx.db as never, m.id);
   const names = new Map<string, string>();
-  for (const id of new Set([
-    ...parts.map((p) => p.userId),
-    ...positions.map((p) => p.userId),
-  ]))
+  for (const id of new Set([...parts.map((p) => p.userId), ...positions.map((p) => p.userId)]))
     names.set(id, (await ctx.users.get(id))?.firstName ?? "unknown");
   const pools = { back: 0, fade: 0 };
   for (const p of positions) pools[p.side as "back" | "fade"] += p.points;
@@ -117,8 +97,7 @@ export async function marketDetail(ctx: PlatformContext, m: MarketRow) {
 
 export function shortmeRoutes(ctx: PlatformContext): Hono {
   const app = new Hono();
-  const token = (ctx.config as unknown as { dennisAdminToken?: string })
-    .dennisAdminToken;
+  const token = (ctx.config as unknown as { dennisAdminToken?: string }).dennisAdminToken;
   const requireAdmin = (c: Context) => {
     if (!token || c.req.header("x-dennis-admin") !== token)
       throw new DennisError("unauthorized", "admin token required", 401);
@@ -141,10 +120,7 @@ export function shortmeRoutes(ctx: PlatformContext): Hono {
     ctx.log.error("shortme.route_error", {
       message: err instanceof Error ? err.message : String(err),
     });
-    return c.json(
-      { error: { code: "internal", message: "internal error" } },
-      500,
-    );
+    return c.json({ error: { code: "internal", message: "internal error" } }, 500);
   });
 
   app.get("/markets", (c) =>
@@ -158,8 +134,7 @@ export function shortmeRoutes(ctx: PlatformContext): Hono {
 
   app.get("/markets/:marketId", async (c) => {
     const m = requireMarket(ctx, c.req.param("marketId"));
-    if (!canView(m, viewer(c)))
-      throw new DennisError("not_found", "market not found", 404);
+    if (!canView(m, viewer(c))) throw new DennisError("not_found", "market not found", 404);
     return c.json(await marketDetail(ctx, m));
   });
 
@@ -183,9 +158,7 @@ export function shortmeRoutes(ctx: PlatformContext): Hono {
       marketId: c.req.param("marketId"),
       userId: body.userId,
     });
-    return c.json(
-      await marketDetail(ctx, requireMarket(ctx, c.req.param("marketId"))),
-    );
+    return c.json(await marketDetail(ctx, requireMarket(ctx, c.req.param("marketId"))));
   });
 
   // Additive (D14): any participant may dispute a proposed resolution from the dashboard.
@@ -200,9 +173,7 @@ export function shortmeRoutes(ctx: PlatformContext): Hono {
 
   app.post("/markets/:marketId/lock", async (c) => {
     requireAdmin(c);
-    return c.json(
-      await marketDetail(ctx, await lockMarket(ctx, c.req.param("marketId"))),
-    );
+    return c.json(await marketDetail(ctx, await lockMarket(ctx, c.req.param("marketId"))));
   });
 
   app.post("/markets/:marketId/demo-resolve", async (c) => {
@@ -214,9 +185,7 @@ export function shortmeRoutes(ctx: PlatformContext): Hono {
       proposedBy: DEMO_RESOLVER,
       evidenceNote: `${STAND_IN_LABEL}: demo resolver proposed ${body.outcome.toUpperCase()}`,
     });
-    return c.json(
-      await marketDetail(ctx, requireMarket(ctx, c.req.param("marketId"))),
-    );
+    return c.json(await marketDetail(ctx, requireMarket(ctx, c.req.param("marketId"))));
   });
 
   app.post("/markets/:marketId/admin-resolve", async (c) => {
@@ -235,10 +204,8 @@ export function shortmeRoutes(ctx: PlatformContext): Hono {
 
   app.get("/ledger", async (c) => {
     const userId = c.req.query("userId");
-    if (!userId)
-      throw new DennisError("validation_error", "userId is required", 400);
-    if (!(await ctx.users.get(userId)))
-      throw new DennisError("not_found", "user not found", 404);
+    if (!userId) throw new DennisError("validation_error", "userId is required", 400);
+    if (!(await ctx.users.get(userId))) throw new DennisError("not_found", "user not found", 404);
     return c.json({
       balance: getBalance(ctx, userId),
       pointsOnly: true,
@@ -269,9 +236,7 @@ export function shortmeRoutes(ctx: PlatformContext): Hono {
         delta: a.balance - (grants.get(a.userId) ?? GATES.starterPoints),
       });
     }
-    rows.sort(
-      (x, y) => y.balance - x.balance || x.firstName.localeCompare(y.firstName),
-    );
+    rows.sort((x, y) => y.balance - x.balance || x.firstName.localeCompare(y.firstName));
     return c.json(rows);
   });
 

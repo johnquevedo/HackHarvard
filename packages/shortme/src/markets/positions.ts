@@ -1,11 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { DennisError, type DecisionChannelT } from "@dennis/contracts";
-import {
-  marketInvites,
-  marketParticipants,
-  marketPositions,
-  markets,
-} from "@dennis/db";
+import { marketInvites, marketParticipants, marketPositions, markets } from "@dennis/db";
 import type { CommandInput } from "@dennis/contracts";
 import type { PlatformContext } from "@dennis/platform";
 import {
@@ -60,33 +55,19 @@ export async function placePosition(
     }
     const m = requireMarket(ctx, input.marketId);
     if (m.status !== "open")
-      throw new DennisError(
-        "invalid_state",
-        `market is ${m.status}, positions are closed`,
-        409,
-      );
+      throw new DennisError("invalid_state", `market is ${m.status}, positions are closed`, 409);
     if (input.side !== "back" && input.side !== "fade")
-      throw new DennisError(
-        "validation_error",
-        "side must be back or fade",
-        400,
-      );
+      throw new DennisError("validation_error", "side must be back or fade", 400);
     await ctx.consent.require(input.userId, "shortme_free_play");
     const part = ctx.db
       .select()
       .from(marketParticipants)
       .where(
-        and(
-          eq(marketParticipants.marketId, m.id),
-          eq(marketParticipants.userId, input.userId),
-        ),
+        and(eq(marketParticipants.marketId, m.id), eq(marketParticipants.userId, input.userId)),
       )
       .get();
     const isSubject = m.subjectUserId === input.userId;
-    if (
-      !part ||
-      (!isSubject && !["invited", "accepted"].includes(part.inviteState))
-    ) {
+    if (!part || (!isSubject && !["invited", "accepted"].includes(part.inviteState))) {
       throw new DennisError(
         "forbidden",
         "only the subject and invited friends may take a position",
@@ -96,27 +77,13 @@ export async function placePosition(
     const existing = ctx.db
       .select()
       .from(marketPositions)
-      .where(
-        and(
-          eq(marketPositions.marketId, m.id),
-          eq(marketPositions.userId, input.userId),
-        ),
-      )
+      .where(and(eq(marketPositions.marketId, m.id), eq(marketPositions.userId, input.userId)))
       .get();
-    if (existing)
-      throw new DennisError(
-        "conflict",
-        "one position per user per market",
-        409,
-      );
+    if (existing) throw new DennisError("conflict", "one position per user per market", 409);
     ensureStarterGrant(ctx, input.userId);
     const balance = getBalance(ctx, input.userId);
     const cap = Math.min(GATES.maxStake, balance);
-    if (
-      !Number.isInteger(input.points) ||
-      input.points < 1 ||
-      input.points > cap
-    ) {
+    if (!Number.isInteger(input.points) || input.points < 1 || input.points > cap) {
       throw new DennisError(
         "validation_error",
         `points must be a whole number from 1 to ${cap}`,
@@ -142,10 +109,7 @@ export async function placePosition(
         tx.update(marketParticipants)
           .set({ inviteState: "accepted" })
           .where(
-            and(
-              eq(marketParticipants.marketId, m.id),
-              eq(marketParticipants.userId, input.userId),
-            ),
+            and(eq(marketParticipants.marketId, m.id), eq(marketParticipants.userId, input.userId)),
           )
           .run();
       return postLedgerTx(ctx, tx as never, [
@@ -235,9 +199,7 @@ function openCandidates(ctx: PlatformContext, userId: string): Candidate[] {
         eq(marketInvites.userId, marketParticipants.userId),
       ),
     )
-    .where(
-      and(eq(marketParticipants.userId, userId), eq(markets.status, "open")),
-    )
+    .where(and(eq(marketParticipants.userId, userId), eq(markets.status, "open")))
     .all();
   const positioned = new Set(
     ctx.db
@@ -246,10 +208,7 @@ function openCandidates(ctx: PlatformContext, userId: string): Candidate[] {
       .where(
         and(
           eq(marketPositions.userId, userId),
-          inArray(
-            marketPositions.marketId,
-            rows.map((r) => r.marketId).concat(""),
-          ),
+          inArray(marketPositions.marketId, rows.map((r) => r.marketId).concat("")),
         ),
       )
       .all()
@@ -259,9 +218,7 @@ function openCandidates(ctx: PlatformContext, userId: string): Candidate[] {
     .filter(
       (r) =>
         !positioned.has(r.marketId) &&
-        (r.role === "subject" ||
-          r.state === "invited" ||
-          r.state === "accepted"),
+        (r.role === "subject" || r.state === "invited" || r.state === "accepted"),
     )
     .map((r) => ({
       marketId: r.marketId,
@@ -278,9 +235,7 @@ function resolveCandidate(
 ): { candidate?: Candidate; reply?: string } {
   const all = openCandidates(ctx, userId);
   if (code) {
-    const hit = all.find(
-      (c) => c.code !== null && c.code.toLowerCase() === code.toLowerCase(),
-    );
+    const hit = all.find((c) => c.code !== null && c.code.toLowerCase() === code.toLowerCase());
     return hit
       ? { candidate: hit }
       : {
@@ -288,8 +243,7 @@ function resolveCandidate(
         };
   }
   if (all.length === 1) return { candidate: all[0] };
-  if (all.length === 0)
-    return { reply: "No open ShortMe market for you right now." };
+  if (all.length === 0) return { reply: "No open ShortMe market for you right now." };
   return {
     reply: `Which one? Reply ${verb} followed by the 4-character code.`,
   };
@@ -312,12 +266,7 @@ export function backFadeHandler(ctx: PlatformContext, side: "back" | "fade") {
       code: string | null;
     };
     const verb = side === "back" ? "BACK <pts>" : "FADE <pts>";
-    const { candidate, reply } = resolveCandidate(
-      ctx,
-      input.userId,
-      cmd.code ?? null,
-      verb,
-    );
+    const { candidate, reply } = resolveCandidate(ctx, input.userId, cmd.code ?? null, verb);
     if (!candidate) return { reply };
     try {
       const p = await placePosition(ctx, {
@@ -328,10 +277,7 @@ export function backFadeHandler(ctx: PlatformContext, side: "back" | "fade") {
         idempotencyKey: `cmd:${input.messageId}`,
         via: "imessage",
       });
-      const self =
-        candidate.isSubject && side === "fade"
-          ? " You shorted yourself, bold."
-          : "";
+      const self = candidate.isSubject && side === "fade" ? " You shorted yourself, bold." : "";
       return {
         reply: `Recorded: ${side.toUpperCase()} ${p.points} points (fictional, no value). Balance ${getBalance(ctx, input.userId)}.${self}`,
       };
@@ -344,17 +290,11 @@ export function backFadeHandler(ctx: PlatformContext, side: "back" | "fade") {
 export function passHandler(ctx: PlatformContext) {
   return async (input: CommandInput): Promise<{ reply?: string }> => {
     const cmd = input.command as { code: string | null };
-    const { candidate, reply } = resolveCandidate(
-      ctx,
-      input.userId,
-      cmd.code ?? null,
-      "PASS",
-    );
+    const { candidate, reply } = resolveCandidate(ctx, input.userId, cmd.code ?? null, "PASS");
     if (!candidate) return { reply };
     if (candidate.isSubject)
       return {
-        reply:
-          "It's your market, so there is nothing to pass. You can FADE yourself if you like.",
+        reply: "It's your market, so there is nothing to pass. You can FADE yourself if you like.",
       };
     try {
       await passInvite(ctx, {

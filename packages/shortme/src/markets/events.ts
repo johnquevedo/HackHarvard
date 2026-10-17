@@ -60,9 +60,7 @@ export function emitResolutionUpdated(
 ): void {
   ctx.events.emit({
     type: "shortme.resolution.updated",
-    actor: r.actorAgentId
-      ? { kind: "agent", agentId: r.actorAgentId }
-      : { kind: "system" },
+    actor: r.actorAgentId ? { kind: "agent", agentId: r.actorAgentId } : { kind: "system" },
     visibility: "shared",
     opportunityId: r.opportunityId,
     payload: {

@@ -72,19 +72,14 @@ export class ChalkGatewayLlm implements StructuredLlm {
             { role: "system", content: call.system },
             {
               role: "user",
-              content: call.correctiveNote
-                ? `${call.user}\n\n${call.correctiveNote}`
-                : call.user,
+              content: call.correctiveNote ? `${call.user}\n\n${call.correctiveNote}` : call.user,
             },
           ],
           response_format: {
             type: "json_schema",
             json_schema: {
               name: req.task.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64),
-              schema: z.toJSONSchema(req.schema as z.ZodType) as Record<
-                string,
-                unknown
-              >,
+              schema: z.toJSONSchema(req.schema as z.ZodType) as Record<string, unknown>,
               strict: true,
             },
           },

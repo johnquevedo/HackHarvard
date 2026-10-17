@@ -5,13 +5,7 @@ import type {
   DetectorInput,
   DetectorOutcome,
 } from "@dennis/contracts";
-import {
-  LlmSchemaError,
-  loadPrompt,
-  todayIn,
-  wrapContext,
-  wrapUserText,
-} from "@dennis/llm";
+import { LlmSchemaError, loadPrompt, todayIn, wrapContext, wrapUserText } from "@dennis/llm";
 import { GATES } from "../rules";
 import { applyMilestoneGates, type MilestoneGates } from "./gates";
 import { MilestoneExtraction } from "./schema";
@@ -22,26 +16,16 @@ export {
   type GateResult,
   type MilestoneGates,
 } from "./gates";
-export {
-  MilestoneExtraction,
-  QuipOutput,
-  type MilestoneExtractionT,
-} from "./schema";
+export { MilestoneExtraction, QuipOutput, type MilestoneExtractionT } from "./schema";
 
-const PROMPT_URL = new URL(
-  "../../prompts/milestone_detector_v1.md",
-  import.meta.url,
-);
+const PROMPT_URL = new URL("../../prompts/milestone_detector_v1.md", import.meta.url);
 export const MILESTONE_TASK = "milestone_detector_v1";
 const EXCERPT_MAX = 280;
 
 function excerpt(text: string, employers: string[]): string {
   let out = text;
   for (const e of employers.filter((x) => x.trim().length >= 2)) {
-    out = out.replace(
-      new RegExp(e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"),
-      "[employer]",
-    );
+    out = out.replace(new RegExp(e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "[employer]");
   }
   return out.slice(0, EXCERPT_MAX);
 }
@@ -55,15 +39,10 @@ export function createMilestoneDetector(
   return {
     id: "milestone",
     intentKind: "milestone",
-    async detect(
-      input: DetectorInput,
-      deps: DetectorDeps,
-    ): Promise<DetectorOutcome> {
+    async detect(input: DetectorInput, deps: DetectorDeps): Promise<DetectorOutcome> {
       const tz = opts.timeZone ?? "America/New_York";
       const enabled = gates.enabledTemplates.filter(
-        (c) =>
-          input.enabledCategories.length === 0 ||
-          input.enabledCategories.includes(c),
+        (c) => input.enabledCategories.length === 0 || input.enabledCategories.includes(c),
       );
       const system = loadPrompt(PROMPT_URL, {
         today: todayIn(tz, deps.clock.now()),
@@ -71,8 +50,7 @@ export function createMilestoneDetector(
         region: input.regionCode,
         enabledCategories: enabled.join(", ") || "none",
       });
-      const user =
-        wrapUserText(input.text) + wrapContext(input.recentContext.slice(-3));
+      const user = wrapUserText(input.text) + wrapContext(input.recentContext.slice(-3));
       let result;
       try {
         result = await deps.llm.generate({
@@ -85,17 +63,14 @@ export function createMilestoneDetector(
           traceId: input.messageId,
         });
       } catch (err) {
-        const reason =
-          err instanceof LlmSchemaError ? "schema_invalid" : "llm_unavailable";
+        const reason = err instanceof LlmSchemaError ? "schema_invalid" : "llm_unavailable";
         deps.log.warn("milestone.detect_failed", {
           messageId: input.messageId,
           reason,
         });
         return {
           detections: [],
-          rejected: [
-            { reason, detail: err instanceof Error ? err.name : "error" },
-          ],
+          rejected: [{ reason, detail: err instanceof Error ? err.name : "error" }],
           llm: null,
         };
       }
@@ -120,8 +95,7 @@ export function createMilestoneDetector(
         category: x.category,
         milestoneKind: x.milestoneKind.slice(0, 40),
         proposedQuestion: gate.questionTemplate,
-        resolvesWithinDays:
-          x.resolvesWithinDays ?? gates.defaultResolvesWithinDays,
+        resolvesWithinDays: x.resolvesWithinDays ?? gates.defaultResolvesWithinDays,
         sensitivity: x.sensitivity,
         redactions: gate.redactions,
         sourceExcerpt: excerpt(input.text, x.employerMentions),

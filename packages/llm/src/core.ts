@@ -41,9 +41,7 @@ export interface EngineOptions {
 const RETRIABLE = new Set(["timeout", "upstream", "rate_limited"]);
 const MAX_ATTEMPTS = 3;
 
-function issuesOf(error: {
-  issues?: { path: PropertyKey[]; message: string }[];
-}): string {
+function issuesOf(error: { issues?: { path: PropertyKey[]; message: string }[] }): string {
   return (error.issues ?? [])
     .slice(0, 5)
     .map((i) => `${i.path.map(String).join(".") || "(root)"}: ${i.message}`)
@@ -57,8 +55,7 @@ export async function runStructured<T>(
   transport: Transport,
   opts: EngineOptions,
 ): Promise<StructuredResult<T>> {
-  const sleep =
-    opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const started = opts.clock.now().getTime();
   const usage: LlmUsage = { inputTokens: 0, outputTokens: 0 };
   let correctiveNote: string | null = null;
@@ -81,11 +78,7 @@ export async function runStructured<T>(
         err instanceof LlmUnavailableError
           ? err
           : new LlmUnavailableError(req.task, "upstream", String(err));
-      if (
-        RETRIABLE.has(e.reason) &&
-        !transportRetried &&
-        attempt < MAX_ATTEMPTS
-      ) {
+      if (RETRIABLE.has(e.reason) && !transportRetried && attempt < MAX_ATTEMPTS) {
         transportRetried = true;
         opts.log.warn("llm.retry", {
           task: req.task,

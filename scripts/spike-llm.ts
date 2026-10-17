@@ -10,10 +10,7 @@ import {
   type AnthropicMode,
 } from "../packages/llm/src/index";
 import { MilestoneExtraction } from "../packages/shortme/src/detector/schema";
-import {
-  applyMilestoneGates,
-  type MilestoneGates,
-} from "../packages/shortme/src/detector/gates";
+import { applyMilestoneGates, type MilestoneGates } from "../packages/shortme/src/detector/gates";
 import gatesJson from "../packages/shortme/rules/milestone-gates.json" with { type: "json" };
 
 const MESSAGES: {
@@ -68,10 +65,7 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   const system = loadPrompt(
-    new URL(
-      "../packages/shortme/prompts/milestone_detector_v1.md",
-      import.meta.url,
-    ),
+    new URL("../packages/shortme/prompts/milestone_detector_v1.md", import.meta.url),
     {
       today: todayIn("America/New_York", new Date()),
       timezone: "America/New_York",
@@ -135,11 +129,7 @@ async function main(): Promise<void> {
     new URL("../fixtures/llm/spike-results.json", import.meta.url),
     JSON.stringify(results, null, 2) + "\n",
   );
-  console.log(
-    allOk
-      ? "PASS spike:llm"
-      : "FAIL spike:llm (see fixtures/llm/spike-results.json)",
-  );
+  console.log(allOk ? "PASS spike:llm" : "FAIL spike:llm (see fixtures/llm/spike-results.json)");
   process.exit(allOk ? 0 : 1);
 }
 

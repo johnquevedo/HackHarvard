@@ -7,13 +7,10 @@ import type { PlatformContext } from "@dennis/platform";
 // services/chalk-eval. LIVE only for a parseable report with provider "chalk"; anything else is the
 // honest fallback label LOCAL RUN (NOT CHALK).
 
-export function findEvalDir(
-  start: string = process.env.INIT_CWD ?? process.cwd(),
-): string {
+export function findEvalDir(start: string = process.env.INIT_CWD ?? process.cwd()): string {
   let dir = resolve(start);
   for (let i = 0; i < 6; i++) {
-    if (existsSync(join(dir, "services", "chalk-eval")))
-      return join(dir, "data", "eval");
+    if (existsSync(join(dir, "services", "chalk-eval"))) return join(dir, "data", "eval");
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;
@@ -23,8 +20,7 @@ export function findEvalDir(
 
 export function readChalkReport(evalDir: string) {
   const path = join(evalDir, "chalk-latest.json");
-  if (!existsSync(path))
-    return { report: null, problem: "no chalk report yet" };
+  if (!existsSync(path)) return { report: null, problem: "no chalk report yet" };
   try {
     const parsed = EvalReport.safeParse(JSON.parse(readFileSync(path, "utf8")));
     if (!parsed.success)
@@ -40,10 +36,7 @@ export function readChalkReport(evalDir: string) {
   }
 }
 
-export function chalkStatus(
-  evalDir: string,
-  nowIso: string,
-): IntegrationStatusT {
+export function chalkStatus(evalDir: string, nowIso: string): IntegrationStatusT {
   const { report, problem } = readChalkReport(evalDir);
   if (!report) {
     return {

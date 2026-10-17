@@ -45,16 +45,8 @@ describe("computePayouts", () => {
   });
 
   it.each([
-    [
-      "no counterparty",
-      [{ userId: "a", side: "back", points: 10, createdAt: "t1" }],
-      "yes",
-    ],
-    [
-      "no winners",
-      [{ userId: "a", side: "back", points: 10, createdAt: "t1" }],
-      "no",
-    ],
+    ["no counterparty", [{ userId: "a", side: "back", points: 10, createdAt: "t1" }], "yes"],
+    ["no winners", [{ userId: "a", side: "back", points: 10, createdAt: "t1" }], "no"],
     ["empty", [], "yes"],
   ] as const)("voids when %s", (_n, positions, outcome) => {
     expect(computePayouts([...positions], outcome)).toEqual({ void: true });
@@ -105,8 +97,7 @@ describe("computePayouts", () => {
       const res = computePayouts(positions, outcome);
       const winSide = outcome === "yes" ? "back" : "fade";
       const hasBoth =
-        positions.some((p) => p.side === "back") &&
-        positions.some((p) => p.side === "fade");
+        positions.some((p) => p.side === "back") && positions.some((p) => p.side === "fade");
       if (!hasBoth) {
         expect(res).toEqual({ void: true });
         continue;

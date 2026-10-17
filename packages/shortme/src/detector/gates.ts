@@ -54,8 +54,7 @@ function skip(reason: GateReason, detail: string): GateResult {
 }
 
 function questionOk(q: string): boolean {
-  if (!q.includes("{subject}") || q.length > 120 || !q.endsWith("?"))
-    return false;
+  if (!q.includes("{subject}") || q.length > 120 || !q.endsWith("?")) return false;
   if (FORBIDDEN_IN_QUESTION.test(q)) return false;
   const rest = q.split("{subject}").join("");
   if (rest.includes("{") || rest.includes("}")) return false;
@@ -78,17 +77,12 @@ export function sanitizeQuestion(
   const redactions: string[] = [];
   if (redact) {
     const names = [
-      ...new Set(
-        employerMentions.map((m) => m.trim()).filter((m) => m.length >= 2),
-      ),
+      ...new Set(employerMentions.map((m) => m.trim()).filter((m) => m.length >= 2)),
     ].sort((a, b) => b.length - a.length);
     for (const name of names) {
       const re = new RegExp(escapeRegex(name), "gi");
       if (re.test(q)) {
-        q = q.replace(
-          new RegExp(escapeRegex(name), "gi"),
-          REDACTION_REPLACEMENT,
-        );
+        q = q.replace(new RegExp(escapeRegex(name), "gi"), REDACTION_REPLACEMENT);
         if (!redactions.includes("employer")) redactions.push("employer");
       }
     }
@@ -101,10 +95,7 @@ export function sanitizeQuestion(
   return { questionTemplate: q, redactions: redactions.slice(0, 5) };
 }
 
-export function applyMilestoneGates(
-  x: MilestoneExtractionT,
-  gates: MilestoneGates,
-): GateResult {
+export function applyMilestoneGates(x: MilestoneExtractionT, gates: MilestoneGates): GateResult {
   if (x.minorIndicated) return block("policy_blocked", "minor_indicated");
   if (x.injectionAttempt) return block("policy_blocked", "injection_attempt");
   if (!x.isMilestone || x.hyperbole)

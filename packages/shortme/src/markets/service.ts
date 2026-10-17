@@ -14,11 +14,7 @@ import {
   markets,
 } from "@dennis/db";
 import type { PlatformContext } from "@dennis/platform";
-import {
-  fillSubject,
-  marketInviteText,
-  publishMarketPrompt,
-} from "../templates";
+import { fillSubject, marketInviteText, publishMarketPrompt } from "../templates";
 import { ensureStarterGrant, getBalance } from "../ledger/ledger";
 import {
   approvalTtlMinutes,
@@ -40,17 +36,11 @@ export interface PublishPayload {
   pointsOnly: true;
 }
 
-export function getMarket(
-  ctx: PlatformContext,
-  marketId: string,
-): MarketRow | undefined {
+export function getMarket(ctx: PlatformContext, marketId: string): MarketRow | undefined {
   return ctx.db.select().from(markets).where(eq(markets.id, marketId)).get();
 }
 
-export function requireMarket(
-  ctx: PlatformContext,
-  marketId: string,
-): MarketRow {
+export function requireMarket(ctx: PlatformContext, marketId: string): MarketRow {
   const m = getMarket(ctx, marketId);
   if (!m) throw new DennisError("not_found", "market not found", 404);
   return m;
@@ -61,17 +51,10 @@ export function marketByOpportunity(
   opportunityId: string | null,
 ): MarketRow | undefined {
   if (!opportunityId) return undefined;
-  return ctx.db
-    .select()
-    .from(markets)
-    .where(eq(markets.opportunityId, opportunityId))
-    .get();
+  return ctx.db.select().from(markets).where(eq(markets.opportunityId, opportunityId)).get();
 }
 
-export function participantsOf(
-  ctx: PlatformContext,
-  marketId: string,
-): ParticipantRow[] {
+export function participantsOf(ctx: PlatformContext, marketId: string): ParticipantRow[] {
   return ctx.db
     .select()
     .from(marketParticipants)
@@ -92,15 +75,11 @@ function setStatus(
     .set({ status: to, updatedAt: now, ...extra })
     .where(and(eq(markets.id, m.id), eq(markets.status, m.status)))
     .run();
-  if (res.changes !== 1)
-    throw new DennisError("conflict", "market changed concurrently", 409);
+  if (res.changes !== 1) throw new DennisError("conflict", "market changed concurrently", 409);
   return { ...m, status: to, updatedAt: now, ...extra };
 }
 
-export async function syncOpportunity(
-  ctx: PlatformContext,
-  m: MarketRow,
-): Promise<void> {
+export async function syncOpportunity(ctx: PlatformContext, m: MarketRow): Promise<void> {
   const published = m.openedAt !== null;
   const agentIds = new Set<string>([m.subjectAgentId]);
   if (published) {
@@ -140,10 +119,7 @@ export async function eligibleInvitees(
   });
   const out: { userId: string; firstName: string }[] = [];
   for (const f of friends) {
-    if (
-      f.id !== subjectUserId &&
-      (await ctx.consent.has(f.id, "shortme_free_play"))
-    )
+    if (f.id !== subjectUserId && (await ctx.consent.has(f.id, "shortme_free_play")))
       out.push({ userId: f.id, firstName: f.firstName });
   }
   return out;
@@ -174,11 +150,7 @@ export async function handleMilestoneDetection(
     GATES.blockedCategories.includes(p.category)
   )
     return (log("template_disabled"), null);
-  const existing = ctx.db
-    .select()
-    .from(markets)
-    .where(eq(markets.sourceIntentId, intent.id))
-    .get();
+  const existing = ctx.db.select().from(markets).where(eq(markets.sourceIntentId, intent.id)).get();
   if (existing) return existing;
   const user = await ctx.users.get(intent.userId);
   if (!user) return (log("no_user"), null);
@@ -209,9 +181,7 @@ export async function handleMilestoneDetection(
     question,
     resolutionCriteria: RESOLUTION_CRITERIA,
     status: "proposed",
-    lockAt: new Date(
-      ctx.clock.now().getTime() + lockDays * 86_400_000,
-    ).toISOString(),
+    lockAt: new Date(ctx.clock.now().getTime() + lockDays * 86_400_000).toISOString(),
     outcome: null,
     resolverKind: "demo_standin",
     redactions: (p.redactions ?? []).slice(0, 5),
@@ -253,10 +223,7 @@ export async function handleMilestoneDetection(
 }
 
 // onDecided('publish_market'): approved opens the market and invites; declined or expired ends it.
-export async function onPublishDecided(
-  ctx: PlatformContext,
-  approval: ApprovalT,
-): Promise<void> {
+export async function onPublishDecided(ctx: PlatformContext, approval: ApprovalT): Promise<void> {
   const m = marketByOpportunity(ctx, approval.opportunityId);
   if (!m || m.status !== "proposed") return;
   if (approval.userId !== m.subjectUserId)
@@ -273,9 +240,9 @@ export async function onPublishDecided(
       return;
     }
     if (approval.status !== "approved") return;
-    const approvedInvitees = (
-      (approval.payload as unknown as PublishPayload).invitees ?? []
-    ).map((i) => ({ userId: i.userId, firstName: i.firstName }));
+    const approvedInvitees = ((approval.payload as unknown as PublishPayload).invitees ?? []).map(
+      (i) => ({ userId: i.userId, firstName: i.firstName }),
+    );
     const expected: PublishPayload = {
       question: cur.question,
       invitees: approvedInvitees,
@@ -328,12 +295,7 @@ export async function sendInvites(
       const existing = tx
         .select()
         .from(marketInvites)
-        .where(
-          and(
-            eq(marketInvites.marketId, m.id),
-            eq(marketInvites.userId, inv.userId),
-          ),
-        )
+        .where(and(eq(marketInvites.marketId, m.id), eq(marketInvites.userId, inv.userId)))
         .get();
       if (!existing) {
         tx.insert(marketInvites)
@@ -379,32 +341,18 @@ function takenCodes(ctx: PlatformContext, userId: string): Set<string> {
     .where(
       and(
         eq(marketInvites.userId, userId),
-        inArray(markets.status, [
-          "open",
-          "locked",
-          "resolution_proposed",
-          "disputed",
-        ]),
+        inArray(markets.status, ["open", "locked", "resolution_proposed", "disputed"]),
       ),
     )
     .all();
   return new Set(rows.map((r) => r.code));
 }
 
-export function inviteFor(
-  ctx: PlatformContext,
-  marketId: string,
-  userId: string,
-) {
+export function inviteFor(ctx: PlatformContext, marketId: string, userId: string) {
   return ctx.db
     .select()
     .from(marketInvites)
-    .where(
-      and(
-        eq(marketInvites.marketId, marketId),
-        eq(marketInvites.userId, userId),
-      ),
-    )
+    .where(and(eq(marketInvites.marketId, marketId), eq(marketInvites.userId, userId)))
     .get();
 }
 
@@ -422,16 +370,12 @@ export async function onMarketInvite(
   const marketId = String(msg.payload.marketId ?? "");
   const m = requireMarket(ctx, marketId);
   const agent = await ctx.users.getAgent(msg.toAgentId);
-  if (!agent)
-    throw new DennisError("not_found", "invitee agent not found", 404);
+  if (!agent) throw new DennisError("not_found", "invitee agent not found", 404);
   const part = ctx.db
     .select()
     .from(marketParticipants)
     .where(
-      and(
-        eq(marketParticipants.marketId, marketId),
-        eq(marketParticipants.userId, agent.userId),
-      ),
+      and(eq(marketParticipants.marketId, marketId), eq(marketParticipants.userId, agent.userId)),
     )
     .get();
   const respond = (response: "accepted" | "declined" | "expired") =>
@@ -445,26 +389,19 @@ export async function onMarketInvite(
       idempotencyKey: `market.invite_response:${marketId}:${agent.userId}:${response}`,
     });
   if (!part || part.role !== "friend" || m.status !== "open") return;
-  if (
-    !(await ctx.consent.has(agent.userId, "shortme_free_play")) ||
-    agent.status !== "active"
-  ) {
+  if (!(await ctx.consent.has(agent.userId, "shortme_free_play")) || agent.status !== "active") {
     ctx.db
       .update(marketParticipants)
       .set({ inviteState: "declined" })
       .where(
-        and(
-          eq(marketParticipants.marketId, marketId),
-          eq(marketParticipants.userId, agent.userId),
-        ),
+        and(eq(marketParticipants.marketId, marketId), eq(marketParticipants.userId, agent.userId)),
       )
       .run();
     await respond("declined");
     return;
   }
   const invite = inviteFor(ctx, marketId, agent.userId);
-  if (!invite)
-    throw new DennisError("not_found", "invitation record missing", 404);
+  if (!invite) throw new DennisError("not_found", "invitation record missing", 404);
   const code = invite.code;
   await ctx.notifier.send({
     userId: agent.userId,
@@ -513,39 +450,24 @@ export async function passInvite(
       .select()
       .from(marketParticipants)
       .where(
-        and(
-          eq(marketParticipants.marketId, m.id),
-          eq(marketParticipants.userId, input.userId),
-        ),
+        and(eq(marketParticipants.marketId, m.id), eq(marketParticipants.userId, input.userId)),
       )
       .get();
     if (!part || part.role !== "friend")
       throw new DennisError("not_found", "no invitation for this user", 404);
     if (part.inviteState !== "invited")
-      throw new DennisError(
-        "invalid_state",
-        `invitation is ${part.inviteState}`,
-        409,
-      );
+      throw new DennisError("invalid_state", `invitation is ${part.inviteState}`, 409);
     const pos = ctx.db
       .select()
       .from(marketPositions)
-      .where(
-        and(
-          eq(marketPositions.marketId, m.id),
-          eq(marketPositions.userId, input.userId),
-        ),
-      )
+      .where(and(eq(marketPositions.marketId, m.id), eq(marketPositions.userId, input.userId)))
       .get();
     if (pos) throw new DennisError("conflict", "already holds a position", 409);
     ctx.db
       .update(marketParticipants)
       .set({ inviteState: "declined" })
       .where(
-        and(
-          eq(marketParticipants.marketId, m.id),
-          eq(marketParticipants.userId, input.userId),
-        ),
+        and(eq(marketParticipants.marketId, m.id), eq(marketParticipants.userId, input.userId)),
       )
       .run();
     const agent = await ctx.users.getAgentByUserId(input.userId);
@@ -563,10 +485,7 @@ export async function passInvite(
   });
 }
 
-export async function lockMarket(
-  ctx: PlatformContext,
-  marketId: string,
-): Promise<MarketRow> {
+export async function lockMarket(ctx: PlatformContext, marketId: string): Promise<MarketRow> {
   return ctx.runExclusive(`market:${marketId}`, async () =>
     transition(ctx, requireMarket(ctx, marketId), "locked"),
   );
@@ -581,13 +500,7 @@ export async function sweep(
   for (const m of ctx.db
     .select()
     .from(markets)
-    .where(
-      and(
-        eq(markets.status, "open"),
-        isNotNull(markets.lockAt),
-        lt(markets.lockAt, now),
-      ),
-    )
+    .where(and(eq(markets.status, "open"), isNotNull(markets.lockAt), lt(markets.lockAt, now)))
     .all()) {
     await lockMarket(ctx, m.id).then(
       () => locked++,
@@ -607,22 +520,14 @@ export async function sweep(
         eq(marketInvites.userId, marketParticipants.userId),
       ),
     )
-    .where(
-      and(
-        eq(marketParticipants.inviteState, "invited"),
-        lt(marketInvites.expiresAt, now),
-      ),
-    )
+    .where(and(eq(marketParticipants.inviteState, "invited"), lt(marketInvites.expiresAt, now)))
     .all();
   for (const p of stale) {
     ctx.db
       .update(marketParticipants)
       .set({ inviteState: "expired" })
       .where(
-        and(
-          eq(marketParticipants.marketId, p.marketId),
-          eq(marketParticipants.userId, p.userId),
-        ),
+        and(eq(marketParticipants.marketId, p.marketId), eq(marketParticipants.userId, p.userId)),
       )
       .run();
     const m = getMarket(ctx, p.marketId);
@@ -652,9 +557,7 @@ export async function onShortmeConsentRevoked(
   for (const m of ctx.db
     .select()
     .from(markets)
-    .where(
-      and(eq(markets.subjectUserId, userId), eq(markets.status, "proposed")),
-    )
+    .where(and(eq(markets.subjectUserId, userId), eq(markets.status, "proposed")))
     .all()) {
     await ctx.runExclusive(`market:${m.id}`, async () => {
       const cur = requireMarket(ctx, m.id);
@@ -674,9 +577,7 @@ export async function onShortmeConsentRevoked(
     )
     .all();
   for (const p of pending)
-    await passInvite(ctx, { marketId: p.marketId, userId }).catch(
-      () => undefined,
-    );
+    await passInvite(ctx, { marketId: p.marketId, userId }).catch(() => undefined);
 }
 
 export function listMarketsFor(
@@ -695,14 +596,8 @@ export function listMarketsFor(
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function canView(
-  m: MarketRow,
-  viewerAgentId: string | undefined,
-): boolean {
-  return (
-    m.openedAt !== null ||
-    (viewerAgentId !== undefined && viewerAgentId === m.subjectAgentId)
-  );
+export function canView(m: MarketRow, viewerAgentId: string | undefined): boolean {
+  return m.openedAt !== null || (viewerAgentId !== undefined && viewerAgentId === m.subjectAgentId);
 }
 
 export function isTerminal(status: string): boolean {

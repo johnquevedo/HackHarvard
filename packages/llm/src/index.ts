@@ -10,11 +10,7 @@ import { ChalkGatewayLlm } from "./chalk-gateway";
 import { LlmUnavailableError } from "./errors";
 import { MockStructuredLlm } from "./mock";
 
-export {
-  AnthropicLlm,
-  mapAnthropicError,
-  type AnthropicMode,
-} from "./anthropic";
+export { AnthropicLlm, mapAnthropicError, type AnthropicMode } from "./anthropic";
 export { ChalkGatewayLlm } from "./chalk-gateway";
 export { MockStructuredLlm, defaultMockRules, type MockRule } from "./mock";
 export { LlmSchemaError, LlmUnavailableError } from "./errors";
@@ -67,9 +63,7 @@ export function createStructuredLlm(
 ): StructuredLlm {
   const c = cfg as AppConfig & Record<string, unknown>;
   const provider =
-    c.dennisMode === "sim"
-      ? "mock"
-      : ((c.llmProvider as string | undefined) ?? "anthropic");
+    c.dennisMode === "sim" ? "mock" : ((c.llmProvider as string | undefined) ?? "anthropic");
   const timeoutMs = Number(c.llmTimeoutMs ?? 8000);
   if (provider === "mock") return new MockStructuredLlm();
   if (provider === "chalk") {
@@ -89,8 +83,7 @@ export function createStructuredLlm(
     });
   }
   const apiKey = c.anthropicApiKey as string | undefined;
-  if (!apiKey)
-    return new UnavailableLlm("anthropic", "ANTHROPIC_API_KEY missing");
+  if (!apiKey) return new UnavailableLlm("anthropic", "ANTHROPIC_API_KEY missing");
   return new AnthropicLlm({
     apiKey,
     model: (c.llmModel as string | undefined) ?? "claude-sonnet-5-5",

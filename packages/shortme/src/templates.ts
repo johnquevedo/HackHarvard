@@ -21,10 +21,7 @@ export function marketInviteText(p: {
   return `ShortMe from ${p.subjectFirst}'s agent: "${p.question}" Fictional points only, you have ${p.points}. Reply BACK <pts> ${p.code} (${p.subjectFirst} gets it), FADE <pts> ${p.code} (${p.subjectFirst} doesn't), or PASS ${p.code}.`;
 }
 
-export function confirmResolutionPrompt(p: {
-  question: string;
-  outcome: "yes" | "no";
-}): string {
+export function confirmResolutionPrompt(p: { question: string; outcome: "yes" | "no" }): string {
   return `ShortMe: proposed outcome for "${p.question}" is ${p.outcome.toUpperCase()}. Reply CONFIRM {code} or DISPUTE {code}.`;
 }
 
