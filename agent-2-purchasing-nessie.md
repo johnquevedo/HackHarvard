@@ -1,12 +1,12 @@
-# Synapse coding-agent work order: Agent 2: Purchasing and Nessie
+# Dennis coding-agent work order: Agent 2: Purchasing and Nessie
 
 Paste this whole file as the agent's task. The full specification is `docs/SPEC.md` in the repository and is authoritative; this file embeds everything the agent needs to start immediately.
 
 ## Shared conventions
 
-You are one of four coding agents building **Synapse** for HackHarvard 2026, concurrently, in one repository. Deadline: Sunday, October 18, 2026, 8:00 AM ET. The other three agents are working at the same time; you cannot talk to them except through the repository and `docs/CONTRACT_REQUESTS.md`.
+You are one of four coding agents building **Dennis** for HackHarvard 2026, concurrently, in one repository. Deadline: Sunday, October 18, 2026, 8:00 AM ET. The other three agents are working at the same time; you cannot talk to them except through the repository and `docs/CONTRACT_REQUESTS.md`.
 
-**Product in one paragraph.** Synapse is a network of personal AI agents that live in people's iMessage threads through Photon 2.0. Each agent notices plans in the thread its owner authorized, shares only a minimal anonymous summary with other agents, and brings its owner opportunities to approve. Pattern: Agent to Agent to User. Feature A finds friends who want the same purchase, compares a simulated group offer, collects two separate approvals, and moves sandbox money through Capital One Nessie. Feature B (ShortMe) proposes a private, invite-only, free-to-play prediction market among friends using fictional points. Sponsor priorities: Photon 2.0, Nessie, Chalk, Digital Trust.
+**Product in one paragraph.** Dennis is a network of personal AI agents that live in people's iMessage threads through Photon 2.0. Each agent notices plans in the thread its owner authorized, shares only a minimal anonymous summary with other agents, and brings its owner opportunities to approve. Pattern: Agent to Agent to User. Feature A finds friends who want the same purchase, compares a simulated group offer, collects two separate approvals, and moves sandbox money through Capital One Nessie. Feature B (ShortMe) proposes a private, invite-only, free-to-play prediction market among friends using fictional points. Sponsor priorities: Photon 2.0, Nessie, Chalk, Digital Trust.
 
 **Authority.** `docs/SPEC.md` is the single source of truth. After milestone A1-01 the contract code in `packages/contracts` is the executable form of Section 8. If the spec and your instinct disagree, follow the spec. If the spec is silent, choose the simplest reading, write the choice in your PR description or spike document, and continue. Do not ask for architecture discussions.
 
@@ -37,7 +37,7 @@ You are one of four coding agents building **Synapse** for HackHarvard 2026, con
 
 | Contract | Owner | Location | Every agent must |
 | --- | --- | --- | --- |
-| Zod schemas and types (IDs, enums, domain, events, A2A payloads, API, eval) | A1 steward, frozen at `contracts-v1` | `packages/contracts/src/*` | Import from `@synapse/contracts` only. Never redefine a shape locally. Additive changes only, via `docs/CONTRACT_REQUESTS.md`. |
+| Zod schemas and types (IDs, enums, domain, events, A2A payloads, API, eval) | A1 steward, frozen at `contracts-v1` | `packages/contracts/src/*` | Import from `@dennis/contracts` only. Never redefine a shape locally. Additive changes only, via `docs/CONTRACT_REQUESTS.md`. |
 | Ports: `MessagingProvider`, `BankingProvider`, `StructuredLlm`, `Detector` | A1, A2, A3, A1 interface and A2 and A3 implementations | `ports.ts` | Code against the interface. Each owner ships a `Mock` or simulated implementation in M0. |
 | Platform services: `EventBus`, `ConsentService`, `ApprovalService`, `Notifier`, `A2ABus`, `IntentStore`, `OpportunityStore`, `UserDirectory`, `CommandRegistry`, `IntegrationRegistry` | A1 | `packages/platform` | Use only through `PlatformContext`. Never write core tables directly. |
 | `FeatureModule` | A2 (`purchasingModule`), A3 (`shortmeModule`) | `packages/purchasing`, `packages/shortme` | Export one module object; register everything inside `register(ctx)`. Never edit `apps/server/src/compose.ts`. |
@@ -59,7 +59,7 @@ You are one of four coding agents building **Synapse** for HackHarvard 2026, con
 **Public functions (exact signatures).**
 
 ```ts
-// @synapse/purchasing
+// @dennis/purchasing
 export const purchasingModule: FeatureModule;
 export const purchaseDetector: Detector;
 export interface MatchingRules { version: number; minSavingsCents: number; minSavingsPercent: number; windowOverlapDays: number; requireSameRegion: boolean; requireProductMatch: "same_or_generic" | "same_only" }
@@ -94,7 +94,7 @@ export function executeApprovedPayment(ctx: PlatformContext, approvalId: string)
 
 **Definition of done.** Acceptance criteria for A2-01 to A2-09; a real verified Nessie transfer for both members in a live rehearsal; `pnpm verify` green.
 
-**Must not modify.** Anything outside your globs; never import `@synapse/shortme`.
+**Must not modify.** Anything outside your globs; never import `@dennis/shortme`.
 
 **If you finish early.** Moving-service category on the same matcher (S6); extra adversarial tests in `tests/cross/a2-*.test.ts`; help A4 with the purchasing view data shapes.
 
@@ -105,7 +105,7 @@ export function executeApprovedPayment(ctx: PlatformContext, approvalId: string)
 **A2-01 Purchasing stub and slice** (M0, P0, 40 min). Depends on: A1-01 contracts (S0).
 - Tasks: replace the stub with `purchasingModule`; `MockPurchaseDetector` (regex on "monitor", parse "$350"); detection handler: check `purchase_matching` and agent setting, mark shared, emit `intent.registered`; when two shared monitor intents from different agents exist, upsert a `group_purchase` opportunity with headline marked SIMULATED; seed `ofr_demo_monitor`.
 - Files: `packages/purchasing/src/**`, `packages/purchasing/rules/*.json`.
-- Tests: `pnpm --filter @synapse/purchasing test` (regex cases, two intents yield one opportunity).
+- Tests: `pnpm --filter @dennis/purchasing test` (regex cases, two intents yield one opportunity).
 - Done when: part of the joint M0 acceptance passes.
 - Commit: `feat(purchasing): stub module and mock detector slice`.
 - Fallback: none.
@@ -192,7 +192,7 @@ export function executeApprovedPayment(ctx: PlatformContext, approvalId: string)
 - Mark `verified` only under invariant P4. Otherwise `unverified` with a note. The UI renders only values returned by the active `BankingProvider`.
 - Public intent payloads contain only the fields of `PurchaseIntentPublic` (strict). Never copy names, handles, or raw text into them or into A2A payloads. Reveal first names only after all members approve joining.
 - Simulated offers are always labeled SIMULATED OFFER. Do not claim a real merchant price anywhere.
-- Never import `@synapse/shortme`. Never use a bank adapter for anything but the group pool.
+- Never import `@dennis/shortme`. Never use a bank adapter for anything but the group pool.
 - Treat everything marked [ASSUMED] in Section 10.2 as unknown until A2-02 proves it; write results to `docs/spikes/nessie.md` and adapt the adapter, not the contract.
 
 **What others depend on, and when.** Mock detector and slice (S1); `SimBankingProvider` and Nessie adapter (T+2:40); `MatchingRules` and public intent shape for A3's Chalk task (T+3:25); group and payment data for A4's views (fixtures from A4-02, real by T+6:25).
@@ -257,7 +257,7 @@ The contract code blocks in this document were syntax-checked only, never type-c
 ### F.6 Interpretation decisions the team should confirm quickly
 
 - Decision D4: "two distinct personal agent identities" is implemented as two logical agents (separate rows, state, intents, approvals, outbound persona labels) on one Photon agent identity and shared line. If the judges or the Photon team expect two real phone numbers, build stretch item S4; the adapter already carries an `accountKey` so no schema change is needed.
-- Decision D3: authorized conversation means each user's 1:1 thread with the Synapse line. Group-chat listening is a stretch item.
+- Decision D3: authorized conversation means each user's 1:1 thread with the Dennis line. Group-chat listening is a stretch item.
 - Decision D14: the ShortMe demo resolver stands in for an official outcome source and is always labeled as such.
 - Workload changes from the provisional split (Section 12.0) are decisions, not requirements; if an agent is blocked or idle, rebalance through a note in `docs/CONTRACT_REQUESTS.md`.
 

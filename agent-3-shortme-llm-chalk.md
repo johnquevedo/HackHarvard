@@ -1,12 +1,12 @@
-# Synapse coding-agent work order: Agent 3: ShortMe, LLM, and Chalk
+# Dennis coding-agent work order: Agent 3: ShortMe, LLM, and Chalk
 
 Paste this whole file as the agent's task. The full specification is `docs/SPEC.md` in the repository and is authoritative; this file embeds everything the agent needs to start immediately.
 
 ## Shared conventions
 
-You are one of four coding agents building **Synapse** for HackHarvard 2026, concurrently, in one repository. Deadline: Sunday, October 18, 2026, 8:00 AM ET. The other three agents are working at the same time; you cannot talk to them except through the repository and `docs/CONTRACT_REQUESTS.md`.
+You are one of four coding agents building **Dennis** for HackHarvard 2026, concurrently, in one repository. Deadline: Sunday, October 18, 2026, 8:00 AM ET. The other three agents are working at the same time; you cannot talk to them except through the repository and `docs/CONTRACT_REQUESTS.md`.
 
-**Product in one paragraph.** Synapse is a network of personal AI agents that live in people's iMessage threads through Photon 2.0. Each agent notices plans in the thread its owner authorized, shares only a minimal anonymous summary with other agents, and brings its owner opportunities to approve. Pattern: Agent to Agent to User. Feature A finds friends who want the same purchase, compares a simulated group offer, collects two separate approvals, and moves sandbox money through Capital One Nessie. Feature B (ShortMe) proposes a private, invite-only, free-to-play prediction market among friends using fictional points. Sponsor priorities: Photon 2.0, Nessie, Chalk, Digital Trust.
+**Product in one paragraph.** Dennis is a network of personal AI agents that live in people's iMessage threads through Photon 2.0. Each agent notices plans in the thread its owner authorized, shares only a minimal anonymous summary with other agents, and brings its owner opportunities to approve. Pattern: Agent to Agent to User. Feature A finds friends who want the same purchase, compares a simulated group offer, collects two separate approvals, and moves sandbox money through Capital One Nessie. Feature B (ShortMe) proposes a private, invite-only, free-to-play prediction market among friends using fictional points. Sponsor priorities: Photon 2.0, Nessie, Chalk, Digital Trust.
 
 **Authority.** `docs/SPEC.md` is the single source of truth. After milestone A1-01 the contract code in `packages/contracts` is the executable form of Section 8. If the spec and your instinct disagree, follow the spec. If the spec is silent, choose the simplest reading, write the choice in your PR description or spike document, and continue. Do not ask for architecture discussions.
 
@@ -37,7 +37,7 @@ You are one of four coding agents building **Synapse** for HackHarvard 2026, con
 
 | Contract | Owner | Location | Every agent must |
 | --- | --- | --- | --- |
-| Zod schemas and types (IDs, enums, domain, events, A2A payloads, API, eval) | A1 steward, frozen at `contracts-v1` | `packages/contracts/src/*` | Import from `@synapse/contracts` only. Never redefine a shape locally. Additive changes only, via `docs/CONTRACT_REQUESTS.md`. |
+| Zod schemas and types (IDs, enums, domain, events, A2A payloads, API, eval) | A1 steward, frozen at `contracts-v1` | `packages/contracts/src/*` | Import from `@dennis/contracts` only. Never redefine a shape locally. Additive changes only, via `docs/CONTRACT_REQUESTS.md`. |
 | Ports: `MessagingProvider`, `BankingProvider`, `StructuredLlm`, `Detector` | A1, A2, A3, A1 interface and A2 and A3 implementations | `ports.ts` | Code against the interface. Each owner ships a `Mock` or simulated implementation in M0. |
 | Platform services: `EventBus`, `ConsentService`, `ApprovalService`, `Notifier`, `A2ABus`, `IntentStore`, `OpportunityStore`, `UserDirectory`, `CommandRegistry`, `IntegrationRegistry` | A1 | `packages/platform` | Use only through `PlatformContext`. Never write core tables directly. |
 | `FeatureModule` | A2 (`purchasingModule`), A3 (`shortmeModule`) | `packages/purchasing`, `packages/shortme` | Export one module object; register everything inside `register(ctx)`. Never edit `apps/server/src/compose.ts`. |
@@ -59,11 +59,11 @@ You are one of four coding agents building **Synapse** for HackHarvard 2026, con
 **Public functions (exact signatures).**
 
 ```ts
-// @synapse/llm
+// @dennis/llm
 export function createStructuredLlm(cfg: AppConfig, deps: { clock: Clock; log: Logger }): StructuredLlm;
 export class MockStructuredLlm implements StructuredLlm { constructor(rules?: MockRule[]) }
 export class LlmSchemaError extends Error {}
-// @synapse/shortme
+// @dennis/shortme
 export const shortmeModule: FeatureModule;
 export const milestoneDetector: Detector;
 export function placePosition(ctx: PlatformContext, input: { marketId: string; userId: string; side: "back" | "fade"; points: number; idempotencyKey: string; via: DecisionChannelT }): Promise<PositionT>;
@@ -78,7 +78,7 @@ export function validateQuip(quip: string): boolean;
 export function renderResultMessage(input: { outcomeSentence: string; deltaLine: string }, quip: string | null): string;
 ```
 
-Python (`services/chalk-eval`): `uv run python -m synapse_eval.run --suite all --provider chalk` and `--provider local-fixture` (reads fixture results for offline testing of metrics).
+Python (`services/chalk-eval`): `uv run python -m dennis_eval.run --suite all --provider chalk` and `--provider local-fixture` (reads fixture results for offline testing of metrics).
 
 **Endpoints implemented.** Section 9.3.
 
@@ -98,7 +98,7 @@ Python (`services/chalk-eval`): `uv run python -m synapse_eval.run --suite all -
 
 **Definition of done.** Acceptance criteria for A3-01 to A3-10; a real Chalk run reported with `provider: "chalk"`; `pnpm verify` green.
 
-**Must not modify.** Anything outside your globs; never import `@synapse/purchasing` or any bank adapter.
+**Must not modify.** Anything outside your globs; never import `@dennis/purchasing` or any bank adapter.
 
 **If you finish early.** Academics and friend-event templates as disabled templates (S7); the Chalk gateway adapter (S3); extra adversarial tests in `tests/cross/a3-*.test.ts`; help A4 label-check the eval tab.
 
@@ -109,7 +109,7 @@ Python (`services/chalk-eval`): `uv run python -m synapse_eval.run --suite all -
 **A3-01 ShortMe stub and mock LLM** (M0, P0, 40 min). Depends on: A1-01 contracts (S0).
 - Tasks: replace stubs with `shortmeModule` and `MockStructuredLlm` (keyword rules per task); `milestoneDetector` mock path (regex on "interview" or "offer"); detection handler: create `markets` row `proposed`, upsert opportunity `shortme_market`, emit `shortme.market.updated` (private); seed starter points; no approval yet.
 - Files: `packages/llm/src/**`, `packages/shortme/src/**`, `packages/shortme/rules/milestone-gates.json`.
-- Tests: `pnpm --filter @synapse/shortme test` (regex cases, market created, event private).
+- Tests: `pnpm --filter @dennis/shortme test` (regex cases, market created, event private).
 - Done when: part of the joint M0 acceptance passes.
 - Commit: `feat(shortme): stub module, mock llm, mock milestone detector`.
 - Fallback: none.
@@ -198,7 +198,7 @@ Python (`services/chalk-eval`): `uv run python -m synapse_eval.run --suite all -
 
 **Specific hard requirements.**
 
-- No real money, deposits, prizes, redemption, or purchase requirement anywhere. Points are fictional; every user-facing result says so. Never import `@synapse/purchasing` or any bank adapter.
+- No real money, deposits, prizes, redemption, or purchase requirement anywhere. Points are fictional; every user-facing result says so. Never import `@dennis/purchasing` or any bank adapter.
 - A market is invisible to everyone except its subject until the subject approves `publish_market`. Dating and high-sensitivity categories are blocked in the detector gate. Employer names are redacted by default.
 - Invitations go only to invitees who hold `shortme_free_play` consent (which records the 18+ confirmation). The invite payload contains only the subject-approved question.
 - Ledger invariants L1 to L6 must hold; test them with randomized properties. Resolution requires the subject's explicit confirmation; a dispute freezes payouts; the demo resolver is always labeled STAND-IN FOR OFFICIAL SOURCE.
@@ -268,7 +268,7 @@ The contract code blocks in this document were syntax-checked only, never type-c
 ### F.6 Interpretation decisions the team should confirm quickly
 
 - Decision D4: "two distinct personal agent identities" is implemented as two logical agents (separate rows, state, intents, approvals, outbound persona labels) on one Photon agent identity and shared line. If the judges or the Photon team expect two real phone numbers, build stretch item S4; the adapter already carries an `accountKey` so no schema change is needed.
-- Decision D3: authorized conversation means each user's 1:1 thread with the Synapse line. Group-chat listening is a stretch item.
+- Decision D3: authorized conversation means each user's 1:1 thread with the Dennis line. Group-chat listening is a stretch item.
 - Decision D14: the ShortMe demo resolver stands in for an official outcome source and is always labeled as such.
 - Workload changes from the provisional split (Section 12.0) are decisions, not requirements; if an agent is blocked or idle, rebalance through a note in `docs/CONTRACT_REQUESTS.md`.
 

@@ -1,12 +1,12 @@
-# Synapse coding-agent work order: Agent 1: Platform and Photon
+# Dennis coding-agent work order: Agent 1: Platform and Photon
 
 Paste this whole file as the agent's task. The full specification is `docs/SPEC.md` in the repository and is authoritative; this file embeds everything the agent needs to start immediately.
 
 ## Shared conventions
 
-You are one of four coding agents building **Synapse** for HackHarvard 2026, concurrently, in one repository. Deadline: Sunday, October 18, 2026, 8:00 AM ET. The other three agents are working at the same time; you cannot talk to them except through the repository and `docs/CONTRACT_REQUESTS.md`.
+You are one of four coding agents building **Dennis** for HackHarvard 2026, concurrently, in one repository. Deadline: Sunday, October 18, 2026, 8:00 AM ET. The other three agents are working at the same time; you cannot talk to them except through the repository and `docs/CONTRACT_REQUESTS.md`.
 
-**Product in one paragraph.** Synapse is a network of personal AI agents that live in people's iMessage threads through Photon 2.0. Each agent notices plans in the thread its owner authorized, shares only a minimal anonymous summary with other agents, and brings its owner opportunities to approve. Pattern: Agent to Agent to User. Feature A finds friends who want the same purchase, compares a simulated group offer, collects two separate approvals, and moves sandbox money through Capital One Nessie. Feature B (ShortMe) proposes a private, invite-only, free-to-play prediction market among friends using fictional points. Sponsor priorities: Photon 2.0, Nessie, Chalk, Digital Trust.
+**Product in one paragraph.** Dennis is a network of personal AI agents that live in people's iMessage threads through Photon 2.0. Each agent notices plans in the thread its owner authorized, shares only a minimal anonymous summary with other agents, and brings its owner opportunities to approve. Pattern: Agent to Agent to User. Feature A finds friends who want the same purchase, compares a simulated group offer, collects two separate approvals, and moves sandbox money through Capital One Nessie. Feature B (ShortMe) proposes a private, invite-only, free-to-play prediction market among friends using fictional points. Sponsor priorities: Photon 2.0, Nessie, Chalk, Digital Trust.
 
 **Authority.** `docs/SPEC.md` is the single source of truth. After milestone A1-01 the contract code in `packages/contracts` is the executable form of Section 8. If the spec and your instinct disagree, follow the spec. If the spec is silent, choose the simplest reading, write the choice in your PR description or spike document, and continue. Do not ask for architecture discussions.
 
@@ -37,7 +37,7 @@ You are one of four coding agents building **Synapse** for HackHarvard 2026, con
 
 | Contract | Owner | Location | Every agent must |
 | --- | --- | --- | --- |
-| Zod schemas and types (IDs, enums, domain, events, A2A payloads, API, eval) | A1 steward, frozen at `contracts-v1` | `packages/contracts/src/*` | Import from `@synapse/contracts` only. Never redefine a shape locally. Additive changes only, via `docs/CONTRACT_REQUESTS.md`. |
+| Zod schemas and types (IDs, enums, domain, events, A2A payloads, API, eval) | A1 steward, frozen at `contracts-v1` | `packages/contracts/src/*` | Import from `@dennis/contracts` only. Never redefine a shape locally. Additive changes only, via `docs/CONTRACT_REQUESTS.md`. |
 | Ports: `MessagingProvider`, `BankingProvider`, `StructuredLlm`, `Detector` | A1, A2, A3, A1 interface and A2 and A3 implementations | `ports.ts` | Code against the interface. Each owner ships a `Mock` or simulated implementation in M0. |
 | Platform services: `EventBus`, `ConsentService`, `ApprovalService`, `Notifier`, `A2ABus`, `IntentStore`, `OpportunityStore`, `UserDirectory`, `CommandRegistry`, `IntegrationRegistry` | A1 | `packages/platform` | Use only through `PlatformContext`. Never write core tables directly. |
 | `FeatureModule` | A2 (`purchasingModule`), A3 (`shortmeModule`) | `packages/purchasing`, `packages/shortme` | Export one module object; register everything inside `register(ctx)`. Never edit `apps/server/src/compose.ts`. |
@@ -59,7 +59,7 @@ You are one of four coding agents building **Synapse** for HackHarvard 2026, con
 **Public functions (exact signatures).**
 
 ```ts
-// @synapse/platform
+// @dennis/platform
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig;
 export function createPlatform(opts: { config: AppConfig; messaging?: MessagingProvider; llm?: StructuredLlm }): Promise<PlatformContext>;
 export function ingestInbound(ctx: PlatformContext, msg: InboundMessage): Promise<{ messageId: string | null; outcome: "queued" | "command" | "ignored" | "replay" }>;
@@ -74,7 +74,7 @@ export function agentScope(ctx: PlatformContext, agentId: string): AgentScope;
 // contracts
 export function parseCommand(text: string): ParsedCommand;
 export function hashPayload(payload: Record<string, unknown>): string;
-// @synapse/messaging
+// @dennis/messaging
 export function createMessagingProvider(cfg: AppConfig, deps: { db: Db; clock: Clock; ids: IdFactory; log: Logger }): MessagingProvider;
 export function normalizePhotonEvent(raw: unknown, agentUserId: string): InboundMessage | null;
 export function normalizeHandle(raw: string): { handle: string; kind: "phone" | "email" };
@@ -82,7 +82,7 @@ export function normalizeHandle(raw: string): { handle: string; kind: "phone" | 
 
 **Endpoints implemented.** Section 9.1 in full, plus `POST /webhooks/photon`.
 
-**Tables owned.** All core tables (7.1). Writes to core tables happen only inside `@synapse/platform`.
+**Tables owned.** All core tables (7.1). Writes to core tables happen only inside `@dennis/platform`.
 
 **External services.** Photon 2.0 (Section 10.1).
 
@@ -103,9 +103,9 @@ export function normalizeHandle(raw: string): { handle: string; kind: "phone" | 
 ### 13.1 Agent 1 milestones
 
 **A1-01 Foundation and vertical slice** (M0, P0, 50 min). Depends on: nothing.
-- Tasks: first 15 minutes, write `packages/contracts` exactly per Sections 8 and 9 (all event payload schemas, A2A payloads, `parseCommand` returning `none` for now), merge, tag `contracts-rc`. Then `packages/db` (client with `foreign_keys=ON` and WAL, complete initial `core.ts`, `purchasing.ts`, `shortme.ts` from Sections 7.1 to 7.3, `db:push`, `db:reset`). Then `packages/platform`: config, clock, ids, log, `runExclusive`, event bus with viewer filter, SSE and events routes, integration registry, user directory, intent and opportunity stores, detector registry, a minimal `runPipeline`, `seedCore`, and `@synapse/platform/testing` exporting `createTestPlatform(overrides?)` (in-memory SQLite, `SimMessagingProvider`, mock LLM stub, real services as they land, in-memory fakes for approvals, notifier, and the A2A bus until A1-04 and A1-06 replace them; due by T+0:40). Then `SimMessagingProvider`, `POST /api/sim/inbound`, `apps/server` with `compose.ts` (mounts platform, purchasing, shortme, and `@synapse/eval-data` routes). Create stub exports so compose compiles: `purchasingModule` and `shortmeModule` (empty `FeatureModule`), `createStructuredLlm` (returns a stub), `evalDemoRoutes` (empty Hono app). A2, A3, A4 overwrite those stubs in their own M0.
+- Tasks: first 15 minutes, write `packages/contracts` exactly per Sections 8 and 9 (all event payload schemas, A2A payloads, `parseCommand` returning `none` for now), merge, tag `contracts-rc`. Then `packages/db` (client with `foreign_keys=ON` and WAL, complete initial `core.ts`, `purchasing.ts`, `shortme.ts` from Sections 7.1 to 7.3, `db:push`, `db:reset`). Then `packages/platform`: config, clock, ids, log, `runExclusive`, event bus with viewer filter, SSE and events routes, integration registry, user directory, intent and opportunity stores, detector registry, a minimal `runPipeline`, `seedCore`, and `@dennis/platform/testing` exporting `createTestPlatform(overrides?)` (in-memory SQLite, `SimMessagingProvider`, mock LLM stub, real services as they land, in-memory fakes for approvals, notifier, and the A2A bus until A1-04 and A1-06 replace them; due by T+0:40). Then `SimMessagingProvider`, `POST /api/sim/inbound`, `apps/server` with `compose.ts` (mounts platform, purchasing, shortme, and `@dennis/eval-data` routes). Create stub exports so compose compiles: `purchasingModule` and `shortmeModule` (empty `FeatureModule`), `createStructuredLlm` (returns a stub), `evalDemoRoutes` (empty Hono app). A2, A3, A4 overwrite those stubs in their own M0.
 - Files: `packages/contracts/**`, `packages/db/**`, `packages/platform/**`, `packages/messaging/src/sim/**`, `apps/server/**`, the four stubs above.
-- Tests: `pnpm --filter @synapse/contracts test` (every event type has a schema and a sample payload that parses; shared-event payloads reject extra keys); `pnpm typecheck`.
+- Tests: `pnpm --filter @dennis/contracts test` (every event type has a schema and a sample payload that parses; shared-event payloads reject extra keys); `pnpm typecheck`.
 - Done when: `pnpm dev:server` boots, `GET /api/health` returns ok, a `POST /api/sim/inbound` call produces `message.received` over `GET /api/events/stream`, tag `contracts-rc` pushed (final `contracts-v1` at S1).
 - Commit: `feat(core): contracts, db schema, event bus, sim ingest, compose root`.
 - Fallback: if a Drizzle partial unique index fails to push, create it with raw SQL in `client.ts` bootstrap.
@@ -121,7 +121,7 @@ export function normalizeHandle(raw: string): { handle: string; kind: "phone" | 
 **A1-03 Identity, consent, commands** (M2, P0, 45 min). Depends on: A1-01.
 - Tasks: full `parseCommand` per Section 8.5; full `ingestInbound` (replay guard, unknown handle onboarding once per hour, no-consent handling, command dispatch, enqueue pipeline); `ConsentService` with revoke hooks and append-only history; `AGREE` variants; `STOP`, `PAUSE`, `RESUME`, `STATUS`, `FORGET`, `HELP` replies; `onboarding` template.
 - Files: `packages/platform/src/{commands,consent,identity}/**`, `packages/contracts/src/commands.ts` (implementation body only).
-- Tests: `pnpm --filter @synapse/platform test` with at least 40 table-driven command inputs; ingest replay yields `replay`; unconsented message never stored; `STOP` revokes all.
+- Tests: `pnpm --filter @dennis/platform test` with at least 40 table-driven command inputs; ingest replay yields `replay`; unconsented message never stored; `STOP` revokes all.
 - Done when: all tests green and a sim conversation walks `hi` to onboarding reply to `AGREE` to consent granted.
 - Commit: `feat(platform): ingest, consent, command grammar`.
 - Fallback: none needed; this is pure code.
@@ -249,7 +249,7 @@ Conventions. Table and column names are `snake_case`. IDs are prefixed strings (
 | Consents | All four scopes granted for both, `via = seed_demo`, `text_version = v1`. |
 | Friend links | Alice and Bob, both directions, `can_invite` true. |
 | Offers | `ofr_demo_monitor`: merchant "DemoMart (simulated)", product key `monitor_27in_4k`, title "27-inch 4K monitor", unit price 32999 cents, tiers `[{minQty: 2, unitPriceCents: 28499}]`, `is_simulated` true, `source_label` "SIMULATED OFFER, not a real merchant quote". |
-| Bank | Nessie customers and accounts for Alice (start $1,500.00), Bob (start $1,200.00), and "Synapse Group Pool" (start $0.00 or the provider minimum). Mapping stored in `bank_links`. |
+| Bank | Nessie customers and accounts for Alice (start $1,500.00), Bob (start $1,200.00), and "Dennis Group Pool" (start $0.00 or the provider minimum). Mapping stored in `bank_links`. |
 | Points | 1,000 `grant` ledger entries per user. |
 
 ---
@@ -288,7 +288,7 @@ export const ERROR_CODES = [
   "rate_limited", "upstream_error", "integration_unavailable", "internal",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
-export class SynapseError extends Error {
+export class DennisError extends Error {
   constructor(public code: ErrorCode, message: string, public status: number, public details?: unknown);
 }
 export const ApiErrorBody = z.object({
@@ -442,7 +442,7 @@ export const NewEvent = z.object({
 });
 ```
 
-`EVENT_PAYLOAD_SCHEMAS` maps each type below to a strict Zod object with exactly the listed fields. `EventBus.emit` validates the payload against it and throws `SynapseError("internal")` in tests and logs `error.logged` in production on mismatch. Every `shared` event must satisfy the minimal-data rule: no raw message text, no handles, no private payload fields.
+`EVENT_PAYLOAD_SCHEMAS` maps each type below to a strict Zod object with exactly the listed fields. `EventBus.emit` validates the payload against it and throws `DennisError("internal")` in tests and logs `error.logged` in production on mismatch. Every `shared` event must satisfy the minimal-data rule: no raw message text, no handles, no private payload fields.
 
 | Type | Emitted by | Visibility | Payload fields |
 | --- | --- | --- | --- |
@@ -581,7 +581,7 @@ export interface Logger {
 export interface Unsubscribe { (): void }
 export interface Job<T> { (): Promise<T> }
 
-// ---------- Messaging (owner A1, package @synapse/messaging) ----------
+// ---------- Messaging (owner A1, package @dennis/messaging) ----------
 export interface InboundHandler { (msg: InboundMessage): Promise<void> }
 export interface MessagingProvider {
   readonly name: "photon" | "sim";
@@ -591,7 +591,7 @@ export interface MessagingProvider {
   health(): Promise<IntegrationStatus>;
 }
 
-// ---------- Banking (owner A2, package @synapse/purchasing) ----------
+// ---------- Banking (owner A2, package @dennis/purchasing) ----------
 export interface BankAccountView { accountRef: string; label: string; last4: string; balanceCents: number; ownerKey: string }
 export interface SeedBankingInput { members: { linkKey: string; displayName: string; startCents: number }[]; poolStartCents: number; runTag: string }
 export interface BankSeedResult { provider: "nessie" | "sim"; accounts: BankAccountView[]; created: number; reused: number }
@@ -615,7 +615,7 @@ export interface BankingProvider {
   health(): Promise<IntegrationStatus>;
 }
 
-// ---------- LLM (owner A3, package @synapse/llm) ----------
+// ---------- LLM (owner A3, package @dennis/llm) ----------
 export interface LlmUsage { inputTokens: number; outputTokens: number }
 export interface StructuredRequest<T> {
   task: string;            // for example "purchase_detector_v1"
@@ -663,7 +663,7 @@ export interface DetectorRegistry {
   handlersFor(kind: "purchase" | "milestone"): DetectionHandler[];
 }
 
-// ---------- Platform services (owner A1, package @synapse/platform) ----------
+// ---------- Platform services (owner A1, package @dennis/platform) ----------
 export interface EventBus {
   emit(e: z.infer<typeof NewEvent>): z.infer<typeof DomainEvent>;
   subscribe(filter: { viewerAgentId?: string; judge?: boolean }, listener: EventListener): Unsubscribe;
@@ -673,7 +673,7 @@ export interface EventListener { (e: z.infer<typeof DomainEvent>): void }
 
 export interface ConsentService {
   has(userId: string, scope: ConsentScopeT): Promise<boolean>;
-  require(userId: string, scope: ConsentScopeT): Promise<void>;  // throws SynapseError("consent_required")
+  require(userId: string, scope: ConsentScopeT): Promise<void>;  // throws DennisError("consent_required")
   set(input: { userId: string; scope: ConsentScopeT; granted: boolean; via: "imessage" | "dashboard" | "seed_demo" | "sim_phone" }): Promise<void>;
   onRevoked(handler: ConsentRevokedHandler): void;
 }
@@ -690,7 +690,7 @@ export interface ApprovalService {
   decide(input: { approvalId: string; userId: string; decision: "approve" | "decline"; via: DecisionChannelT }): Promise<ApprovalT>;
   get(approvalId: string): Promise<ApprovalT | null>;
   findPending(userId: string, code: string | null): Promise<ApprovalT[]>;
-  // Throws SynapseError("approval_invalid") unless approved, unexpired, unconsumed, same user, same kind, same payload hash.
+  // Throws DennisError("approval_invalid") unless approved, unexpired, unconsumed, same user, same kind, same payload hash.
   assertApproved(input: { approvalId: string; userId: string; kind: ApprovalKindT; payloadHash: string }): Promise<ApprovalT>;
   consume(approvalId: string): Promise<void>;                    // call inside the same DB transaction as the guarded action
   onDecided(kind: ApprovalKindT, handler: ApprovalDecidedHandler): void;
@@ -757,7 +757,7 @@ export interface IntegrationRegistry {
 
 (`ConsentScopeT`, `ApprovalT`, and the other `T`-suffixed names stand for `z.infer` of the schemas in 8.2; define them in the file as `export type ApprovalT = z.infer<typeof Approval>` and so on.)
 
-`PlatformContext` and `FeatureModule` live in `@synapse/platform` (they need the `Db` type and Hono):
+`PlatformContext` and `FeatureModule` live in `@dennis/platform` (they need the `Db` type and Hono):
 
 ```ts
 export interface PlatformContext {
@@ -785,11 +785,11 @@ Money inside any user-facing text is formatted by code from integer cents. The L
 
 | Template ID | Owner | Text |
 | --- | --- | --- |
-| `onboarding` | A1 | `Hi {first}, I'm Synapse, your personal agent. With your OK I can notice plans in this chat, like things you want to buy, and talk to other people's agents to find ways to save. I share only a minimal anonymous summary, never your messages, and I ask before anything involving your name or money. Reply AGREE to turn this on. STOP any time.` |
-| `join_group` | A2 | `Synapse for {first}: another Synapse user is also shopping for a {productLabel}. Together you'd each pay {group} instead of {individual}, saving {savings}. SIMULATED group offer from {merchant}. If you join, your first name is shared with them. Nothing is charged yet. Reply YES {code} to join or NO {code} to skip.` |
-| `authorize_payment` | A2 | `Synapse for {first}: authorize a SANDBOX transfer of {amount} from your demo account ending {last4} to the group pool for the {productLabel}? Sandbox money only, no real funds. Reply YES {code} to authorize or NO {code} to cancel.` |
+| `onboarding` | A1 | `Hi {first}, I'm Dennis, your personal agent. With your OK I can notice plans in this chat, like things you want to buy, and talk to other people's agents to find ways to save. I share only a minimal anonymous summary, never your messages, and I ask before anything involving your name or money. Reply AGREE to turn this on. STOP any time.` |
+| `join_group` | A2 | `Dennis for {first}: another Dennis user is also shopping for a {productLabel}. Together you'd each pay {group} instead of {individual}, saving {savings}. SIMULATED group offer from {merchant}. If you join, your first name is shared with them. Nothing is charged yet. Reply YES {code} to join or NO {code} to skip.` |
+| `authorize_payment` | A2 | `Dennis for {first}: authorize a SANDBOX transfer of {amount} from your demo account ending {last4} to the group pool for the {productLabel}? Sandbox money only, no real funds. Reply YES {code} to authorize or NO {code} to cancel.` |
 | `payment_result` | A2 | `Done, {first}: sandbox transfer of {amount} {verificationWord}. Ref {shortRef}. Demo balance now {balance}.` where `verificationWord` is `verified` or `recorded but not verified` |
-| `publish_market` | A3 | `Synapse for {first}: that sounded like a ShortMe moment. Want a private, free-to-play market for friends: "{question}"? Invited: {names}. Points only, no money, no prizes. Reply YES {code} to publish or NO {code} to drop it.` |
+| `publish_market` | A3 | `Dennis for {first}: that sounded like a ShortMe moment. Want a private, free-to-play market for friends: "{question}"? Invited: {names}. Points only, no money, no prizes. Reply YES {code} to publish or NO {code} to drop it.` |
 | `market_invite` | A3 | `ShortMe from {subjectFirst}'s agent: "{question}" Fictional points only, you have {points}. Reply BACK <pts> {code} ({subjectFirst} gets it), FADE <pts> {code} ({subjectFirst} doesn't), or PASS {code}.` |
 | `confirm_resolution` | A3 | `ShortMe: proposed outcome for "{question}" is {OUTCOME}. Reply CONFIRM {code} or DISPUTE {code}.` |
 | `market_result` | A3 | `ShortMe result: {outcomeSentence} {quip} Points: {deltaLine}. (Fictional points, no value.)` The `quip` is LLM text, at most 140 characters, no digits, no currency symbols, no names other than the subject's first name, checked by code; on any failure use the fixed fallback `Ouch and congratulations, in that order.` |
@@ -826,7 +826,7 @@ export const EvalReport = z.object({
 
 | Contract | Owner | Location | Every agent must |
 | --- | --- | --- | --- |
-| Zod schemas and types (IDs, enums, domain, events, A2A payloads, API, eval) | A1 steward, frozen at `contracts-v1` | `packages/contracts/src/*` | Import from `@synapse/contracts` only. Never redefine a shape locally. Additive changes only, via `docs/CONTRACT_REQUESTS.md`. |
+| Zod schemas and types (IDs, enums, domain, events, A2A payloads, API, eval) | A1 steward, frozen at `contracts-v1` | `packages/contracts/src/*` | Import from `@dennis/contracts` only. Never redefine a shape locally. Additive changes only, via `docs/CONTRACT_REQUESTS.md`. |
 | Ports: `MessagingProvider`, `BankingProvider`, `StructuredLlm`, `Detector` | A1, A2, A3, A1 interface and A2 and A3 implementations | `ports.ts` | Code against the interface. Each owner ships a `Mock` or simulated implementation in M0. |
 | Platform services: `EventBus`, `ConsentService`, `ApprovalService`, `Notifier`, `A2ABus`, `IntentStore`, `OpportunityStore`, `UserDirectory`, `CommandRegistry`, `IntegrationRegistry` | A1 | `packages/platform` | Use only through `PlatformContext`. Never write core tables directly. |
 | `FeatureModule` | A2 (`purchasingModule`), A3 (`shortmeModule`) | `packages/purchasing`, `packages/shortme` | Export one module object; register everything inside `register(ctx)`. Never edit `apps/server/src/compose.ts`. |
@@ -847,7 +847,7 @@ Base URL: `http://localhost:${PORT_SERVER}` (default 4000). JSON in, JSON out. S
 
 **Auth model.**
 
-- No user login. Routes marked ADMIN require header `x-synapse-admin: <SYNAPSE_ADMIN_TOKEN>`; missing or wrong token returns `401 unauthorized`.
+- No user login. Routes marked ADMIN require header `x-dennis-admin: <DENNIS_ADMIN_TOKEN>`; missing or wrong token returns `401 unauthorized`.
 - The Next.js app proxies `/api/*` to the server through a route handler (`apps/web/src/app/api/[...path]/route.ts`) that adds the admin header from a server-only env var. The browser never sees the token. The server and web app bind to localhost.
 - `viewerAgentId` is the privacy lens. With it, results are filtered to what that agent may see. Without it, event and intent routes return the judge view and require ADMIN.
 
@@ -941,7 +941,7 @@ Subject confirmation and dispute go through `POST /api/approvals/:approvalId/dec
 
 **First action (before coding).** Ask the human lead to create the Photon beta project and project API key, enable iMessage, and assign shared lines for both demo phones, or do it yourself if you have access. Record the project ID and agent user ID. This unblocks A1-02.
 
-**First 15 minutes.** Create `packages/contracts` exactly as Section 8 and Section 9 specify (all enums, domain schemas, every event payload schema, A2A payloads, commands, ports, API schemas, eval schemas, config schema), write a contract test that parses a sample payload for every event type, merge, tag `contracts-rc`, and announce S0 in `docs/CONTRACT_REQUESTS.md`. Then continue A1-01. Ship `@synapse/platform/testing` with `createTestPlatform(overrides?)` by T+0:40 (in-memory SQLite, `SimMessagingProvider`, mock LLM, real services as they land, in-memory fakes for approvals, notifier, and the A2A bus until you replace them).
+**First 15 minutes.** Create `packages/contracts` exactly as Section 8 and Section 9 specify (all enums, domain schemas, every event payload schema, A2A payloads, commands, ports, API schemas, eval schemas, config schema), write a contract test that parses a sample payload for every event type, merge, tag `contracts-rc`, and announce S0 in `docs/CONTRACT_REQUESTS.md`. Then continue A1-01. Ship `@dennis/platform/testing` with `createTestPlatform(overrides?)` by T+0:40 (in-memory SQLite, `SimMessagingProvider`, mock LLM, real services as they land, in-memory fakes for approvals, notifier, and the A2A bus until you replace them).
 
 **Execution order and clock.** A1-01 (0:00 to 0:50), A1-02 (to 1:50), A1-06 (to 2:50, because A2 and A3 need the A2A bus and stores), A1-03 (to 3:35), A1-04 (to 4:35), A1-05 (to 5:35), A1-08 (to 6:20), A1-07 (to 7:05), A1-09 (to 7:50). After that support the S3 and S4 integration runs.
 
@@ -1017,7 +1017,7 @@ The contract code blocks in this document were syntax-checked only, never type-c
 ### F.6 Interpretation decisions the team should confirm quickly
 
 - Decision D4: "two distinct personal agent identities" is implemented as two logical agents (separate rows, state, intents, approvals, outbound persona labels) on one Photon agent identity and shared line. If the judges or the Photon team expect two real phone numbers, build stretch item S4; the adapter already carries an `accountKey` so no schema change is needed.
-- Decision D3: authorized conversation means each user's 1:1 thread with the Synapse line. Group-chat listening is a stretch item.
+- Decision D3: authorized conversation means each user's 1:1 thread with the Dennis line. Group-chat listening is a stretch item.
 - Decision D14: the ShortMe demo resolver stands in for an official outcome source and is always labeled as such.
 - Workload changes from the provisional split (Section 12.0) are decisions, not requirements; if an agent is blocked or idle, rebalance through a note in `docs/CONTRACT_REQUESTS.md`.
 
