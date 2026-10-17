@@ -89,7 +89,11 @@ export function purchasingRoutes(ctx: PlatformContext): Hono {
     if (viewerAgentId && !members.some((member) => member.agentId === viewerAgentId)) {
       throw new DennisError("forbidden", "Viewer is not a group participant", 403);
     }
-    const offer = ctx.db.select().from(merchantOffers).where(eq(merchantOffers.id, group.offerId)).get();
+    const offer = ctx.db
+      .select()
+      .from(merchantOffers)
+      .where(eq(merchantOffers.id, group.offerId))
+      .get();
     return c.json({
       group,
       members: members.map((member) => ({
@@ -110,7 +114,11 @@ export function purchasingRoutes(ctx: PlatformContext): Hono {
   });
 
   app.get("/bank/accounts", async (c) => {
-    const provider = createBankingProvider(ctx.config, { db: ctx.db, clock: ctx.clock, log: ctx.log });
+    const provider = createBankingProvider(ctx.config, {
+      db: ctx.db,
+      clock: ctx.clock,
+      log: ctx.log,
+    });
     try {
       return c.json({
         mode: provider.name === "nessie" ? "live" : "simulated",
@@ -164,10 +172,19 @@ export function purchasingRoutes(ctx: PlatformContext): Hono {
         ),
       )
       .get();
-    if (!group || !member) throw new DennisError("not_found", "Payment group member not found", 404);
+    if (!group || !member)
+      throw new DennisError("not_found", "Payment group member not found", 404);
     const user = await ctx.users.get(attempt.userId);
-    const offer = ctx.db.select().from(merchantOffers).where(eq(merchantOffers.id, group.offerId)).get();
-    const payer = ctx.db.select().from(bankLinks).where(eq(bankLinks.linkKey, attempt.userId)).get();
+    const offer = ctx.db
+      .select()
+      .from(merchantOffers)
+      .where(eq(merchantOffers.id, group.offerId))
+      .get();
+    const payer = ctx.db
+      .select()
+      .from(bankLinks)
+      .where(eq(bankLinks.linkKey, attempt.userId))
+      .get();
     const pool = ctx.db.select().from(bankLinks).where(eq(bankLinks.linkKey, "pool")).get();
     if (!user || !offer || !payer || !pool) {
       throw new DennisError("invalid_state", "Retry dependencies are missing", 409);

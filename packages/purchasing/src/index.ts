@@ -23,8 +23,18 @@ export {
   type MatchDecision,
   type MatchingRules,
 } from "./matching/index.js";
-export { isGroupTerminal, transitionGroup, type GroupStatus, type GroupTrigger } from "./groups/index.js";
-export { DEMO_MONITOR_OFFER, evaluateProposal, priceGroup, type GroupPrice } from "./offers/index.js";
+export {
+  isGroupTerminal,
+  transitionGroup,
+  type GroupStatus,
+  type GroupTrigger,
+} from "./groups/index.js";
+export {
+  DEMO_MONITOR_OFFER,
+  evaluateProposal,
+  priceGroup,
+  type GroupPrice,
+} from "./offers/index.js";
 export {
   executeApprovedPayment,
   handlePaymentDecision,

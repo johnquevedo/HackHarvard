@@ -258,3 +258,7 @@ PHOTON_PROJECT_ID, PHOTON_API_KEY, PHOTON_AGENT_USER_ID and both demo handles ar
 The lead explicitly authorized publishing the current Agent 1 branch to main so the other agents can continue. This supersedes the earlier no-main-push instruction for this publication. Subsequent work remains on the Agent 1 branch unless the lead requests another publication.
 
 Included the minimal lockfile update for A1's already-pinned @types/better-sqlite3 dependency so other agents can install with --frozen-lockfile. Frozen installation passes. The separate A2 implementation and the proposed purchasing patch tested in the detached checkout are not included as applied feature changes; the patch and reproduction runner remain available for A2 to review. Full verify still has the three previously documented DB formatting blockers. Live Photon and FORGET acceptance exceptions remain unchanged.
+
+## CR-A2-003 to A4: include cross tests in verification
+
+The root `vitest.config.ts` does not include `tests/cross/**/*.test.ts`, so `pnpm test` skips both the Agent 2 adversarial suite and the Agent 3 end-to-end simulator suite. Please add that include pattern and keep the root workspace dependencies needed by those tests. Agent 2 verified its cross suite separately while this request is open.

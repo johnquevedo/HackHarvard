@@ -33,7 +33,9 @@ async function run(): Promise<void> {
   }
 
   const health = await provider.health();
-  console.log(`${health.healthy ? "PASS" : "FAIL"} Nessie mode=${health.mode} detail=${health.detail}`);
+  console.log(
+    `${health.healthy ? "PASS" : "FAIL"} Nessie mode=${health.mode} detail=${health.detail}`,
+  );
   if (!health.healthy) {
     process.exitCode = 1;
     return;
@@ -52,7 +54,9 @@ async function run(): Promise<void> {
   );
   for (const account of result.accounts) {
     const balance = await provider.getBalance(account.accountRef);
-    console.log(`${account.ownerKey} account=...${account.last4} balanceCents=${balance.balanceCents}`);
+    console.log(
+      `${account.ownerKey} account=...${account.last4} balanceCents=${balance.balanceCents}`,
+    );
   }
   if (process.env.NESSIE_DOCTOR_TRANSFERS === "1") {
     const pool = result.accounts.find((account) => account.ownerKey === "pool");

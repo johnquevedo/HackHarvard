@@ -23,8 +23,7 @@ export async function seedBank(
 
   ctx.db.transaction((tx) => {
     for (const account of result.accounts) {
-      tx
-        .insert(bankLinks)
+      tx.insert(bankLinks)
         .values({
           linkKey: account.ownerKey,
           role: account.ownerKey === "pool" ? "pool" : "member",

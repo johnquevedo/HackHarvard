@@ -28,16 +28,16 @@ The script creates one synthetic customer, a payer account with a 100 dollar san
 
 ## Findings
 
-| Question | Current finding | Adapter decision |
-| --- | --- | --- |
-| Working base URL | `https://prod-api.nessieisreal.com` | Keep `NESSIE_BASE_URL` configurable; this is the verified default |
-| Customer creation allowed | Yes, HTTP 201 | Create synthetic demo customers using unique run tags |
-| Account creation allowed | Yes, HTTP 201 | Create tagged synthetic accounts; adopt tagged accounts on retries |
-| Creation response shape | `{ code, message, objectCreated: { _id, ... } }` | Accept `_id`, `id`, or `objectCreated._id`; reject any response without an ID |
-| Transfer request fields | `amount`, `transaction_date`, `status`, and `description` accepted; `medium` and `payee_id` rejected as extra fields | Do not claim the current endpoint can target a payee |
-| Both balances change | No; payer delta 0 dollars and pool delta 0 dollars after a 1 dollar record was created | Never mark this live transaction `verified`; use the simulated provider for the demo |
-| Description round-trips | Yes, exactly | Memo lookup can identify the created record, but cannot prove movement of funds |
-| Transfer is visible from both accounts | No; payer listing returns it and pool listing returns 404 | Do not use pool visibility as payment evidence |
+| Question                               | Current finding                                                                                                      | Adapter decision                                                                     |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Working base URL                       | `https://prod-api.nessieisreal.com`                                                                                  | Keep `NESSIE_BASE_URL` configurable; this is the verified default                    |
+| Customer creation allowed              | Yes, HTTP 201                                                                                                        | Create synthetic demo customers using unique run tags                                |
+| Account creation allowed               | Yes, HTTP 201                                                                                                        | Create tagged synthetic accounts; adopt tagged accounts on retries                   |
+| Creation response shape                | `{ code, message, objectCreated: { _id, ... } }`                                                                     | Accept `_id`, `id`, or `objectCreated._id`; reject any response without an ID        |
+| Transfer request fields                | `amount`, `transaction_date`, `status`, and `description` accepted; `medium` and `payee_id` rejected as extra fields | Do not claim the current endpoint can target a payee                                 |
+| Both balances change                   | No; payer delta 0 dollars and pool delta 0 dollars after a 1 dollar record was created                               | Never mark this live transaction `verified`; use the simulated provider for the demo |
+| Description round-trips                | Yes, exactly                                                                                                         | Memo lookup can identify the created record, but cannot prove movement of funds      |
+| Transfer is visible from both accounts | No; payer listing returns it and pool listing returns 404                                                            | Do not use pool visibility as payment evidence                                       |
 
 ## Safety and fixture rules
 

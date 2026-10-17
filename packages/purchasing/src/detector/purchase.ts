@@ -33,17 +33,27 @@ function normalizeProductKey(extraction: PurchaseExtractionT): string {
     .slice(0, 60);
 }
 
-function rejection(reason: DetectorOutcome["rejected"][number]["reason"], detail: string): DetectorOutcome {
+function rejection(
+  reason: DetectorOutcome["rejected"][number]["reason"],
+  detail: string,
+): DetectorOutcome {
   return { detections: [], rejected: [{ reason, detail }], llm: null };
 }
 
 function applyGates(extraction: PurchaseExtractionT, input: DetectorInput): DetectorOutcome | null {
-  if (!extraction.isPurchaseIntent) return rejection("not_an_intent", "The message has no current purchase intent.");
-  if (!extraction.subjectOwned) return rejection("not_subject_owned", "The purchase intent is about another person.");
+  if (!extraction.isPurchaseIntent)
+    return rejection("not_an_intent", "The message has no current purchase intent.");
+  if (!extraction.subjectOwned)
+    return rejection("not_subject_owned", "The purchase intent is about another person.");
   if (extraction.confidence < gates.minConfidence) {
-    return rejection("low_confidence", `Confidence ${extraction.confidence} is below ${gates.minConfidence}.`);
+    return rejection(
+      "low_confidence",
+      `Confidence ${extraction.confidence} is below ${gates.minConfidence}.`,
+    );
   }
-  if (!gates.enabledCategories.includes(extraction.category) || !input.enabledCategories.includes(extraction.category)) {
+  const disabledByInput =
+    input.enabledCategories.length > 0 && !input.enabledCategories.includes(extraction.category);
+  if (!gates.enabledCategories.includes(extraction.category) || disabledByInput) {
     return rejection("category_disabled", `Category ${extraction.category} is disabled.`);
   }
   if (gates.blockSensitive && extraction.sensitive) {
@@ -52,7 +62,11 @@ function applyGates(extraction: PurchaseExtractionT, input: DetectorInput): Dete
   return null;
 }
 
-function toDetection(extraction: PurchaseExtractionT, input: DetectorInput, deps: DetectorDeps): Detection {
+function toDetection(
+  extraction: PurchaseExtractionT,
+  input: DetectorInput,
+  deps: DetectorDeps,
+): Detection {
   const window = resolveTimeframe(extraction.timeframeKind, deps.clock.now(), "America/New_York");
   const privatePayload = PurchaseIntentPrivate.parse({
     productText: extraction.productText,
@@ -82,7 +96,10 @@ function toDetection(extraction: PurchaseExtractionT, input: DetectorInput, deps
 }
 
 function classifyLlmError(error: unknown): "llm_unavailable" | "schema_invalid" {
-  if (error instanceof Error && /schema|parse|json|validation/i.test(`${error.name} ${error.message}`)) {
+  if (
+    error instanceof Error &&
+    /schema|parse|json|validation|zod/i.test(`${error.name} ${error.message}`)
+  ) {
     return "schema_invalid";
   }
   return "llm_unavailable";
@@ -129,7 +146,10 @@ export class PurchaseDetector implements Detector {
         messageId: input.messageId,
       });
       const reason = classifyLlmError(error);
-      return rejection(reason, reason === "schema_invalid" ? "LLM output failed schema validation." : "LLM unavailable.");
+      return rejection(
+        reason,
+        reason === "schema_invalid" ? "LLM output failed schema validation." : "LLM unavailable.",
+      );
     }
   }
 }

@@ -72,7 +72,9 @@ export class SimBankingProvider implements BankingProvider {
     return { provider: "sim", accounts: await this.listAccounts(), created, reused };
   }
 
-  async getBalance(accountRef: string): Promise<{ accountRef: string; balanceCents: number; fetchedAt: string }> {
+  async getBalance(
+    accountRef: string,
+  ): Promise<{ accountRef: string; balanceCents: number; fetchedAt: string }> {
     const account = this.accounts.get(accountRef);
     if (!account) throw new Error(`Unknown simulated account: ${accountRef}`);
     return { accountRef, balanceCents: account.balanceCents, fetchedAt: this.clock.nowIso() };
@@ -86,48 +88,50 @@ export class SimBankingProvider implements BankingProvider {
     let result: BankTransferResult | undefined;
     let failure: unknown;
     const previous = this.queue;
-    this.queue = previous.then(async () => {
-      const existing = [...this.transfers.values()].find((item) => item.memo === req.memo);
-      if (existing) {
-        if (
-          existing.fromAccountRef !== req.fromAccountRef ||
-          existing.toAccountRef !== req.toAccountRef ||
-          existing.amountCents !== req.amountCents
-        ) {
-          throw new Error("idempotency_conflict");
+    this.queue = previous
+      .then(async () => {
+        const existing = [...this.transfers.values()].find((item) => item.memo === req.memo);
+        if (existing) {
+          if (
+            existing.fromAccountRef !== req.fromAccountRef ||
+            existing.toAccountRef !== req.toAccountRef ||
+            existing.amountCents !== req.amountCents
+          ) {
+            throw new Error("idempotency_conflict");
+          }
+          result = { record: existing, mode: "simulated" };
+          return;
         }
-        result = { record: existing, mode: "simulated" };
-        return;
-      }
-      const from = this.accounts.get(req.fromAccountRef);
-      const to = this.accounts.get(req.toAccountRef);
-      if (!from || !to) throw new Error("Both simulated transfer accounts must exist");
-      if (!Number.isInteger(req.amountCents) || req.amountCents <= 0) {
-        throw new Error("Simulated transfer amount must be a positive integer number of cents");
-      }
-      if (from.balanceCents < req.amountCents) throw new Error("insufficient_funds");
+        const from = this.accounts.get(req.fromAccountRef);
+        const to = this.accounts.get(req.toAccountRef);
+        if (!from || !to) throw new Error("Both simulated transfer accounts must exist");
+        if (!Number.isInteger(req.amountCents) || req.amountCents <= 0) {
+          throw new Error("Simulated transfer amount must be a positive integer number of cents");
+        }
+        if (from.balanceCents < req.amountCents) throw new Error("insufficient_funds");
 
-      from.balanceCents -= req.amountCents;
-      to.balanceCents += req.amountCents;
-      const providerTransferId = `sim_tx_${createHash("sha256")
-        .update(`${req.memo}:${req.fromAccountRef}:${req.toAccountRef}:${req.amountCents}`)
-        .digest("hex")
-        .slice(0, 20)}`;
-      const record: BankTransferRecord = {
-        providerTransferId,
-        fromAccountRef: req.fromAccountRef,
-        toAccountRef: req.toAccountRef,
-        amountCents: req.amountCents,
-        status: "completed",
-        memo: req.memo,
-        createdAt: this.clock.nowIso(),
-        raw: { provider: "sim", label: "SIMULATED BANK" },
-      };
-      this.transfers.set(providerTransferId, record);
-      result = { record, mode: "simulated" };
-    }).catch((error) => {
-      failure = error;
-    });
+        from.balanceCents -= req.amountCents;
+        to.balanceCents += req.amountCents;
+        const providerTransferId = `sim_tx_${createHash("sha256")
+          .update(`${req.memo}:${req.fromAccountRef}:${req.toAccountRef}:${req.amountCents}`)
+          .digest("hex")
+          .slice(0, 20)}`;
+        const record: BankTransferRecord = {
+          providerTransferId,
+          fromAccountRef: req.fromAccountRef,
+          toAccountRef: req.toAccountRef,
+          amountCents: req.amountCents,
+          status: "completed",
+          memo: req.memo,
+          createdAt: this.clock.nowIso(),
+          raw: { provider: "sim", label: "SIMULATED BANK" },
+        };
+        this.transfers.set(providerTransferId, record);
+        result = { record, mode: "simulated" };
+      })
+      .catch((error) => {
+        failure = error;
+      });
     await this.queue;
     if (failure) throw failure;
     if (!result) throw new Error("Simulated transfer did not produce a result");
@@ -138,7 +142,10 @@ export class SimBankingProvider implements BankingProvider {
     return this.transfers.get(providerTransferId) ?? null;
   }
 
-  async findTransfersByMemo(accountRef: string, memoContains: string): Promise<BankTransferRecord[]> {
+  async findTransfersByMemo(
+    accountRef: string,
+    memoContains: string,
+  ): Promise<BankTransferRecord[]> {
     return [...this.transfers.values()].filter(
       (item) =>
         (item.fromAccountRef === accountRef || item.toAccountRef === accountRef) &&

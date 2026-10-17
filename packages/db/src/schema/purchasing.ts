@@ -17,9 +17,7 @@ export const merchantOffers = sqliteTable("merchant_offers", {
   title: text("title").notNull(),
   unitPriceCents: integer("unit_price_cents").notNull(),
   tiers: text("tiers", { mode: "json" }).notNull(),
-  isSimulated: integer("is_simulated", { mode: "boolean" })
-    .notNull()
-    .default(true),
+  isSimulated: integer("is_simulated", { mode: "boolean" }).notNull().default(true),
   sourceLabel: text("source_label").notNull(),
   validUntil: text("valid_until").notNull(),
 });
@@ -114,8 +112,6 @@ export const paymentAttempts = sqliteTable(
     uniqueIndex("payment_attempts_unique_0").on(t.idempotencyKey),
     uniqueIndex("one_live_payment")
       .on(t.groupId, t.userId)
-      .where(
-        sql`${t.status} IN ('submitting','submitted','verified','unverified')`,
-      ),
+      .where(sql`${t.status} IN ('submitting','submitted','verified','unverified')`),
   ],
 );

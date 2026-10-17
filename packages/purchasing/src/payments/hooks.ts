@@ -81,9 +81,7 @@ export async function handlePaymentDecision(
     !requiredLinks.some((link) => link.linkKey === "pool" && link.role === "pool") ||
     members.some(
       (item) =>
-        !requiredLinks.some(
-          (link) => link.linkKey === item.userId && link.role === "member",
-        ),
+        !requiredLinks.some((link) => link.linkKey === item.userId && link.role === "member"),
     )
   ) {
     setGroupStatus(ctx, member.groupId, "cancelled", "bank allowlist incomplete");

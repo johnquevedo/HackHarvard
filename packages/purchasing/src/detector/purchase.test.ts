@@ -1,4 +1,8 @@
-import { PurchaseIntentPublic, type StructuredLlm, type StructuredRequest } from "@dennis/contracts";
+import {
+  PurchaseIntentPublic,
+  type StructuredLlm,
+  type StructuredRequest,
+} from "@dennis/contracts";
 import { describe, expect, it, vi } from "vitest";
 
 import { PurchaseDetector } from "./purchase.js";
@@ -89,7 +93,12 @@ const cases: Case[] = [
   { name: "27 inch 4K monitor", output: base, productKey: "monitor_27in_4k", budgetBand: 35_000 },
   {
     name: "generic monitor",
-    output: { ...base, productText: "monitor", productKeyCandidate: "monitor", budgetMaxCents: null },
+    output: {
+      ...base,
+      productText: "monitor",
+      productKeyCandidate: "monitor",
+      budgetMaxCents: null,
+    },
     productKey: "monitor_generic",
     budgetBand: null,
   },
@@ -112,15 +121,43 @@ const cases: Case[] = [
     budgetBand: 30_000,
   },
   { name: "not an intent", output: { ...base, isPurchaseIntent: false }, reason: "not_an_intent" },
-  { name: "not subject owned", output: { ...base, subjectOwned: false }, reason: "not_subject_owned" },
+  {
+    name: "not subject owned",
+    output: { ...base, subjectOwned: false },
+    reason: "not_subject_owned",
+  },
   { name: "low confidence", output: { ...base, confidence: 0.69 }, reason: "low_confidence" },
-  { name: "disabled moving category", output: { ...base, category: "moving_service" }, reason: "category_disabled" },
-  { name: "disabled by detector input", output: base, enabled: [], reason: "category_disabled" },
+  {
+    name: "disabled moving category",
+    output: { ...base, category: "moving_service" },
+    reason: "category_disabled",
+  },
+  {
+    name: "empty pipeline category list applies only configured gates",
+    output: base,
+    enabled: [],
+    productKey: "monitor_27in_4k",
+    budgetBand: 35_000,
+  },
+  {
+    name: "nonempty detector input can disable monitor",
+    output: base,
+    enabled: ["moving_service"],
+    reason: "category_disabled",
+  },
   { name: "sensitive health detail", output: { ...base, sensitive: true }, reason: "sensitive" },
   { name: "invalid quantity", output: { ...base, quantity: 0 }, reason: "schema_invalid" },
   { name: "invalid category", output: { ...base, category: "weapons" }, reason: "schema_invalid" },
-  { name: "unknown extraction field", output: { ...base, unexpected: true }, reason: "schema_invalid" },
-  { name: "missing confidence", output: { ...base, confidence: undefined }, reason: "schema_invalid" },
+  {
+    name: "unknown extraction field",
+    output: { ...base, unexpected: true },
+    reason: "schema_invalid",
+  },
+  {
+    name: "missing confidence",
+    output: { ...base, confidence: undefined },
+    reason: "schema_invalid",
+  },
   { name: "malformed output", output: "not-json", reason: "schema_invalid" },
   { name: "llm timeout", failure: new Error("timeout"), reason: "llm_unavailable" },
   { name: "llm unavailable", failure: new Error("service unavailable"), reason: "llm_unavailable" },

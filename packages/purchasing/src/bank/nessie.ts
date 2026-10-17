@@ -112,7 +112,11 @@ export class NessieBankingProvider implements BankingProvider {
           try {
             body = JSON.parse(text);
           } catch {
-            throw new BankingProviderError("Nessie returned malformed JSON", false, response.status);
+            throw new BankingProviderError(
+              "Nessie returned malformed JSON",
+              false,
+              response.status,
+            );
           }
         }
         if (!response.ok) {
@@ -127,7 +131,9 @@ export class NessieBankingProvider implements BankingProvider {
       } catch (error) {
         lastError = error;
         const retryable =
-          error instanceof BankingProviderError ? error.retryable : error instanceof TypeError || error instanceof DOMException;
+          error instanceof BankingProviderError
+            ? error.retryable
+            : error instanceof TypeError || error instanceof DOMException;
         this.options.log.warn("Nessie request failed", { method, path, attempt, retryable });
         if (!retryable || attempt === attempts) break;
       }
@@ -135,7 +141,9 @@ export class NessieBankingProvider implements BankingProvider {
 
     if (lastError instanceof BankingProviderError) throw lastError;
     throw new BankingProviderError(
-      lastError instanceof Error ? `Nessie request failed: ${lastError.message}` : "Nessie request failed",
+      lastError instanceof Error
+        ? `Nessie request failed: ${lastError.message}`
+        : "Nessie request failed",
       true,
     );
   }
@@ -207,7 +215,9 @@ export class NessieBankingProvider implements BankingProvider {
     return { provider: "nessie", accounts, created, reused };
   }
 
-  async getBalance(accountRef: string): Promise<{ accountRef: string; balanceCents: number; fetchedAt: string }> {
+  async getBalance(
+    accountRef: string,
+  ): Promise<{ accountRef: string; balanceCents: number; fetchedAt: string }> {
     const account = asObject(await this.request(`/accounts/${accountRef}`), "get account");
     return {
       accountRef,
@@ -254,15 +264,25 @@ export class NessieBankingProvider implements BankingProvider {
   async getTransfer(providerTransferId: string): Promise<BankTransferRecord | null> {
     try {
       const body = asObject(await this.request(`/transfers/${providerTransferId}`), "get transfer");
-      return this.toTransferRecord(body, providerTransferId, stringField(body.payer_id) ?? "unknown");
+      return this.toTransferRecord(
+        body,
+        providerTransferId,
+        stringField(body.payer_id) ?? "unknown",
+      );
     } catch (error) {
       if (error instanceof BankingProviderError && error.providerStatus === 404) return null;
       throw error;
     }
   }
 
-  async findTransfersByMemo(accountRef: string, memoContains: string): Promise<BankTransferRecord[]> {
-    const transfers = asArray(await this.request(`/accounts/${accountRef}/transfers`), "list transfers");
+  async findTransfersByMemo(
+    accountRef: string,
+    memoContains: string,
+  ): Promise<BankTransferRecord[]> {
+    const transfers = asArray(
+      await this.request(`/accounts/${accountRef}/transfers`),
+      "list transfers",
+    );
     return transfers
       .filter((item) => stringField(item.description)?.includes(memoContains))
       .map((item) => this.toTransferRecord(item, objectId(item, "transfer"), accountRef));
@@ -292,10 +312,15 @@ export class NessieBankingProvider implements BankingProvider {
     }
   }
 
-  private toTransferRecord(body: NessieObject, transferId: string, payerFallback: string): BankTransferRecord {
+  private toTransferRecord(
+    body: NessieObject,
+    transferId: string,
+    payerFallback: string,
+  ): BankTransferRecord {
     const amountCents = centsFromDollars(body.amount, "transfer amount");
     const toAccountRef = stringField(body.payee_id);
-    if (!toAccountRef) throw new BankingProviderError("Nessie transfer response had no payee_id", false);
+    if (!toAccountRef)
+      throw new BankingProviderError("Nessie transfer response had no payee_id", false);
     return {
       providerTransferId: transferId,
       fromAccountRef: stringField(body.payer_id) ?? payerFallback,

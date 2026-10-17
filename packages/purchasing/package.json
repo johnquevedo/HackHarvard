@@ -11,6 +11,7 @@
     "@dennis/contracts": "workspace:*",
     "@dennis/db": "workspace:*",
     "@dennis/platform": "workspace:*",
+    "drizzle-orm": "0.45.4",
     "hono": "4.13.13",
     "zod": "4.6.7"
   },

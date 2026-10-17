@@ -41,7 +41,8 @@ function createdId(body: unknown): string {
     throw new Error("Creation response was not an object");
   }
   const response = body as CreationResponse;
-  const id = response.objectCreated?._id ?? response.objectCreated?.id ?? response._id ?? response.id;
+  const id =
+    response.objectCreated?._id ?? response.objectCreated?.id ?? response._id ?? response.id;
   if (typeof id !== "string" || id.length === 0) {
     throw new Error("Creation response did not include an object ID");
   }
@@ -49,9 +50,11 @@ function createdId(body: unknown): string {
 }
 
 function balanceOf(body: unknown): number {
-  if (body === null || typeof body !== "object") throw new Error("Account response was not an object");
+  if (body === null || typeof body !== "object")
+    throw new Error("Account response was not an object");
   const balance = (body as { balance?: unknown }).balance;
-  if (typeof balance !== "number") throw new Error("Account response did not include a numeric balance");
+  if (typeof balance !== "number")
+    throw new Error("Account response did not include a numeric balance");
   return balance;
 }
 
@@ -67,7 +70,11 @@ async function request(
   const body = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
   const recorded: RecordedCall = {
     name,
-    request: { method: init.method ?? "GET", path, ...(body === undefined ? {} : { body: redact(body) }) },
+    request: {
+      method: init.method ?? "GET",
+      path,
+      ...(body === undefined ? {} : { body: redact(body) }),
+    },
     response: { error: "not_sent" },
   };
   calls.push(recorded);
@@ -121,7 +128,9 @@ async function run(): Promise<void> {
   const apiKey = process.env.NESSIE_API_KEY;
   if (!apiKey) {
     console.log("DOCUMENTED FALLBACK: NESSIE_API_KEY is missing. Use NESSIE_MODE=sim.");
-    console.log("BLOCKED: a credential is required to refresh the recorded live contract evidence.");
+    console.log(
+      "BLOCKED: a credential is required to refresh the recorded live contract evidence.",
+    );
     process.exitCode = 2;
     return;
   }
@@ -150,32 +159,54 @@ async function run(): Promise<void> {
     [`dennis-${runTag}-payer`, 100],
     [`dennis-${runTag}-pool`, 0],
   ] as const) {
-    const result = await request(baseUrl, apiKey, `create account ${nickname}`, `/customers/${customerId}/accounts`, {
-      method: "POST",
-      body: JSON.stringify({ type: "Checking", nickname, rewards: 0, balance }),
-    });
+    const result = await request(
+      baseUrl,
+      apiKey,
+      `create account ${nickname}`,
+      `/customers/${customerId}/accounts`,
+      {
+        method: "POST",
+        body: JSON.stringify({ type: "Checking", nickname, rewards: 0, balance }),
+      },
+    );
     accountIds.push(createdId(result));
   }
   console.log("PASS account creation");
 
   const [payerId, poolId] = accountIds;
   if (!payerId || !poolId) throw new Error("Two accounts were not created");
-  const payerBefore = await request(baseUrl, apiKey, "payer balance before", `/accounts/${payerId}`);
+  const payerBefore = await request(
+    baseUrl,
+    apiKey,
+    "payer balance before",
+    `/accounts/${payerId}`,
+  );
   const poolBefore = await request(baseUrl, apiKey, "pool balance before", `/accounts/${poolId}`);
   const memo = `dennis:${runTag}:one-dollar-spike`;
-  const transfer = await request(baseUrl, apiKey, "create transfer", `/accounts/${payerId}/transfers`, {
-    method: "POST",
-    body: JSON.stringify({
-      amount: 1,
-      transaction_date: new Date().toISOString().slice(0, 10),
-      status: "completed",
-      description: `${memo}:pool=${poolId}`,
-    }),
-  });
+  const transfer = await request(
+    baseUrl,
+    apiKey,
+    "create transfer",
+    `/accounts/${payerId}/transfers`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        amount: 1,
+        transaction_date: new Date().toISOString().slice(0, 10),
+        status: "completed",
+        description: `${memo}:pool=${poolId}`,
+      }),
+    },
+  );
   const transferId = createdId(transfer);
   console.log("PASS one dollar transfer creation");
 
-  const transferReadBack = await request(baseUrl, apiKey, "get transfer", `/transfers/${transferId}`);
+  const transferReadBack = await request(
+    baseUrl,
+    apiKey,
+    "get transfer",
+    `/transfers/${transferId}`,
+  );
   const payerAfter = await request(baseUrl, apiKey, "payer balance after", `/accounts/${payerId}`);
   const poolAfter = await request(baseUrl, apiKey, "pool balance after", `/accounts/${poolId}`);
   await request(baseUrl, apiKey, "list payer transfers", `/accounts/${payerId}/transfers`);
@@ -192,7 +223,9 @@ async function run(): Promise<void> {
   const memoRoundTrips = JSON.stringify(transferReadBack).includes(memo);
   const balancesMoveBothSides = payerDelta === 1 && poolDelta === 1;
   console.log(`PASS transfer read-back ${transferId}`);
-  console.log(`${balancesMoveBothSides ? "PASS" : "DOCUMENTED"} balance semantics payer=${payerDelta} pool=${poolDelta}`);
+  console.log(
+    `${balancesMoveBothSides ? "PASS" : "DOCUMENTED"} balance semantics payer=${payerDelta} pool=${poolDelta}`,
+  );
   console.log(`${memoRoundTrips ? "PASS" : "DOCUMENTED"} memo round-trip`);
 
   const fixtureDir = join(process.cwd(), "fixtures", "nessie");

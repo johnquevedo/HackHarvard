@@ -1,4 +1,9 @@
-import { PurchaseIntentPublic, type A2AMessage, type AgentT, type IntentT } from "@dennis/contracts";
+import {
+  PurchaseIntentPublic,
+  type A2AMessage,
+  type AgentT,
+  type IntentT,
+} from "@dennis/contracts";
 import { merchantOffers } from "@dennis/db";
 import type { FeatureModule, PlatformContext } from "@dennis/platform";
 
@@ -15,6 +20,7 @@ import { matchingRules } from "./matching/rules.js";
 import { DEMO_MONITOR_OFFER } from "./offers/demo.js";
 import { handlePaymentDecision, recoverSubmittingPayments } from "./payments/index.js";
 import { purchasingRoutes } from "./routes.js";
+import { seedBank } from "./bank/seed.js";
 
 const PROBE_REASON_BY_RULE: Record<string, string> = {
   budget_overlap: "budget_overlap",
@@ -28,7 +34,10 @@ const PROBE_REASON_BY_RULE: Record<string, string> = {
 async function sendCandidateProbes(ctx: PlatformContext, intent: IntentT): Promise<void> {
   if (!intent.publicPayload) return;
   const publicIntent = PurchaseIntentPublic.parse(intent.publicPayload);
-  const candidates = await ctx.intents.listShared({ kind: "purchase", excludeAgentId: intent.agentId });
+  const candidates = await ctx.intents.listShared({
+    kind: "purchase",
+    excludeAgentId: intent.agentId,
+  });
   for (const candidate of candidates) {
     await ctx.a2a.send({
       type: "purchase.probe",
@@ -76,20 +85,33 @@ async function handleProbe(ctx: PlatformContext, msg: A2AMessage): Promise<void>
     candidateAgent?.status === "active" &&
     candidateAgent.settings.matchingEnabled &&
     (await ctx.consent.has(candidateAgent.userId, "purchase_matching"));
-  const ownIntents = await ctx.intents.listByAgent(msg.toAgentId, { kind: "purchase", status: "shared" });
+  const ownIntents = await ctx.intents.listByAgent(msg.toAgentId, {
+    kind: "purchase",
+    status: "shared",
+  });
   const own = ownIntents.at(-1);
   let checks;
   if (!matchingEnabled) {
-    checks = [{ rule: "matching_enabled", passed: false, detail: "Candidate matching is disabled" }];
+    checks = [
+      { rule: "matching_enabled", passed: false, detail: "Candidate matching is disabled" },
+    ];
   } else if (!own?.publicPayload) {
-    checks = [{ rule: "already_matched", passed: false, detail: "No active shared candidate intent" }];
+    checks = [
+      { rule: "already_matched", passed: false, detail: "No active shared candidate intent" },
+    ];
   } else {
-    checks = isCompatible(leadPublic, PurchaseIntentPublic.parse(own.publicPayload), matchingRules).checks;
+    checks = isCompatible(
+      leadPublic,
+      PurchaseIntentPublic.parse(own.publicPayload),
+      matchingRules,
+    ).checks;
   }
   const compatible = checks.every((check) => check.passed);
   const reasons = compatible
     ? ["budget_overlap", "window_overlap", "product_match", "region_match"]
-    : checks.filter((check) => !check.passed).map((check) => PROBE_REASON_BY_RULE[check.rule] ?? "already_matched");
+    : checks
+        .filter((check) => !check.passed)
+        .map((check) => PROBE_REASON_BY_RULE[check.rule] ?? "already_matched");
 
   ctx.events.emit({
     type: "purchase.match.evaluated",
@@ -127,7 +149,9 @@ export const purchasingModule: FeatureModule = {
     ctx.a2a.on("purchase.proposal", (msg) => handleProposal(ctx, msg));
     ctx.a2a.on("purchase.proposal_result", (msg) => handleProposalResult(ctx, msg));
     ctx.approvals.onDecided("join_group_purchase", (approval) => handleJoinDecision(ctx, approval));
-    ctx.approvals.onDecided("authorize_payment", (approval) => handlePaymentDecision(ctx, approval));
+    ctx.approvals.onDecided("authorize_payment", (approval) =>
+      handlePaymentDecision(ctx, approval),
+    );
     ctx.consent.onRevoked((userId, scope) => handlePurchaseConsentRevoked(ctx, userId, scope));
   },
   routes(ctx) {
@@ -151,6 +175,7 @@ export const purchasingModule: FeatureModule = {
         },
       })
       .run();
+    await seedBank(ctx);
   },
   async reset() {},
   async recover(ctx) {

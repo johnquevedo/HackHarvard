@@ -23,7 +23,11 @@ const base: PurchaseIntentPublicT = {
 
 describe("isCompatible", () => {
   it("matches the Alice and Bob demo monitor variants", () => {
-    const decision = isCompatible(base, { ...base, productKey: "monitor_4k", budgetBandMaxCents: null }, rules);
+    const decision = isCompatible(
+      base,
+      { ...base, productKey: "monitor_4k", budgetBandMaxCents: null },
+      rules,
+    );
     expect(decision.compatible).toBe(true);
     expect(decision.checks.every((check) => check.passed)).toBe(true);
   });
@@ -56,7 +60,11 @@ describe("isCompatible", () => {
   });
 
   it("enforces same_only product matching", () => {
-    const decision = isCompatible(base, { ...base, productKey: "monitor_4k" }, { ...rules, requireProductMatch: "same_only" });
+    const decision = isCompatible(
+      base,
+      { ...base, productKey: "monitor_4k" },
+      { ...rules, requireProductMatch: "same_only" },
+    );
     expect(decision.compatible).toBe(false);
     expect(decision.checks[0]).toMatchObject({ rule: "product_match", passed: false });
   });

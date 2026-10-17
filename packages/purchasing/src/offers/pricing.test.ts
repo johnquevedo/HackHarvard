@@ -41,14 +41,22 @@ describe("group pricing", () => {
   });
 
   it("accepts an offer that clears savings and budget rules", () => {
-    expect(evaluateProposal({ groupUnitCents: 28_499, savingsPerMemberCents: 4_500 }, own, matchingRules)).toEqual({
+    expect(
+      evaluateProposal(
+        { groupUnitCents: 28_499, savingsPerMemberCents: 4_500 },
+        own,
+        matchingRules,
+      ),
+    ).toEqual({
       accept: true,
       reasons: ["accepted"],
     });
   });
 
   it("rejects insufficient savings", () => {
-    expect(evaluateProposal({ groupUnitCents: 32_500, savingsPerMemberCents: 499 }, own, matchingRules)).toMatchObject({
+    expect(
+      evaluateProposal({ groupUnitCents: 32_500, savingsPerMemberCents: 499 }, own, matchingRules),
+    ).toMatchObject({
       accept: false,
       reasons: ["savings_below_threshold"],
     });

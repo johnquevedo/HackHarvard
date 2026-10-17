@@ -7,12 +7,7 @@ import {
   type BankTransferRecord,
   type PaymentAttemptT,
 } from "@dennis/contracts";
-import {
-  bankLinks,
-  groupPurchaseMembers,
-  groupPurchases,
-  paymentAttempts,
-} from "@dennis/db";
+import { bankLinks, groupPurchaseMembers, groupPurchases, paymentAttempts } from "@dennis/db";
 import type { PlatformContext } from "@dennis/platform";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -142,12 +137,7 @@ async function markFailed(
   ctx.db
     .update(groupPurchaseMembers)
     .set({ payState: "failed" })
-    .where(
-      and(
-        eq(groupPurchaseMembers.groupId, groupId),
-        eq(groupPurchaseMembers.userId, userId),
-      ),
-    )
+    .where(and(eq(groupPurchaseMembers.groupId, groupId), eq(groupPurchaseMembers.userId, userId)))
     .run();
   setGroupStatus(ctx, groupId, "failed", error);
   const attempt = attemptRow(ctx, attemptId);
@@ -185,7 +175,11 @@ async function verifyAndFinalize(
   providerTransfer: BankTransferRecord,
   before: BalanceSnapshot,
 ): Promise<PaymentAttemptT> {
-  const provider = createBankingProvider(ctx.config, { db: ctx.db, clock: ctx.clock, log: ctx.log });
+  const provider = createBankingProvider(ctx.config, {
+    db: ctx.db,
+    clock: ctx.clock,
+    log: ctx.log,
+  });
   const readBack = await provider.getTransfer(providerTransfer.providerTransferId);
   const after = await readBalances(provider, payload);
   const verification = verifyTransfer({
@@ -239,7 +233,8 @@ export async function executeApprovedPayment(
   approvalId: string,
 ): Promise<PaymentAttemptT> {
   const previewApproval = await ctx.approvals.get(approvalId);
-  if (!previewApproval) throw new DennisError("approval_invalid", "Payment approval not found", 409);
+  if (!previewApproval)
+    throw new DennisError("approval_invalid", "Payment approval not found", 409);
   const previewPayload = payloadFrom(previewApproval.payload);
   return ctx.runExclusive(`payment:${previewPayload.groupId}`, async () => {
     const approval = await ctx.approvals.get(approvalId);
@@ -263,22 +258,38 @@ export async function executeApprovedPayment(
       .where(inArray(bankLinks.accountRef, [payload.fromAccountRef, payload.toAccountRef]))
       .all();
     const payerLink = links.find(
-      (link) => link.accountRef === payload.fromAccountRef && link.linkKey === payload.userId && link.role === "member",
+      (link) =>
+        link.accountRef === payload.fromAccountRef &&
+        link.linkKey === payload.userId &&
+        link.role === "member",
     );
     const poolLink = links.find(
-      (link) => link.accountRef === payload.toAccountRef && link.linkKey === "pool" && link.role === "pool",
+      (link) =>
+        link.accountRef === payload.toAccountRef && link.linkKey === "pool" && link.role === "pool",
     );
     if (!payerLink || !poolLink) {
-      throw new DennisError("approval_invalid", "Payment accounts are not in the bank allowlist", 409);
+      throw new DennisError(
+        "approval_invalid",
+        "Payment accounts are not in the bank allowlist",
+        409,
+      );
     }
 
     if (payload.amountCents > ctx.config.nessieMaxTransferCents) {
       throw new DennisError("approval_invalid", "Payment exceeds NESSIE_MAX_TRANSFER_CENTS", 409);
     }
 
-    const provider = createBankingProvider(ctx.config, { db: ctx.db, clock: ctx.clock, log: ctx.log });
+    const provider = createBankingProvider(ctx.config, {
+      db: ctx.db,
+      clock: ctx.clock,
+      log: ctx.log,
+    });
     if (payerLink.provider !== provider.name || poolLink.provider !== provider.name) {
-      throw new DennisError("approval_invalid", "Payment accounts do not belong to the active provider", 409);
+      throw new DennisError(
+        "approval_invalid",
+        "Payment accounts do not belong to the active provider",
+        409,
+      );
     }
     const before = await readBalances(provider, payload);
     const hasFunds = before.fromCents >= payload.amountCents;
@@ -298,7 +309,11 @@ export async function executeApprovedPayment(
       )
       .get();
     if (!member || member.shareCents !== payload.amountCents) {
-      throw new DennisError("approval_invalid", "Payment amount does not match the group share", 409);
+      throw new DennisError(
+        "approval_invalid",
+        "Payment amount does not match the group share",
+        409,
+      );
     }
 
     const idempotencyKey = attemptIdempotencyKey(payload, approvalId);
@@ -386,10 +401,11 @@ export async function executeApprovedPayment(
       record = result.record;
     } catch (error) {
       const matches = await provider.findTransfersByMemo(payload.fromAccountRef, idempotencyKey);
-      record = matches.find(
-        (item) =>
-          item.toAccountRef === payload.toAccountRef && item.amountCents === payload.amountCents,
-      ) ?? null;
+      record =
+        matches.find(
+          (item) =>
+            item.toAccountRef === payload.toAccountRef && item.amountCents === payload.amountCents,
+        ) ?? null;
       if (!record) {
         return markFailed(
           ctx,
@@ -416,16 +432,24 @@ export async function executeApprovedPayment(
 }
 
 export async function recoverSubmittingPayments(ctx: PlatformContext): Promise<void> {
-  const provider = createBankingProvider(ctx.config, { db: ctx.db, clock: ctx.clock, log: ctx.log });
+  const provider = createBankingProvider(ctx.config, {
+    db: ctx.db,
+    clock: ctx.clock,
+    log: ctx.log,
+  });
   const pending = ctx.db
     .select()
     .from(paymentAttempts)
     .where(eq(paymentAttempts.status, "submitting"))
     .all();
   for (const attempt of pending) {
-    const matches = await provider.findTransfersByMemo(attempt.fromAccountRef, attempt.idempotencyKey);
+    const matches = await provider.findTransfersByMemo(
+      attempt.fromAccountRef,
+      attempt.idempotencyKey,
+    );
     const record = matches.find(
-      (item) => item.toAccountRef === attempt.toAccountRef && item.amountCents === attempt.amountCents,
+      (item) =>
+        item.toAccountRef === attempt.toAccountRef && item.amountCents === attempt.amountCents,
     );
     const mode = provider.name === "nessie" ? "live" : "simulated";
     if (!record || !attempt.balancesBefore) {

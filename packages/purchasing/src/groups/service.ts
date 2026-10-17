@@ -4,12 +4,7 @@ import {
   type ApprovalT,
   type MerchantOfferT,
 } from "@dennis/contracts";
-import {
-  bankLinks,
-  groupPurchaseMembers,
-  groupPurchases,
-  merchantOffers,
-} from "@dennis/db";
+import { bankLinks, groupPurchaseMembers, groupPurchases, merchantOffers } from "@dennis/db";
 import type { PlatformContext } from "@dennis/platform";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -105,6 +100,8 @@ export async function createGroupFromCompatibleProbe(
   if (!offer || !offer.isSimulated) throw new Error("Required simulated offer is missing");
   const price = priceGroup(offer as MerchantOfferT, 2);
   if (!price) throw new Error("No two-member offer tier exists");
+  const pool = ctx.db.select().from(bankLinks).where(eq(bankLinks.linkKey, "pool")).get();
+  if (!pool) throw new Error("Group pool account is not seeded");
   const leadEvaluation = evaluateProposal(
     { groupUnitCents: price.groupUnitCents, savingsPerMemberCents: price.savingsPerMemberCents },
     PurchaseIntentPrivate.parse(leadIntent.privatePayload),
@@ -133,7 +130,7 @@ export async function createGroupFromCompatibleProbe(
         groupUnitPriceCents: price.groupUnitCents,
         quantityPerMember: 1,
         savingsPerMemberCents: price.savingsPerMemberCents,
-        poolAccountRef: null,
+        poolAccountRef: pool.accountRef,
         failureReason: null,
         createdAt: ctx.clock.nowIso(),
         updatedAt: ctx.clock.nowIso(),
@@ -193,8 +190,17 @@ export async function createGroupFromCompatibleProbe(
 export async function handleProposal(ctx: PlatformContext, msg: A2AMessage): Promise<void> {
   const groupId = requiredString(msg.payload.groupId, "groupId");
   if (msg.payload.isSimulatedOffer !== true) throw new Error("Only simulated offers are allowed");
-  const ownIntents = await ctx.intents.listByAgent(msg.toAgentId, { kind: "purchase", status: "shared" });
-  const own = ownIntents.at(-1);
+  const member = ctx.db
+    .select()
+    .from(groupPurchaseMembers)
+    .where(
+      and(
+        eq(groupPurchaseMembers.groupId, groupId),
+        eq(groupPurchaseMembers.agentId, msg.toAgentId),
+      ),
+    )
+    .get();
+  const own = member ? await ctx.intents.get(member.intentId) : null;
   if (!own) throw new Error("Candidate purchase intent not found");
   const evaluation = evaluateProposal(
     {
@@ -365,7 +371,11 @@ export async function handleJoinDecision(ctx: PlatformContext, approval: Approva
   if (!group || group.status !== "awaiting_join_approvals") return;
 
   if (approval.status === "expired") {
-    setGroupStatus(ctx, member.groupId, transitionGroup(group.status as GroupStatus, "approval_expired"));
+    setGroupStatus(
+      ctx,
+      member.groupId,
+      transitionGroup(group.status as GroupStatus, "approval_expired"),
+    );
     await emitGroupUpdated(ctx, member.groupId);
     return;
   }
@@ -459,10 +469,9 @@ export async function handlePurchaseConsentRevoked(
     .all();
   for (const group of groups) {
     setGroupStatus(ctx, group.id, "cancelled", `${scope} revoked`);
-    await ctx.intents.revoke(
-      memberships.find((item) => item.groupId === group.id)!.intentId,
-      { userId },
-    );
+    await ctx.intents.revoke(memberships.find((item) => item.groupId === group.id)!.intentId, {
+      userId,
+    });
     await notifyNeutralCancellation(ctx, group.id, userId);
     await emitGroupUpdated(ctx, group.id);
   }

@@ -44,7 +44,9 @@ describe("SimBankingProvider", () => {
     expect(await provider.getBalance(alice.accountRef)).toMatchObject({ balanceCents: 7_151 });
     expect(await provider.getBalance(pool.accountRef)).toMatchObject({ balanceCents: 2_849 });
     expect(await provider.getTransfer(result.record.providerTransferId)).toEqual(result.record);
-    expect(await provider.findTransfersByMemo(alice.accountRef, "payment-one")).toEqual([result.record]);
+    expect(await provider.findTransfersByMemo(alice.accountRef, "payment-one")).toEqual([
+      result.record,
+    ]);
   });
 
   it("returns the existing result for an identical memo and payload", async () => {

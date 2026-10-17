@@ -56,7 +56,11 @@ describe("NessieBankingProvider", () => {
       memo: "dennis:idem",
     });
 
-    expect(requestBody).toMatchObject({ amount: 284.99, payee_id: "acct_pool", description: "dennis:idem" });
+    expect(requestBody).toMatchObject({
+      amount: 284.99,
+      payee_id: "acct_pool",
+      description: "dennis:idem",
+    });
     expect(new URL(requestUrl).searchParams.get("key")).toBe("secret-key");
     expect(result).toMatchObject({
       mode: "live",

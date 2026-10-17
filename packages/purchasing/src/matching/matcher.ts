@@ -24,7 +24,11 @@ function dateNumber(isoDate: string): number {
   return Date.parse(`${isoDate}T12:00:00.000Z`);
 }
 
-function productMatches(a: PurchaseIntentPublicT, b: PurchaseIntentPublicT, rules: MatchingRules): boolean {
+function productMatches(
+  a: PurchaseIntentPublicT,
+  b: PurchaseIntentPublicT,
+  rules: MatchingRules,
+): boolean {
   if (a.productKey === b.productKey) return true;
   if (rules.requireProductMatch === "same_only") return false;
   if (a.productKey.endsWith("_generic") || b.productKey.endsWith("_generic")) {
@@ -33,9 +37,16 @@ function productMatches(a: PurchaseIntentPublicT, b: PurchaseIntentPublicT, rule
   return a.category === b.category && a.productKey.split("_")[0] === b.productKey.split("_")[0];
 }
 
-function windowsOverlap(a: PurchaseIntentPublicT, b: PurchaseIntentPublicT, toleranceDays: number): boolean {
+function windowsOverlap(
+  a: PurchaseIntentPublicT,
+  b: PurchaseIntentPublicT,
+  toleranceDays: number,
+): boolean {
   const tolerance = toleranceDays * 24 * 60 * 60 * 1000;
-  return dateNumber(a.window.from) <= dateNumber(b.window.to) + tolerance && dateNumber(b.window.from) <= dateNumber(a.window.to) + tolerance;
+  return (
+    dateNumber(a.window.from) <= dateNumber(b.window.to) + tolerance &&
+    dateNumber(b.window.from) <= dateNumber(a.window.to) + tolerance
+  );
 }
 
 export function isCompatible(
@@ -54,22 +65,30 @@ export function isCompatible(
     {
       rule: "product_match",
       passed: product,
-      detail: product ? `${a.productKey} is compatible with ${b.productKey}` : `${a.productKey} does not match ${b.productKey}`,
+      detail: product
+        ? `${a.productKey} is compatible with ${b.productKey}`
+        : `${a.productKey} does not match ${b.productKey}`,
     },
     {
       rule: "budget_overlap",
       passed: budget,
-      detail: budget ? "Budget bands can support a common price" : "Budget bands do not support a positive common price",
+      detail: budget
+        ? "Budget bands can support a common price"
+        : "Budget bands do not support a positive common price",
     },
     {
       rule: "window_overlap",
       passed: window,
-      detail: window ? "Shopping windows overlap" : `Shopping windows differ by more than ${rules.windowOverlapDays} day(s)`,
+      detail: window
+        ? "Shopping windows overlap"
+        : `Shopping windows differ by more than ${rules.windowOverlapDays} day(s)`,
     },
     {
       rule: "region_match",
       passed: region,
-      detail: region ? "Regions satisfy the matching rule" : `${a.regionCode} does not match ${b.regionCode}`,
+      detail: region
+        ? "Regions satisfy the matching rule"
+        : `${a.regionCode} does not match ${b.regionCode}`,
     },
     {
       rule: "matching_enabled",
