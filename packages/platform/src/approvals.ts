@@ -307,6 +307,9 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
         throw new DennisError("approval_invalid", "Approval cannot be consumed", 409);
     },
     async consume(id) {
+      const value = row<ApprovalT>(ctx.db, "SELECT * FROM approvals WHERE id=?", id);
+      if (!value || hashPayload(value.payload) !== value.payloadHash)
+        throw new DennisError("approval_invalid", "Approval payload binding failed", 409);
       const count = update(
         ctx.db,
         "approvals",
