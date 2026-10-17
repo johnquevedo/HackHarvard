@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { globMatch, isPathAllowed, type OwnershipMap } from "./check-ownership";
+import {
+  globMatch,
+  isPathAllowed,
+  findBranchViolations,
+  type OwnershipMap,
+} from "./check-ownership";
 
 const ownership: OwnershipMap = {
   agents: {
@@ -25,4 +30,22 @@ describe("ownership globs", () => {
     expect(isPathAllowed("a3", "tests/cross/a3-flow.test.ts", "A", ownership)).toBe(true);
     expect(isPathAllowed("a3", "tests/cross/a1-flow.test.ts", "M", ownership)).toBe(false);
   });
+});
+
+it("scopes cross-owner authorization to the exact recorded review branch and still rejects unowned paths", () => {
+  const review: OwnershipMap = {
+    ...ownership,
+    reviewBranches: {
+      "a1/review": { agents: ["a1", "a4"], reason: "Human-authorized integration review" },
+    },
+  };
+  expect(
+    findBranchViolations("a1/review", [{ status: "M", file: "package.json" }], review),
+  ).toEqual([]);
+  expect(
+    findBranchViolations("a1/ordinary", [{ status: "M", file: "package.json" }], review),
+  ).toEqual(["M package.json"]);
+  expect(findBranchViolations("a1/review", [{ status: "A", file: "unowned.ts" }], review)).toEqual([
+    "A unowned.ts",
+  ]);
 });

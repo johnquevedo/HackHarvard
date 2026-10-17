@@ -5,7 +5,7 @@ export const DEMO_SCRIPTS = {
   },
   purchase_bob: {
     fromUserId: "usr_demo_bob",
-    text: "I need a monitor too, probably this weekend. 4K if I can find one.",
+    text: "I need a 27 inch 4K monitor too, probably this weekend. Budget up to $350.",
   },
   shortme_alice: {
     fromUserId: "usr_demo_alice",

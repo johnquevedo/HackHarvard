@@ -9,3 +9,7 @@ node_modules
 data
 dist
 coverage
+
+services/chalk-eval/.venv/
+**/__pycache__/
+**/.pytest_cache/

@@ -7,6 +7,7 @@ export type ChangeStatus = "A" | "M" | "D";
 
 export interface OwnershipMap {
   agents: Record<string, string[]>;
+  reviewBranches?: Record<string, { agents: string[]; reason: string }>;
 }
 
 const FIXTURE_AREA: Record<string, string> = {
@@ -113,6 +114,21 @@ export function findViolations(
     .map((change) => `${change.status} ${change.file}`);
 }
 
+export function findBranchViolations(
+  branch: string,
+  changes: { status: ChangeStatus; file: string }[],
+  ownership: OwnershipMap,
+): string[] {
+  const agent = agentFromBranch(branch);
+  const agents = ownership.reviewBranches?.[branch]?.agents ?? (agent ? [agent] : []);
+  return changes
+    .filter(
+      (change) =>
+        !agents.some((owner) => isPathAllowed(owner, change.file, change.status, ownership)),
+    )
+    .map((change) => `${change.status} ${change.file}`);
+}
+
 function main(): void {
   const branch = process.env.OWNERSHIP_BRANCH ?? git("rev-parse --abbrev-ref HEAD");
   const agent = agentFromBranch(branch);
@@ -121,13 +137,18 @@ function main(): void {
     return;
   }
   const ownership = loadOwnership(path.resolve("ownership.json"));
-  const violations = findViolations(agent, changedFilesAgainstMain(), ownership);
+  const violations = findBranchViolations(branch, changedFilesAgainstMain(), ownership);
   if (violations.length > 0) {
     console.error(`ownership check failed for ${agent}:`);
     for (const violation of violations) console.error(`  ${violation}`);
     process.exit(1);
   }
-  console.log(`ownership check passed for ${agent}`);
+  const review = ownership.reviewBranches?.[branch];
+  console.log(
+    review
+      ? `ownership check passed for review branch (${review.agents.join(", ")}): ${review.reason}`
+      : `ownership check passed for ${agent}`,
+  );
 }
 
 const entry = process.argv[1] ? path.resolve(process.argv[1]) : "";

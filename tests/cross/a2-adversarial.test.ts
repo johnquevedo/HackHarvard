@@ -172,10 +172,8 @@ describe("A2 adversarial contracts", () => {
       true,
     );
 
-    const balances = (await purchasingModule
-      .routes(ctx)
-      .request("/bank/accounts")
-      .then((response) => response.json())) as {
+    const balanceResponse = await purchasingModule.routes(ctx).request("/bank/accounts");
+    const balances = (await balanceResponse.json()) as {
       mode: string;
       accounts: { ownerKey: string; balanceCents: number }[];
     };

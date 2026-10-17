@@ -1,3 +1,4 @@
+import { configureDemoLlm } from "./demo-llm.ts";
 import { Hono } from "hono";
 import type { PlatformContext } from "@dennis/platform";
 import { mountPlatformRoutes, registerIntegrationHealth } from "@dennis/platform";
@@ -12,6 +13,7 @@ import { shortmeModule } from "@dennis/shortme";
 import { evalDemoRoutes } from "@dennis/eval-data";
 export const featureModules = [purchasingModule, shortmeModule];
 export async function compose(ctx: PlatformContext): Promise<Hono> {
+  configureDemoLlm(ctx);
   const app = new Hono();
   mountPlatformRoutes(app, ctx);
   for (const module of featureModules) {

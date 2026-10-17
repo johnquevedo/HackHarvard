@@ -1,13 +1,11 @@
-import path from "node:path";
 import { defineConfig } from "vitest/config";
+import acceptance from "./packages/platform/vitest.acceptance.config.ts";
 
 const e2e = process.env.DENNIS_E2E === "1";
 
 export default defineConfig({
   resolve: {
-    alias: {
-      "@": path.resolve("apps/web/src"),
-    },
+    alias: acceptance.resolve?.alias,
   },
   test: {
     environment: "node",
@@ -16,6 +14,8 @@ export default defineConfig({
       : [
           "scripts/**/*.test.ts",
           "packages/**/*.test.ts",
+          "tests/cross/**/*.test.ts",
+          "apps/server/**/*.test.ts",
           "apps/web/**/*.test.ts",
           "apps/web/**/*.test.tsx",
         ],

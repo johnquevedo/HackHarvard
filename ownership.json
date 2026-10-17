@@ -16,7 +16,10 @@
       "scripts/spike-photon.ts",
       "scripts/photon-doctor.ts",
       "docs/spikes/photon.md",
-      "fixtures/photon/**"
+      "fixtures/photon/**",
+      "packages/db/drizzle.config.ts",
+      "packages/db/src/push.ts",
+      "packages/db/src/privacy-migration.test.ts"
     ],
     "a2": [
       "packages/purchasing/**",
@@ -75,5 +78,11 @@
       "fixtures/replay/**",
       "ownership.json"
     ]
+  },
+  "reviewBranches": {
+    "a1/a1-09-recovery-hardening": {
+      "agents": ["a1", "a2", "a3", "a4"],
+      "reason": "Human-requested cross-package completion for branch review; main publication is not authorized."
+    }
   }
 }

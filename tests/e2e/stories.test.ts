@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { findSharedLeaks, SCENARIOS } from "./privacy";
 
 describe("e2e catalog", () => {
@@ -57,6 +57,56 @@ describe.skipIf(!base)("live simulated stories", () => {
       expect(body.label).toBe("SIMULATED INBOUND");
       expect(body.messageId).toBeTruthy();
     }
+    type Group = { id: string; status: string };
+    async function groups(): Promise<Group[]> {
+      const response = await fetch(`${base}/api/purchasing/groups`, { headers });
+      expect(response.ok).toBe(true);
+      return (await response.json()) as Group[];
+    }
+    await vi.waitFor(
+      async () => expect((await groups())[0]?.status).toBe("awaiting_join_approvals"),
+      { timeout: 5000 },
+    );
+    const groupId = (await groups())[0]!.id;
+    for (const kind of ["join_group_purchase", "authorize_payment"]) {
+      for (const name of ["alice", "bob"]) {
+        const userId = "usr_demo_" + name;
+        type Approval = { id: string; kind: string; shortCode: string; opportunityId: string };
+        const response = await fetch(`${base}/api/approvals?userId=${userId}&status=pending`, {
+          headers,
+        });
+        const pending = ((await response.json()) as Approval[]).filter((a) => a.kind === kind);
+        expect(pending).toHaveLength(1);
+        const reply = await fetch(`${base}/api/sim/inbound`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            fromUserId: userId,
+            text: "YES " + pending[0]!.shortCode,
+            clientMessageId: `e2e-${kind}-${name}`,
+          }),
+        });
+        expect(reply.ok).toBe(true);
+      }
+    }
+    await vi.waitFor(
+      async () =>
+        expect((await groups()).find((group) => group.id === groupId)?.status).toBe("settled"),
+      { timeout: 5000 },
+    );
+    const accounts = await fetch(`${base}/api/purchasing/bank/accounts`, { headers });
+    const bank = (await accounts.json()) as {
+      mode: string;
+      accounts: { ownerKey: string; balanceCents: number }[];
+    };
+    expect(bank.mode).toBe("simulated");
+    expect(bank.accounts.find((a) => a.ownerKey === "usr_demo_alice")?.balanceCents).toBe(
+      150000 - 28499,
+    );
+    expect(bank.accounts.find((a) => a.ownerKey === "usr_demo_bob")?.balanceCents).toBe(
+      120000 - 28499,
+    );
+    expect(bank.accounts.find((a) => a.ownerKey === "pool")?.balanceCents).toBe(56998);
     const judge = await fetch(`${base}/api/events?limit=200`, { headers });
     expect(judge.ok).toBe(true);
     const judgeBody = (await judge.json()) as {

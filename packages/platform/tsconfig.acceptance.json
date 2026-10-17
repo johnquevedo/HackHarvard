@@ -10,8 +10,7 @@
       "@dennis/shortme": ["../shortme/src/index.ts"],
       "@dennis/purchasing": ["../purchasing/src/index.ts"],
       "@dennis/eval-data": ["../eval-data/src/index.ts"],
-      "@dennis/platform/testing": ["./src/testing.ts"],
-      "hono": ["./node_modules/hono/dist/types/index.d.ts"]
+      "@dennis/platform/testing": ["./src/testing.ts"]
     }
   },
   "include": [

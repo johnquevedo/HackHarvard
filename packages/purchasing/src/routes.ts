@@ -135,7 +135,7 @@ export function purchasingRoutes(ctx: PlatformContext): Hono {
 
   app.post("/bank/seed", async (c) => {
     requireAdmin(ctx, c.req.header("x-dennis-admin"));
-    const body = await c.req.json<{ runTag?: string }>().catch(() => ({}));
+    const body = await c.req.json<{ runTag?: string }>().catch((): { runTag?: string } => ({}));
     return c.json(await seedBank(ctx, body.runTag ? { runTag: body.runTag } : {}));
   });
 

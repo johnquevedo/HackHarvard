@@ -52,11 +52,15 @@ it("restarts the actual server after SIGKILL and recovers one durable reply with
       stdio: ["ignore", "pipe", "pipe"],
     });
     children.push(child);
+    let diagnostics = "";
+    child.stderr!.on("data", (chunk) => {
+      diagnostics = (diagnostics + String(chunk)).slice(-3000);
+    });
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("Server readiness timed out")), 15000);
       child.once("exit", () => {
         clearTimeout(timer);
-        reject(new Error("Server exited before readiness"));
+        reject(new Error("Server exited before readiness: " + diagnostics));
       });
       child.stdout!.on("data", (chunk) => {
         if (String(chunk).includes("Dennis server listening")) {

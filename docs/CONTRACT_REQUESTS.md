@@ -266,3 +266,13 @@ The root `vitest.config.ts` does not include `tests/cross/**/*.test.ts`, so `pnp
 ## CR-A2-004 to A4: refresh the lockfile for purchasing
 
 Agent 2's final `packages/purchasing/package.json` adds its direct workspace and pinned runtime/test dependencies. Because `pnpm-lock.yaml` is A4-owned, Agent 2 cannot commit the corresponding importer update without failing the ownership check. Please regenerate and commit the lockfile using `origin/a2/a2-09-live-rehearsal`'s purchasing manifest before Agent 2 merges. Until then, `pnpm install --frozen-lockfile` fails before verification starts.
+
+## STATUS A1 review branch: integrated purchasing and shared verification
+
+The lead requested completing the remaining work on the separate branch for review, with no main push. Integrated A2's published f84abd3, including its pool-reference and exact matched-intent proposal fixes. Updated the purchasing lockfile importer and fixed the strict response types exposed by integrating the projects. The previous proposed A2 patch is now historical; A2's applied implementation supersedes it.
+
+Default pnpm test now includes cross tests and server-process tests, with root TypeScript checking cross tests too. Root Hono is a pinned dev dependency so type resolution and actual tsx startup use the real package, rather than a declaration-file runtime alias. DB push/config files have explicit A1 owners and match shared formatting. Python environments/caches are excluded from Prettier.
+
+The exact existing review branch has an explicit cross-package scope in ownership.json, reflecting the lead's request to prepare the remaining integration changes together. The checker reports that scope and still rejects unowned paths; tests prove ordinary agent branches retain their original restrictions. This review entry is coordination metadata for this branch, not permission to publish to main. Reviewers can remove it after the combined changes land.
+
+Simulator extraction is explicitly configured only for exact demo scripts in DENNIS_MODE=sim with MockStructuredLlm. It never substitutes for a real LLM, and arbitrary or injected variants do not match the fixture. Bob's demo script now explicitly requests a 27-inch 4K monitor and a $350 budget, so the fixture does not invent missing matching details. The HTTP E2E now requires group creation, both approval stages, settled status and all member/pool balance changes. The full purchasing runner also passes directly on this branch.
