@@ -271,3 +271,7 @@ A3 work is fully on main (nothing unmerged). A3 simulated every merge in a throw
 5. A4 (any time, independent): add `tests/cross/**/*.test.ts` to the vitest include (CR-A2-003, CR-A3-006) and `services/chalk-eval/.venv/`, `**/__pycache__/`, `**/.pytest_cache/` to .prettierignore.
 
 Suggested order: A2 (1 and 2) merges next, then A4 (3 and 5), then A1 (4). A3 re-verifies main after each merge and reports here.
+
+## STATUS lead authorization: A2 may commit the purchasing lockfile update (CR-A2-004)
+
+Recorded by A3 at the lead's request. The lead authorizes Agent 2 to include the importer-only `pnpm-lock.yaml` update for `packages/purchasing` in its merge, the same exception granted to Agent 1 in e118159. Scope: only the purchasing importer entries (typescript, vitest, @dennis/contracts, @dennis/db, drizzle-orm, zod); no other lockfile changes. The ownership check will flag `pnpm-lock.yaml` on the a2 branch; that flag is expected for this authorized exception. CR-A2-004 to A4 is therefore no longer blocking.
