@@ -1,12 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { DennisError } from "@dennis/contracts";
-import {
-  marketPositions,
-  markets,
-  pointsAccounts,
-  pointsLedger,
-  users,
-} from "@dennis/db";
+import { marketPositions, markets, pointsAccounts, pointsLedger, users } from "@dennis/db";
 import type { PlatformContext } from "@dennis/platform";
 import { GATES } from "../rules";
 
@@ -46,11 +40,7 @@ export function postLedgerTx(
   const posted: PostedEntry[] = [];
   for (const e of entries) {
     if (!Number.isInteger(e.delta))
-      throw new DennisError(
-        "validation_error",
-        "ledger delta must be an integer",
-        400,
-      );
+      throw new DennisError("validation_error", "ledger delta must be an integer", 400);
     const existing = tx
       .select()
       .from(pointsLedger)
@@ -88,12 +78,11 @@ export function postLedgerTx(
     const before = account?.balance ?? 0;
     const after = before + e.delta;
     if (after < 0)
-      throw new DennisError(
-        "validation_error",
-        "not enough points for this posting",
-        400,
-        { userId: e.userId, balance: before, delta: e.delta },
-      );
+      throw new DennisError("validation_error", "not enough points for this posting", 400, {
+        userId: e.userId,
+        balance: before,
+        delta: e.delta,
+      });
     const id = ctx.ids.next("ledger");
     tx.insert(pointsLedger)
       .values({
@@ -113,10 +102,7 @@ export function postLedgerTx(
         .set({ balance: after })
         .where(eq(pointsAccounts.userId, e.userId))
         .run();
-    else
-      tx.insert(pointsAccounts)
-        .values({ userId: e.userId, balance: after })
-        .run();
+    else tx.insert(pointsAccounts).values({ userId: e.userId, balance: after }).run();
     posted.push({
       id,
       userId: e.userId,
@@ -131,10 +117,7 @@ export function postLedgerTx(
 }
 
 // Single transaction; enforces L1, L2, L4.
-export function postLedger(
-  ctx: PlatformContext,
-  entries: LedgerPosting[],
-): void {
+export function postLedger(ctx: PlatformContext, entries: LedgerPosting[]): void {
   ctx.db.transaction((tx) => {
     postLedgerTx(ctx, tx as unknown as Tx, entries);
   });
@@ -142,19 +125,13 @@ export function postLedger(
 
 export function getBalance(ctx: PlatformContext, userId: string): number {
   return (
-    ctx.db
-      .select()
-      .from(pointsAccounts)
-      .where(eq(pointsAccounts.userId, userId))
-      .get()?.balance ?? 0
+    ctx.db.select().from(pointsAccounts).where(eq(pointsAccounts.userId, userId)).get()?.balance ??
+    0
   );
 }
 
 // Starter grant, once per user per reset (idempotent by key).
-export function ensureStarterGrant(
-  ctx: PlatformContext,
-  userId: string,
-): PostedEntry[] {
+export function ensureStarterGrant(ctx: PlatformContext, userId: string): PostedEntry[] {
   return ctx.db.transaction((tx) =>
     postLedgerTx(ctx, tx as unknown as Tx, [
       {
@@ -172,8 +149,7 @@ export function ensureStarterGrant(
 export function grantAllUsers(ctx: PlatformContext): number {
   const rows = ctx.db.select({ id: users.id }).from(users).all();
   let granted = 0;
-  for (const r of rows)
-    granted += ensureStarterGrant(ctx, r.id).filter((p) => !p.replayed).length;
+  for (const r of rows) granted += ensureStarterGrant(ctx, r.id).filter((p) => !p.replayed).length;
   return granted;
 }
 
@@ -184,9 +160,7 @@ export interface InvariantCheck {
 }
 
 // L1 to L6 (Section 7.4), read-only.
-export async function checkLedgerInvariants(
-  ctx: PlatformContext,
-): Promise<InvariantCheck[]> {
+export async function checkLedgerInvariants(ctx: PlatformContext): Promise<InvariantCheck[]> {
   const db = ctx.db;
   const checks: InvariantCheck[] = [];
 
@@ -207,20 +181,15 @@ export async function checkLedgerInvariants(
   });
 
   const neg =
-    db.all<{ n: number }>(
-      sql`select count(*) as n from points_ledger where balance_after < 0`,
-    )[0]?.n ?? 0;
+    db.all<{ n: number }>(sql`select count(*) as n from points_ledger where balance_after < 0`)[0]
+      ?.n ?? 0;
   const negAcc =
-    db.all<{ n: number }>(
-      sql`select count(*) as n from points_accounts where balance < 0`,
-    )[0]?.n ?? 0;
+    db.all<{ n: number }>(sql`select count(*) as n from points_accounts where balance < 0`)[0]?.n ??
+    0;
   checks.push({
     id: "L2",
     ok: neg + negAcc === 0,
-    detail:
-      neg + negAcc === 0
-        ? "no negative balance"
-        : `${neg + negAcc} negative balances`,
+    detail: neg + negAcc === 0 ? "no negative balance" : `${neg + negAcc} negative balances`,
   });
 
   const l3 = db.all<{ id: string; status: string; total: number | null }>(
@@ -247,10 +216,7 @@ export async function checkLedgerInvariants(
   checks.push({
     id: "L4",
     ok: dupLedger + dupPos === 0,
-    detail:
-      dupLedger + dupPos === 0
-        ? "idempotency keys unique"
-        : "duplicate idempotency keys",
+    detail: dupLedger + dupPos === 0 ? "idempotency keys unique" : "duplicate idempotency keys",
   });
 
   const l5 = db.all<{ id: string }>(
@@ -279,11 +245,7 @@ export async function checkLedgerInvariants(
   const unsettledPaid = db.all<{ market_id: string }>(
     sql`select distinct l.market_id from points_ledger l join markets m on m.id = l.market_id where l.kind in ('payout','refund') and m.status not in ('resolved','void')`,
   );
-  const l6bad =
-    multiPayout.length +
-    mixed.length +
-    voidMissing.length +
-    unsettledPaid.length;
+  const l6bad = multiPayout.length + mixed.length + voidMissing.length + unsettledPaid.length;
   checks.push({
     id: "L6",
     ok: l6bad === 0,
@@ -314,9 +276,7 @@ export function positionsFor(tx: Tx, marketId: string) {
 }
 
 export function marketsByIds(tx: Tx, ids: string[]) {
-  return ids.length === 0
-    ? []
-    : tx.select().from(markets).where(inArray(markets.id, ids)).all();
+  return ids.length === 0 ? [] : tx.select().from(markets).where(inArray(markets.id, ids)).all();
 }
 
 export function ledgerFor(ctx: PlatformContext, userId: string, limit = 200) {

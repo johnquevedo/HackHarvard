@@ -17,8 +17,7 @@ export class LlmSchemaError extends Error {
 export class LlmUnavailableError extends Error {
   constructor(
     public readonly task: string,
-    public readonly reason:
-      "timeout" | "upstream" | "rate_limited" | "config" | "refused",
+    public readonly reason: "timeout" | "upstream" | "rate_limited" | "config" | "refused",
     message: string,
   ) {
     super(`LLM unavailable for ${task} (${reason}): ${message}`);

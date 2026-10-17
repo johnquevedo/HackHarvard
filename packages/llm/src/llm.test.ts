@@ -117,8 +117,7 @@ describe("runStructured", () => {
     const r = await runStructured(
       req(),
       async () => {
-        if (calls++ === 0)
-          throw new LlmUnavailableError("unit_task", "upstream", "503");
+        if (calls++ === 0) throw new LlmUnavailableError("unit_task", "upstream", "503");
         return {
           raw: { ok: true, n: 1 },
           usage: { inputTokens: 1, outputTokens: 1 },
@@ -205,9 +204,7 @@ describe("AnthropicLlm with a faked SDK", () => {
       },
       create: () =>
         msg({
-          content: [
-            { type: "tool_use", name: "unit_task", input: { ok: false, n: 1 } },
-          ],
+          content: [{ type: "tool_use", name: "unit_task", input: { ok: false, n: 1 } }],
         }),
     });
     const llm = new AnthropicLlm({
@@ -288,9 +285,7 @@ describe("MockStructuredLlm and factory", () => {
       },
     ]);
     expect((await m.generate(req({ user: "seven" }))).value.n).toBe(7);
-    await expect(m.generate(req({ user: "nothing" }))).rejects.toBeInstanceOf(
-      LlmSchemaError,
-    );
+    await expect(m.generate(req({ user: "nothing" }))).rejects.toBeInstanceOf(LlmSchemaError);
     expect(await m.health()).toMatchObject({
       mode: "simulated",
       detail: expect.stringContaining("SIMULATED"),
@@ -298,15 +293,10 @@ describe("MockStructuredLlm and factory", () => {
   });
 
   it("selects providers without silently downgrading", async () => {
+    expect(createStructuredLlm({ llmProvider: "mock" } as never, { clock, log }).name).toBe("mock");
     expect(
-      createStructuredLlm({ llmProvider: "mock" } as never, { clock, log })
+      createStructuredLlm({ dennisMode: "sim", llmProvider: "anthropic" } as never, { clock, log })
         .name,
-    ).toBe("mock");
-    expect(
-      createStructuredLlm(
-        { dennisMode: "sim", llmProvider: "anthropic" } as never,
-        { clock, log },
-      ).name,
     ).toBe("mock");
     const missing = createStructuredLlm({ llmProvider: "anthropic" } as never, {
       clock,
@@ -321,10 +311,10 @@ describe("MockStructuredLlm and factory", () => {
       reason: "config",
     });
     expect(
-      createStructuredLlm(
-        { llmProvider: "anthropic", anthropicApiKey: "k" } as never,
-        { clock, log },
-      ),
+      createStructuredLlm({ llmProvider: "anthropic", anthropicApiKey: "k" } as never, {
+        clock,
+        log,
+      }),
     ).toBeInstanceOf(AnthropicLlm);
   });
 

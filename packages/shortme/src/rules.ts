@@ -17,14 +17,10 @@ export function approvalTtlMinutes(isDemo: boolean): number {
 const CODE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 
 // 4-character invite code, unique among the codes passed in (the user's open invitations).
-export function newInviteCode(
-  taken: Set<string>,
-  random: () => number = Math.random,
-): string {
+export function newInviteCode(taken: Set<string>, random: () => number = Math.random): string {
   for (let i = 0; i < 200; i++) {
     let code = "";
-    for (let j = 0; j < 4; j++)
-      code += CODE_ALPHABET[Math.floor(random() * CODE_ALPHABET.length)];
+    for (let j = 0; j < 4; j++) code += CODE_ALPHABET[Math.floor(random() * CODE_ALPHABET.length)];
     if (!taken.has(code)) return code;
   }
   throw new Error("could not allocate an invite code");

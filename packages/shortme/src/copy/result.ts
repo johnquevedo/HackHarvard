@@ -21,10 +21,7 @@ export async function generateQuip(
     const r = await ctx.llm.generate({
       task: "quip_v1",
       system: loadPrompt(QUIP_PROMPT, {
-        outcome:
-          input.outcome === "yes"
-            ? "the subject got it"
-            : "the subject did not get it",
+        outcome: input.outcome === "yes" ? "the subject got it" : "the subject did not get it",
         selfShort: input.selfShort ? "yes" : "no",
       }),
       user: `<context>outcome=${input.outcome}; selfShort=${input.selfShort}</context>`,

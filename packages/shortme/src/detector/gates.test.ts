@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import gatesJson from "../../rules/milestone-gates.json" with { type: "json" };
-import {
-  applyMilestoneGates,
-  sanitizeQuestion,
-  type MilestoneGates,
-} from "./gates";
+import { applyMilestoneGates, sanitizeQuestion, type MilestoneGates } from "./gates";
 import { MilestoneExtraction, type MilestoneExtractionT } from "./schema";
 
 const gates = gatesJson as unknown as MilestoneGates;
@@ -47,11 +43,7 @@ describe("applyMilestoneGates (same table as the Python eval)", () => {
   it.each([
     [{}, "pass", null],
     [{ minorIndicated: true }, "blocked_policy", "policy_blocked"],
-    [
-      { injectionAttempt: true, isMilestone: false },
-      "blocked_policy",
-      "policy_blocked",
-    ],
+    [{ injectionAttempt: true, isMilestone: false }, "blocked_policy", "policy_blocked"],
     [{ isMilestone: false }, "no_market", "not_an_intent"],
     [{ hyperbole: true }, "no_market", "not_an_intent"],
     [{ category: "dating" }, "blocked_policy", "policy_blocked"],
@@ -64,20 +56,14 @@ describe("applyMilestoneGates (same table as the Python eval)", () => {
     [{ category: "academics" }, "no_market", "category_disabled"],
     [{ category: "friend_event" }, "no_market", "category_disabled"],
     [{ sensitivity: "low" }, "pass", null],
-  ] as [Partial<MilestoneExtractionT>, string, string | null][])(
-    "%o",
-    (over, decision, reason) => {
-      const r = applyMilestoneGates(
-        MilestoneExtraction.parse({ ...BASE, ...over }),
-        gates,
-      );
-      if (r.pass) {
-        expect(decision).toBe("pass");
-      } else {
-        expect([r.evalDecision, r.reason]).toEqual([decision, reason]);
-      }
-    },
-  );
+  ] as [Partial<MilestoneExtractionT>, string, string | null][])("%o", (over, decision, reason) => {
+    const r = applyMilestoneGates(MilestoneExtraction.parse({ ...BASE, ...over }), gates);
+    if (r.pass) {
+      expect(decision).toBe("pass");
+    } else {
+      expect([r.evalDecision, r.reason]).toEqual([decision, reason]);
+    }
+  });
 });
 
 describe("sanitizeQuestion", () => {
@@ -89,18 +75,8 @@ describe("sanitizeQuestion", () => {
       ["employer"],
     ],
     ["Will {subject} get the offer?", [], "Will {subject} get the offer?", []],
-    [
-      "Will {subject} make $200k?",
-      [],
-      "Will {subject} get the offer?",
-      ["fallback_question"],
-    ],
-    [
-      "Will Alice get the offer?",
-      [],
-      "Will {subject} get the offer?",
-      ["fallback_question"],
-    ],
+    ["Will {subject} make $200k?", [], "Will {subject} get the offer?", ["fallback_question"]],
+    ["Will Alice get the offer?", [], "Will {subject} get the offer?", ["fallback_question"]],
     [
       "Will {subject} beat Bob for the role?",
       [],
@@ -113,34 +89,22 @@ describe("sanitizeQuestion", () => {
       "Will {subject} get the offer?",
       ["fallback_question"],
     ],
-    [
-      "Will {subject} get it",
-      [],
-      "Will {subject} get the offer?",
-      ["fallback_question"],
-    ],
+    ["Will {subject} get it", [], "Will {subject} get the offer?", ["fallback_question"]],
     [
       "Will {subject} see https://x.co?",
       [],
       "Will {subject} get the offer?",
       ["fallback_question"],
     ],
-  ] as [string, string[], string, string[]][])(
-    "%s",
-    (template, mentions, expected, redactions) => {
-      expect(sanitizeQuestion(template, "recruiting", mentions, true)).toEqual({
-        questionTemplate: expected,
-        redactions,
-      });
-    },
-  );
+  ] as [string, string[], string, string[]][])("%s", (template, mentions, expected, redactions) => {
+    expect(sanitizeQuestion(template, "recruiting", mentions, true)).toEqual({
+      questionTemplate: expected,
+      redactions,
+    });
+  });
 
   it("schema rejects extra keys and out-of-range values", () => {
-    expect(MilestoneExtraction.safeParse({ ...BASE, extra: 1 }).success).toBe(
-      false,
-    );
-    expect(
-      MilestoneExtraction.safeParse({ ...BASE, confidence: 1.5 }).success,
-    ).toBe(false);
+    expect(MilestoneExtraction.safeParse({ ...BASE, extra: 1 }).success).toBe(false);
+    expect(MilestoneExtraction.safeParse({ ...BASE, confidence: 1.5 }).success).toBe(false);
   });
 });

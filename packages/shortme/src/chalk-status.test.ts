@@ -42,10 +42,7 @@ describe("chalk integration status", () => {
       healthy: false,
       detail: expect.stringContaining("LOCAL RUN (NOT CHALK)"),
     });
-    writeFileSync(
-      join(d, "chalk-latest.json"),
-      JSON.stringify(report("local", "local-1")),
-    );
+    writeFileSync(join(d, "chalk-latest.json"), JSON.stringify(report("local", "local-1")));
     expect(chalkStatus(d, "x").mode).toBe("fallback");
     writeFileSync(join(d, "chalk-latest.json"), "{not json");
     expect(chalkStatus(d, "x").detail).toContain("unreadable");
@@ -54,10 +51,7 @@ describe("chalk integration status", () => {
   it("is live with the Chalk run id and emits eval.report once per run", async () => {
     const ctx = await createTestPlatform({ llm: new MockStructuredLlm() });
     const d = dir();
-    writeFileSync(
-      join(d, "chalk-latest.json"),
-      JSON.stringify(report("chalk", "evr_123")),
-    );
+    writeFileSync(join(d, "chalk-latest.json"), JSON.stringify(report("chalk", "evr_123")));
     expect(reportChalkStatus(ctx, d)).toMatchObject({
       mode: "live",
       healthy: true,
@@ -67,12 +61,8 @@ describe("chalk integration status", () => {
     const events = ctx.events
       .history({ judge: true, limit: 1000 })
       .filter((e) => e.type === "eval.report");
-    expect(events.map((e) => e.payload)).toEqual([
-      { provider: "chalk", runId: "evr_123" },
-    ]);
-    expect(ctx.integrations.list().find((s) => s.name === "chalk")?.mode).toBe(
-      "live",
-    );
+    expect(events.map((e) => e.payload)).toEqual([{ provider: "chalk", runId: "evr_123" }]);
+    expect(ctx.integrations.list().find((s) => s.name === "chalk")?.mode).toBe("live");
   });
 
   it("finds data/eval at the repository root from a nested cwd", () => {

@@ -60,9 +60,7 @@ export function validateQuip(quip: string, opts: QuipNameRules = {}): boolean {
   const words = q.match(/[A-Za-z][A-Za-z'\-]*/g) ?? [];
   const lower = words.map((w) => w.toLowerCase());
   if (lower.some((w) => BLOCKED_WORDS.includes(w))) return false;
-  const allowed = new Set(
-    (opts.allowedNames ?? []).map((n) => n.toLowerCase()),
-  );
+  const allowed = new Set((opts.allowedNames ?? []).map((n) => n.toLowerCase()));
   const blocked = (opts.blockedNames ?? [])
     .map((n) => n.toLowerCase())
     .filter((n) => n && !allowed.has(n));
@@ -71,19 +69,9 @@ export function validateQuip(quip: string, opts: QuipNameRules = {}): boolean {
   const tokens = q.split(/\s+/);
   for (let i = 0; i < tokens.length; i++) {
     const word = tokens[i]!.replace(/^[^A-Za-z]+|[^A-Za-z'\-]+$/g, "");
-    if (
-      !word ||
-      word[0] !== word[0]!.toUpperCase() ||
-      word[0] === word[0]!.toLowerCase()
-    )
-      continue;
+    if (!word || word[0] !== word[0]!.toUpperCase() || word[0] === word[0]!.toLowerCase()) continue;
     const sentenceStart = i === 0 || /[.!?]$/.test(tokens[i - 1]!);
-    if (
-      sentenceStart ||
-      word === "I" ||
-      word.startsWith("I'") ||
-      allowed.has(word.toLowerCase())
-    )
+    if (sentenceStart || word === "I" || word.startsWith("I'") || allowed.has(word.toLowerCase()))
       continue;
     return false;
   }
@@ -96,7 +84,6 @@ export function renderResultMessage(
   quip: string | null,
   opts: QuipNameRules = {},
 ): string {
-  const safe =
-    quip !== null && validateQuip(quip, opts) ? quip.trim() : QUIP_FALLBACK;
+  const safe = quip !== null && validateQuip(quip, opts) ? quip.trim() : QUIP_FALLBACK;
   return `ShortMe result: ${input.outcomeSentence} ${safe} Points: ${input.deltaLine}. (Fictional points, no value.)`;
 }

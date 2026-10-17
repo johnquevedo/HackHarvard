@@ -18,17 +18,14 @@ describe("validateQuip", () => {
     ["x".repeat(141), false],
     ["ok", false],
     ["Line one.\nLine two.", false],
-  ] as [string, boolean, string[]?, string[]?][])(
-    "%s",
-    (q, ok, names, blocked) => {
-      expect(
-        validateQuip(q, {
-          allowedNames: names ?? [],
-          blockedNames: blocked ?? [],
-        }),
-      ).toBe(ok);
-    },
-  );
+  ] as [string, boolean, string[]?, string[]?][])("%s", (q, ok, names, blocked) => {
+    expect(
+      validateQuip(q, {
+        allowedNames: names ?? [],
+        blockedNames: blocked ?? [],
+      }),
+    ).toBe(ok);
+  });
 });
 
 describe("renderResultMessage", () => {
@@ -38,25 +35,17 @@ describe("renderResultMessage", () => {
   };
 
   it("uses a valid quip", () => {
-    expect(
-      renderResultMessage(
-        input,
-        "Shorting yourself is a bold kind of self care.",
-      ),
-    ).toBe(
+    expect(renderResultMessage(input, "Shorting yourself is a bold kind of self care.")).toBe(
       "ShortMe result: Alice did not get it this time. Shorting yourself is a bold kind of self care. Points: Alice +50, Bob -50. (Fictional points, no value.)",
     );
   });
 
-  it.each([null, "You won 50 points!", "Bob owes you."])(
-    "falls back for %s",
-    (q) => {
-      expect(
-        renderResultMessage(input, q, {
-          allowedNames: ["Alice"],
-          blockedNames: ["Bob"],
-        }),
-      ).toContain(QUIP_FALLBACK);
-    },
-  );
+  it.each([null, "You won 50 points!", "Bob owes you."])("falls back for %s", (q) => {
+    expect(
+      renderResultMessage(input, q, {
+        allowedNames: ["Alice"],
+        blockedNames: ["Bob"],
+      }),
+    ).toContain(QUIP_FALLBACK);
+  });
 });

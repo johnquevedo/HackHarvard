@@ -4,16 +4,8 @@ import { drainPlatform, type PlatformContext } from "@dennis/platform";
 import { MockStructuredLlm } from "@dennis/llm";
 import { milestoneDetector } from "./detector/index";
 import { checkLedgerInvariants, getBalance } from "./ledger/ledger";
-import {
-  backFadeHandler,
-  passHandler,
-  placePosition,
-} from "./markets/positions";
-import {
-  getMarket,
-  handleMilestoneDetection,
-  listMarketsFor,
-} from "./markets/service";
+import { backFadeHandler, passHandler, placePosition } from "./markets/positions";
+import { getMarket, handleMilestoneDetection, listMarketsFor } from "./markets/service";
 import { canTransition, MARKET_STATUSES, TRANSITIONS } from "./markets/state";
 import { shortmeModule } from "./module";
 import { proposeResolution, resolveMarket } from "./resolution/service";
@@ -67,17 +59,7 @@ function addUser(ctx: Ctx, id: string, first: string, agentId: string): void {
     .prepare(
       "INSERT INTO users (id, display_name, first_name, handle, handle_kind, photon_user_id, is_demo, region_code, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
     )
-    .run(
-      id,
-      first,
-      first,
-      "+16175550199",
-      "phone",
-      null,
-      1,
-      "boston-cambridge",
-      now,
-    );
+    .run(id, first, first, "+16175550199", "phone", null, 1, "boston-cambridge", now);
   ctx.db.$client
     .prepare(
       "INSERT INTO agents (id, user_id, name, status, settings, created_at) VALUES (?,?,?,?,?,?)",
@@ -128,9 +110,7 @@ async function detectAndPropose(ctx: Ctx, text = INTERVIEW) {
 }
 
 async function pendingFor(ctx: Ctx, userId: string, kind: string) {
-  return (await ctx.approvals.findPending(userId, null)).filter(
-    (a) => a.kind === kind,
-  );
+  return (await ctx.approvals.findPending(userId, null)).filter((a) => a.kind === kind);
 }
 
 async function approve(
@@ -177,20 +157,16 @@ describe("E6 ShortMe happy path", () => {
     const ctx = await setup();
     const { market } = await detectAndPropose(ctx);
     expect(market?.status).toBe("proposed");
-    expect(market?.question).toBe(
-      "Will Alice get the offer after the final round?",
-    );
+    expect(market?.question).toBe("Will Alice get the offer after the final round?");
 
     // proposed is private to the subject
     expect(listMarketsFor(ctx, { viewerAgentId: BOB_AGENT })).toHaveLength(0);
     expect(listMarketsFor(ctx, { viewerAgentId: ALICE_AGENT })).toHaveLength(1);
-    const marketEvents = events(ctx).filter(
-      (e) => e.type === "shortme.market.updated",
-    );
+    const marketEvents = events(ctx).filter((e) => e.type === "shortme.market.updated");
     expect(marketEvents.every((e) => e.visibility === "private")).toBe(true);
-    expect(
-      JSON.stringify(events(ctx).filter((e) => e.visibility === "shared")),
-    ).not.toContain("offer after the final round");
+    expect(JSON.stringify(events(ctx).filter((e) => e.visibility === "shared"))).not.toContain(
+      "offer after the final round",
+    );
 
     const publish = await approve(ctx, ALICE, "publish_market");
     expect(publish.payload).toEqual({
@@ -203,9 +179,7 @@ describe("E6 ShortMe happy path", () => {
 
     // invite reaches Bob only, carries only the approved question
     const invites = events(ctx).filter(
-      (e) =>
-        e.type === "a2a.sent" &&
-        (e.payload as { type?: string }).type === "market.invite",
+      (e) => e.type === "a2a.sent" && (e.payload as { type?: string }).type === "market.invite",
     );
     expect(invites).toHaveLength(1);
     expect(JSON.stringify(invites[0]!.payload)).not.toContain("quant firm");
@@ -214,27 +188,13 @@ describe("E6 ShortMe happy path", () => {
       /^ShortMe from Alice's agent: "Will Alice get the offer after the final round\?" Fictional points only, you have 1000\. Reply BACK <pts> [a-z2-9]{4} \(Alice gets it\)/,
     );
 
-    expect(
-      await cmd(
-        ctx,
-        BOB,
-        BOB_AGENT,
-        { kind: "back", points: 50, code: null },
-        1,
-      ),
-    ).toContain("Recorded: BACK 50");
-    expect(
-      await cmd(
-        ctx,
-        ALICE,
-        ALICE_AGENT,
-        { kind: "fade", points: 50, code: null },
-        2,
-      ),
-    ).toContain("shorted yourself");
-    const placed = events(ctx).filter(
-      (e) => e.type === "shortme.position.placed",
+    expect(await cmd(ctx, BOB, BOB_AGENT, { kind: "back", points: 50, code: null }, 1)).toContain(
+      "Recorded: BACK 50",
     );
+    expect(
+      await cmd(ctx, ALICE, ALICE_AGENT, { kind: "fade", points: 50, code: null }, 2),
+    ).toContain("shorted yourself");
+    const placed = events(ctx).filter((e) => e.type === "shortme.position.placed");
     expect(placed.map((e) => e.payload.selfShort)).toEqual([false, true]);
 
     await proposeResolution(ctx, {
@@ -245,9 +205,7 @@ describe("E6 ShortMe happy path", () => {
     });
     expect(getMarket(ctx, market!.id)!.status).toBe("resolution_proposed");
     const confirm = await approve(ctx, ALICE, "confirm_resolution");
-    expect(confirm.promptText).toMatch(
-      /is NO\. Reply CONFIRM ([a-z0-9]{4}) or DISPUTE \1\.$/,
-    );
+    expect(confirm.promptText).toMatch(/is NO\. Reply CONFIRM ([a-z0-9]{4}) or DISPUTE \1\.$/);
 
     const m = getMarket(ctx, market!.id)!;
     expect(m.status).toBe("resolved");
@@ -273,13 +231,7 @@ describe("E7 dispute and admin void", () => {
     const { market } = await detectAndPropose(ctx);
     await approve(ctx, ALICE, "publish_market");
     await cmd(ctx, BOB, BOB_AGENT, { kind: "back", points: 40, code: null }, 1);
-    await cmd(
-      ctx,
-      ALICE,
-      ALICE_AGENT,
-      { kind: "fade", points: 60, code: null },
-      2,
-    );
+    await cmd(ctx, ALICE, ALICE_AGENT, { kind: "fade", points: 60, code: null }, 2);
     await proposeResolution(ctx, {
       marketId: market!.id,
       outcome: "yes",
@@ -296,9 +248,7 @@ describe("E7 dispute and admin void", () => {
         by: "admin",
       }),
     ).resolves.toMatchObject({ status: "void" });
-    expect([getBalance(ctx, ALICE), getBalance(ctx, BOB)]).toEqual([
-      1000, 1000,
-    ]);
+    expect([getBalance(ctx, ALICE), getBalance(ctx, BOB)]).toEqual([1000, 1000]);
     await expect(
       resolveMarket(ctx, { marketId: market!.id, outcome: "yes", by: "admin" }),
     ).rejects.toMatchObject({ code: "conflict" });
@@ -314,9 +264,7 @@ describe("publication and privacy gates", () => {
     expect(getMarket(ctx, market!.id)!.status).toBe("declined");
     expect(events(ctx).filter((e) => e.type === "a2a.sent")).toHaveLength(0);
     expect(
-      events(ctx).filter(
-        (e) => e.type.startsWith("shortme.") && e.visibility === "shared",
-      ),
+      events(ctx).filter((e) => e.type.startsWith("shortme.") && e.visibility === "shared"),
     ).toHaveLength(0);
     expect(outbox(ctx, BOB)).toHaveLength(0);
   });
@@ -349,10 +297,7 @@ describe("publication and privacy gates", () => {
 
   it("detector rejects non-milestones and the mock never invents one", async () => {
     const ctx = await setup();
-    const { out, market } = await detectAndPropose(
-      ctx,
-      "I'm so cooked for tomorrow's meeting lol",
-    );
+    const { out, market } = await detectAndPropose(ctx, "I'm so cooked for tomorrow's meeting lol");
     expect(market).toBeNull();
     expect(out.rejected[0]?.reason).toBe("not_an_intent");
   });
@@ -484,9 +429,7 @@ describe("positions", () => {
 
   it("PASS declines the invitation and closes betting for that friend", async () => {
     const { ctx, id } = await openMarket();
-    expect(
-      await cmd(ctx, BOB, BOB_AGENT, { kind: "pass", code: null }, 1),
-    ).toContain("Passed");
+    expect(await cmd(ctx, BOB, BOB_AGENT, { kind: "pass", code: null }, 1)).toContain("Passed");
     await expect(
       placePosition(ctx, {
         marketId: id,
@@ -501,15 +444,9 @@ describe("positions", () => {
 
   it("a wrong code is reported, not guessed", async () => {
     const { ctx } = await openMarket();
-    expect(
-      await cmd(
-        ctx,
-        BOB,
-        BOB_AGENT,
-        { kind: "back", points: 5, code: "zzzz" },
-        1,
-      ),
-    ).toContain("No open ShortMe invitation with code ZZZZ");
+    expect(await cmd(ctx, BOB, BOB_AGENT, { kind: "back", points: 5, code: "zzzz" }, 1)).toContain(
+      "No open ShortMe invitation with code ZZZZ",
+    );
   });
 
   it("no counterparty at resolution voids and refunds", async () => {
@@ -537,9 +474,7 @@ describe("positions", () => {
 describe("state machine table", () => {
   it("allows exactly the Section 8.7 transitions", () => {
     const legal = new Set(
-      Object.entries(TRANSITIONS).flatMap(([from, tos]) =>
-        tos.map((to) => `${from}>${to}`),
-      ),
+      Object.entries(TRANSITIONS).flatMap(([from, tos]) => tos.map((to) => `${from}>${to}`)),
     );
     expect([...legal].sort()).toEqual(
       [
@@ -601,10 +536,7 @@ describe("ledger properties through the database", () => {
       const { market } = await detectAndPropose(ctx, `${INTERVIEW} ${i}`);
       if (!market) throw new Error("no market");
       await approve(ctx, ALICE, "publish_market");
-      const sides = [
-        rnd() < 0.5 ? "back" : "fade",
-        rnd() < 0.5 ? "back" : "fade",
-      ] as const;
+      const sides = [rnd() < 0.5 ? "back" : "fade", rnd() < 0.5 ? "back" : "fade"] as const;
       const balA = getBalance(ctx, ALICE);
       const balB = getBalance(ctx, BOB);
       const pts = [
@@ -656,28 +588,28 @@ describe("ledger properties through the database", () => {
   }, 60_000);
 });
 
+// Route bodies are checked field by field below; this reads them as loose JSON objects.
+async function body(res: Response): Promise<Record<string, any>> {
+  return (await res.json()) as Record<string, any>;
+}
+
 describe("routes", () => {
   it("schema errors, admin auth, privacy lens, ApiErrorBody shape", async () => {
     const ctx = await setup();
     const app = shortmeModule.routes(ctx);
     const { market } = await detectAndPropose(ctx);
-    const asBob = await (
-      await app.request(`/markets?viewerAgentId=${BOB_AGENT}`)
-    ).json();
+    const asBob = await (await app.request(`/markets?viewerAgentId=${BOB_AGENT}`)).json();
     expect(asBob).toEqual([]);
-    expect(
-      (await app.request(`/markets/${market!.id}?viewerAgentId=${BOB_AGENT}`))
-        .status,
-    ).toBe(404);
-    const asAlice = await (
-      await app.request(`/markets/${market!.id}?viewerAgentId=${ALICE_AGENT}`)
-    ).json();
+    expect((await app.request(`/markets/${market!.id}?viewerAgentId=${BOB_AGENT}`)).status).toBe(
+      404,
+    );
+    const asAlice = await body(
+      await app.request(`/markets/${market!.id}?viewerAgentId=${ALICE_AGENT}`),
+    );
     expect(asAlice.market.status).toBe("proposed");
-    expect(
-      asAlice.participants.every(
-        (p: Record<string, unknown>) => !("inviteCode" in p),
-      ),
-    ).toBe(true);
+    expect(asAlice.participants.every((p: Record<string, unknown>) => !("inviteCode" in p))).toBe(
+      true,
+    );
 
     const bad = await app.request(`/markets/${market!.id}/positions`, {
       method: "POST",
@@ -685,14 +617,14 @@ describe("routes", () => {
       headers: { "content-type": "application/json" },
     });
     expect(bad.status).toBe(400);
-    expect((await bad.json()).error.code).toBe("validation_error");
+    expect((await body(bad)).error.code).toBe("validation_error");
 
     expect((await app.request("/invariants")).status).toBe(401);
-    const ok = await (
+    const ok = await body(
       await app.request("/invariants", {
         headers: { "x-dennis-admin": ctx.config.dennisAdminToken },
-      })
-    ).json();
+      }),
+    );
     expect(ok.ok).toBe(true);
 
     const dr = await app.request(`/markets/${market!.id}/demo-resolve`, {
@@ -718,7 +650,7 @@ describe("routes", () => {
       balance: 950,
       delta: -50,
     });
-    const ledger = await (await app.request(`/ledger?userId=${BOB}`)).json();
+    const ledger = await body(await app.request(`/ledger?userId=${BOB}`));
     expect(ledger.balance).toBe(950);
     expect((await app.request("/ledger?userId=usr_nobody_x")).status).toBe(404);
   });

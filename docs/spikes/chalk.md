@@ -4,17 +4,17 @@ Status: BLOCKED on credentials (no Chalk environment or token on the A3 machine 
 
 ## Verified by reading the installed `chalkcompute` 2.13.7 source
 
-| Fact | Evidence |
-| --- | --- |
-| Auth: `CHALK_CLIENT_ID` + `CHALK_CLIENT_SECRET` env vars (optional `CHALK_ENVIRONMENT`, `CHALK_API_SERVER`, default `https://api.chalk.ai`), else `~/.chalk.yml` from `chalk login` | `_auth_config.py` `load_token` |
-| `DatasetClient().upload(name, rows)` accepts a list of row dicts and returns a `DatasetRevisionRef`; re-uploading a name makes a new revision | `_dataset.py` |
-| `Evaluation.create(name, dataset=, task=, scorers=[...], metadata=)`; scorers are deployed `@chalkcompute.function` handles or `SqlExpression` (no built-in scorer handles in this version) | `_evaluation.py` `_scorer_spec` |
-| Scorer functions must return `EvaluationScorerResult(score in [0,1], metadata?)`; parameters bind to dataset columns by name plus `output` | `_evaluation.py` |
-| `evaluation.run(metadata=).wait(timeout=, raise_on_failure=False)`; statuses `pending`, `running`, `finalizing`, `succeeded`, `failed`, `canceled` | `EvaluationRunStatus` |
-| `DatasetClient().read(run.result_dataset)` returns a PyArrow table with dataset columns, `output`, `output_error`, and `<scorer>_value`, `<scorer>_error`, `<scorer>_metadata` | `_dataset.py` `read` docstring |
-| Decorating a function starts deployment in a background worker at import time | `_function.py` `function` docstring |
-| Secrets: `Secret.from_local_env("ANTHROPIC_API_KEY")` injects a local env var into the container | `_secret.py` |
-| `Image.debian_slim("3.12").add_local_python_source("dennis_eval")` ships our package to `/app` | `_image.py` |
+| Fact                                                                                                                                                                                        | Evidence                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Auth: `CHALK_CLIENT_ID` + `CHALK_CLIENT_SECRET` env vars (optional `CHALK_ENVIRONMENT`, `CHALK_API_SERVER`, default `https://api.chalk.ai`), else `~/.chalk.yml` from `chalk login`         | `_auth_config.py` `load_token`      |
+| `DatasetClient().upload(name, rows)` accepts a list of row dicts and returns a `DatasetRevisionRef`; re-uploading a name makes a new revision                                               | `_dataset.py`                       |
+| `Evaluation.create(name, dataset=, task=, scorers=[...], metadata=)`; scorers are deployed `@chalkcompute.function` handles or `SqlExpression` (no built-in scorer handles in this version) | `_evaluation.py` `_scorer_spec`     |
+| Scorer functions must return `EvaluationScorerResult(score in [0,1], metadata?)`; parameters bind to dataset columns by name plus `output`                                                  | `_evaluation.py`                    |
+| `evaluation.run(metadata=).wait(timeout=, raise_on_failure=False)`; statuses `pending`, `running`, `finalizing`, `succeeded`, `failed`, `canceled`                                          | `EvaluationRunStatus`               |
+| `DatasetClient().read(run.result_dataset)` returns a PyArrow table with dataset columns, `output`, `output_error`, and `<scorer>_value`, `<scorer>_error`, `<scorer>_metadata`              | `_dataset.py` `read` docstring      |
+| Decorating a function starts deployment in a background worker at import time                                                                                                               | `_function.py` `function` docstring |
+| Secrets: `Secret.from_local_env("ANTHROPIC_API_KEY")` injects a local env var into the container                                                                                            | `_secret.py`                        |
+| `Image.debian_slim("3.12").add_local_python_source("dennis_eval")` ships our package to `/app`                                                                                              | `_image.py`                         |
 
 ## Design consequences
 

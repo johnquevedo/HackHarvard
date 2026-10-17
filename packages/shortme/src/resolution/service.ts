@@ -11,11 +11,7 @@ import {
   type PostedEntry,
 } from "../ledger/ledger";
 import { computePayouts } from "../ledger/payouts";
-import {
-  emitLedgerPosted,
-  emitMarketUpdated,
-  emitResolutionUpdated,
-} from "../markets/events";
+import { emitLedgerPosted, emitMarketUpdated, emitResolutionUpdated } from "../markets/events";
 import {
   marketByOpportunity,
   requireMarket,
@@ -24,11 +20,7 @@ import {
 } from "../markets/service";
 import { assertTransition } from "../markets/state";
 import { approvalTtlMinutes } from "../rules";
-import {
-  confirmResolutionPrompt,
-  deltaLine,
-  outcomeSentence,
-} from "../templates";
+import { confirmResolutionPrompt, deltaLine, outcomeSentence } from "../templates";
 
 export type ResolutionRow = typeof marketResolutions.$inferSelect;
 
@@ -38,19 +30,13 @@ export interface ConfirmPayload {
   proposedOutcome: "yes" | "no";
 }
 
-function latestResolution(
-  ctx: PlatformContext,
-  marketId: string,
-): ResolutionRow | undefined {
+function latestResolution(ctx: PlatformContext, marketId: string): ResolutionRow | undefined {
   return ctx.db
     .select()
     .from(marketResolutions)
     .where(eq(marketResolutions.marketId, marketId))
     .all()
-    .sort(
-      (a, b) =>
-        b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id),
-    )[0];
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0];
 }
 
 function hasCounterparty(ctx: PlatformContext, marketId: string): boolean {
@@ -71,69 +57,58 @@ export async function proposeResolution(
 ): Promise<ResolutionRow> {
   if (input.outcome !== "yes" && input.outcome !== "no")
     throw new DennisError("validation_error", "outcome must be yes or no", 400);
-  const result = await ctx.runExclusive(
-    `market:${input.marketId}`,
-    async () => {
-      const m = requireMarket(ctx, input.marketId);
-      if (m.status !== "open" && m.status !== "locked")
-        throw new DennisError(
-          "invalid_state",
-          `cannot propose a resolution while ${m.status}`,
-          409,
-        );
-      const id = ctx.ids.next("resolution");
-      const now = ctx.clock.nowIso();
-      if (!hasCounterparty(ctx, m.id)) {
-        const row: ResolutionRow = {
-          id,
-          marketId: m.id,
-          proposedOutcome: input.outcome,
-          proposedBy: input.proposedBy,
-          status: "voided",
-          subjectConfirmState: "pending",
-          evidenceNote:
-            `${input.evidenceNote} (no counterparty, market voided)`.slice(
-              0,
-              500,
-            ),
-          createdAt: now,
-          decidedAt: now,
-        };
-        ctx.db.insert(marketResolutions).values(row).run();
-        return { row, voidNow: true, market: m };
-      }
+  const result = await ctx.runExclusive(`market:${input.marketId}`, async () => {
+    const m = requireMarket(ctx, input.marketId);
+    if (m.status !== "open" && m.status !== "locked")
+      throw new DennisError("invalid_state", `cannot propose a resolution while ${m.status}`, 409);
+    const id = ctx.ids.next("resolution");
+    const now = ctx.clock.nowIso();
+    if (!hasCounterparty(ctx, m.id)) {
       const row: ResolutionRow = {
         id,
         marketId: m.id,
         proposedOutcome: input.outcome,
         proposedBy: input.proposedBy,
-        status: "proposed",
+        status: "voided",
         subjectConfirmState: "pending",
-        evidenceNote: input.evidenceNote.slice(0, 500),
+        evidenceNote: `${input.evidenceNote} (no counterparty, market voided)`.slice(0, 500),
         createdAt: now,
-        decidedAt: null,
+        decidedAt: now,
       };
-      assertTransition(m.status, "resolution_proposed");
-      ctx.db.transaction((tx) => {
-        tx.insert(marketResolutions).values(row).run();
-        tx.update(markets)
-          .set({ status: "resolution_proposed", updatedAt: now })
-          .where(and(eq(markets.id, m.id), eq(markets.status, m.status)))
-          .run();
-      });
-      const next = { ...m, status: "resolution_proposed", updatedAt: now };
-      emitMarketUpdated(ctx, next);
-      emitResolutionUpdated(ctx, {
-        opportunityId: m.opportunityId,
-        marketId: m.id,
-        status: "proposed",
-        proposedOutcome: input.outcome,
-        subjectConfirmState: "pending",
-      });
-      await syncOpportunity(ctx, next);
-      return { row, voidNow: false, market: next };
-    },
-  );
+      ctx.db.insert(marketResolutions).values(row).run();
+      return { row, voidNow: true, market: m };
+    }
+    const row: ResolutionRow = {
+      id,
+      marketId: m.id,
+      proposedOutcome: input.outcome,
+      proposedBy: input.proposedBy,
+      status: "proposed",
+      subjectConfirmState: "pending",
+      evidenceNote: input.evidenceNote.slice(0, 500),
+      createdAt: now,
+      decidedAt: null,
+    };
+    assertTransition(m.status, "resolution_proposed");
+    ctx.db.transaction((tx) => {
+      tx.insert(marketResolutions).values(row).run();
+      tx.update(markets)
+        .set({ status: "resolution_proposed", updatedAt: now })
+        .where(and(eq(markets.id, m.id), eq(markets.status, m.status)))
+        .run();
+    });
+    const next = { ...m, status: "resolution_proposed", updatedAt: now };
+    emitMarketUpdated(ctx, next);
+    emitResolutionUpdated(ctx, {
+      opportunityId: m.opportunityId,
+      marketId: m.id,
+      status: "proposed",
+      proposedOutcome: input.outcome,
+      subjectConfirmState: "pending",
+    });
+    await syncOpportunity(ctx, next);
+    return { row, voidNow: false, market: next };
+  });
   if (result.voidNow) {
     await resolveMarket(ctx, {
       marketId: input.marketId,
@@ -166,10 +141,7 @@ export async function proposeResolution(
 
 // onDecided('confirm_resolution'): approve confirms and resolves; decline disputes and freezes;
 // expiry clears the proposal and returns the market to locked.
-export async function onConfirmDecided(
-  ctx: PlatformContext,
-  approval: ApprovalT,
-): Promise<void> {
+export async function onConfirmDecided(ctx: PlatformContext, approval: ApprovalT): Promise<void> {
   const m = marketByOpportunity(ctx, approval.opportunityId);
   if (!m) return;
   const p = approval.payload as unknown as ConfirmPayload;
@@ -178,8 +150,7 @@ export async function onConfirmDecided(
     .from(marketResolutions)
     .where(eq(marketResolutions.id, String(p.resolutionId)))
     .get();
-  if (!res || res.status !== "proposed" || m.status !== "resolution_proposed")
-    return;
+  if (!res || res.status !== "proposed" || m.status !== "resolution_proposed") return;
   if (approval.status === "approved") {
     const expected: ConfirmPayload = {
       resolutionId: res.id,
@@ -243,15 +214,9 @@ export async function disputeResolution(
     const isParticipant = ctx.db
       .select()
       .from(marketParticipants)
-      .where(
-        and(
-          eq(marketParticipants.marketId, m.id),
-          eq(marketParticipants.userId, input.by),
-        ),
-      )
+      .where(and(eq(marketParticipants.marketId, m.id), eq(marketParticipants.userId, input.by)))
       .get();
-    if (!isParticipant)
-      throw new DennisError("forbidden", "only participants can dispute", 403);
+    if (!isParticipant) throw new DennisError("forbidden", "only participants can dispute", 403);
     assertTransition(m.status, "disputed");
     const res = latestResolution(ctx, m.id);
     const now = ctx.clock.nowIso();
@@ -261,9 +226,7 @@ export async function disputeResolution(
         tx.update(marketResolutions)
           .set({
             status: "disputed",
-            subjectConfirmState: bySubject
-              ? "disputed"
-              : res.subjectConfirmState,
+            subjectConfirmState: bySubject ? "disputed" : res.subjectConfirmState,
             decidedAt: now,
           })
           .where(eq(marketResolutions.id, res.id))
@@ -281,9 +244,7 @@ export async function disputeResolution(
       marketId: m.id,
       status: "disputed",
       ...(res ? { proposedOutcome: res.proposedOutcome } : {}),
-      subjectConfirmState: bySubject
-        ? "disputed"
-        : (res?.subjectConfirmState ?? "pending"),
+      subjectConfirmState: bySubject ? "disputed" : (res?.subjectConfirmState ?? "pending"),
     });
     await syncOpportunity(ctx, next);
     await notifyAll(
@@ -308,11 +269,7 @@ async function notifyAll(
     .where(
       and(
         eq(marketParticipants.marketId, m.id),
-        inArray(marketParticipants.inviteState, [
-          "not_applicable",
-          "invited",
-          "accepted",
-        ]),
+        inArray(marketParticipants.inviteState, ["not_applicable", "invited", "accepted"]),
       ),
     )
     .all();
@@ -341,128 +298,105 @@ export async function resolveMarket(
     approvalId?: string;
   },
 ): Promise<MarketRow> {
-  const settled = await ctx.runExclusive(
-    `market:${input.marketId}`,
-    async () => {
-      const m = requireMarket(ctx, input.marketId);
-      if (m.status === "resolved" || m.status === "void")
-        throw new DennisError("conflict", "market already settled", 409);
-      if (
-        input.outcome !== "void" &&
-        m.status !== "resolution_proposed" &&
-        m.status !== "disputed"
-      ) {
-        throw new DennisError(
-          "invalid_state",
-          `cannot resolve while ${m.status}`,
-          409,
-        );
-      }
-      const positions = positionsFor(ctx.db as never, m.id);
-      const payout =
-        input.outcome === "void"
-          ? ({ void: true } as const)
-          : computePayouts(
-              positions.map((p) => ({ ...p, side: p.side as "back" | "fade" })),
-              input.outcome,
-            );
-      const finalStatus = "void" in payout ? "void" : "resolved";
-      assertTransition(m.status, finalStatus);
-      const now = ctx.clock.nowIso();
-      const res = latestResolution(ctx, m.id);
-      const posted: PostedEntry[] = ctx.db.transaction((tx) => {
-        if (input.approvalId)
-          ctx.approvals.consumeInTransaction(input.approvalId, tx);
-        const entries =
-          "void" in payout
-            ? positions.map((p) => ({
-                userId: p.userId,
-                marketId: m.id,
-                kind: "refund" as const,
-                delta: p.points,
-                refId: p.id,
-                idempotencyKey: `refund:${p.id}`,
-              }))
-            : payout.payouts.map((p) => ({
-                userId: p.userId,
-                marketId: m.id,
-                kind: "payout" as const,
-                delta: p.payout,
-                refId: res?.id ?? null,
-                idempotencyKey: `payout:${m.id}:${p.userId}`,
-              }));
-        const out = postLedgerTx(ctx, tx as never, entries);
-        const sum = marketStakeSum(tx as never, m.id);
-        if (sum !== 0)
-          throw new DennisError(
-            "internal",
-            `L3 violated for ${m.id}: market sum ${sum}`,
-            500,
+  const settled = await ctx.runExclusive(`market:${input.marketId}`, async () => {
+    const m = requireMarket(ctx, input.marketId);
+    if (m.status === "resolved" || m.status === "void")
+      throw new DennisError("conflict", "market already settled", 409);
+    if (input.outcome !== "void" && m.status !== "resolution_proposed" && m.status !== "disputed") {
+      throw new DennisError("invalid_state", `cannot resolve while ${m.status}`, 409);
+    }
+    const positions = positionsFor(ctx.db as never, m.id);
+    const payout =
+      input.outcome === "void"
+        ? ({ void: true } as const)
+        : computePayouts(
+            positions.map((p) => ({ ...p, side: p.side as "back" | "fade" })),
+            input.outcome,
           );
-        tx.update(markets)
+    const finalStatus = "void" in payout ? "void" : "resolved";
+    assertTransition(m.status, finalStatus);
+    const now = ctx.clock.nowIso();
+    const res = latestResolution(ctx, m.id);
+    const posted: PostedEntry[] = ctx.db.transaction((tx) => {
+      if (input.approvalId) ctx.approvals.consumeInTransaction(input.approvalId, tx);
+      const entries =
+        "void" in payout
+          ? positions.map((p) => ({
+              userId: p.userId,
+              marketId: m.id,
+              kind: "refund" as const,
+              delta: p.points,
+              refId: p.id,
+              idempotencyKey: `refund:${p.id}`,
+            }))
+          : payout.payouts.map((p) => ({
+              userId: p.userId,
+              marketId: m.id,
+              kind: "payout" as const,
+              delta: p.payout,
+              refId: res?.id ?? null,
+              idempotencyKey: `payout:${m.id}:${p.userId}`,
+            }));
+      const out = postLedgerTx(ctx, tx as never, entries);
+      const sum = marketStakeSum(tx as never, m.id);
+      if (sum !== 0)
+        throw new DennisError("internal", `L3 violated for ${m.id}: market sum ${sum}`, 500);
+      tx.update(markets)
+        .set({
+          status: finalStatus,
+          outcome: "void" in payout ? "void" : input.outcome,
+          resolvedAt: now,
+          updatedAt: now,
+        })
+        .where(and(eq(markets.id, m.id), eq(markets.status, m.status)))
+        .run();
+      if (res && (res.status === "proposed" || res.status === "disputed")) {
+        const confirmed = input.by === m.subjectUserId;
+        tx.update(marketResolutions)
           .set({
-            status: finalStatus,
-            outcome: "void" in payout ? "void" : input.outcome,
-            resolvedAt: now,
-            updatedAt: now,
+            status: finalStatus === "void" ? "voided" : "confirmed",
+            subjectConfirmState: confirmed ? "confirmed" : res.subjectConfirmState,
+            decidedAt: now,
           })
-          .where(and(eq(markets.id, m.id), eq(markets.status, m.status)))
+          .where(eq(marketResolutions.id, res.id))
           .run();
-        if (res && (res.status === "proposed" || res.status === "disputed")) {
-          const confirmed = input.by === m.subjectUserId;
-          tx.update(marketResolutions)
-            .set({
-              status: finalStatus === "void" ? "voided" : "confirmed",
-              subjectConfirmState: confirmed
-                ? "confirmed"
-                : res.subjectConfirmState,
-              decidedAt: now,
-            })
-            .where(eq(marketResolutions.id, res.id))
-            .run();
-        }
-        return out;
-      });
-      const next: MarketRow = {
-        ...m,
-        status: finalStatus,
-        outcome: "void" in payout ? "void" : input.outcome,
-        resolvedAt: now,
-        updatedAt: now,
-      };
-      const agentOf = new Map<string, string>();
-      for (const p of positions)
-        agentOf.set(
-          p.userId,
-          (await ctx.users.getAgentByUserId(p.userId))?.id ?? "unknown",
-        );
-      const inv = await checkLedgerInvariants(ctx);
-      emitLedgerPosted(ctx, {
-        opportunityId: m.opportunityId,
-        marketId: m.id,
-        entries: posted.map((e) => ({
-          agentId: agentOf.get(e.userId) ?? "unknown",
-          kind: e.kind,
-          delta: e.delta,
-          balanceAfter: e.balanceAfter,
-        })),
-        invariantOk: inv.every((c) => c.ok),
-      });
-      emitResolutionUpdated(ctx, {
-        opportunityId: m.opportunityId,
-        marketId: m.id,
-        status: finalStatus === "void" ? "voided" : "confirmed",
-        ...(res ? { proposedOutcome: res.proposedOutcome } : {}),
-        subjectConfirmState:
-          input.by === m.subjectUserId
-            ? "confirmed"
-            : (res?.subjectConfirmState ?? "pending"),
-      });
-      emitMarketUpdated(ctx, next);
-      await syncOpportunity(ctx, next);
-      return { market: next, positions, posted };
-    },
-  );
+      }
+      return out;
+    });
+    const next: MarketRow = {
+      ...m,
+      status: finalStatus,
+      outcome: "void" in payout ? "void" : input.outcome,
+      resolvedAt: now,
+      updatedAt: now,
+    };
+    const agentOf = new Map<string, string>();
+    for (const p of positions)
+      agentOf.set(p.userId, (await ctx.users.getAgentByUserId(p.userId))?.id ?? "unknown");
+    const inv = await checkLedgerInvariants(ctx);
+    emitLedgerPosted(ctx, {
+      opportunityId: m.opportunityId,
+      marketId: m.id,
+      entries: posted.map((e) => ({
+        agentId: agentOf.get(e.userId) ?? "unknown",
+        kind: e.kind,
+        delta: e.delta,
+        balanceAfter: e.balanceAfter,
+      })),
+      invariantOk: inv.every((c) => c.ok),
+    });
+    emitResolutionUpdated(ctx, {
+      opportunityId: m.opportunityId,
+      marketId: m.id,
+      status: finalStatus === "void" ? "voided" : "confirmed",
+      ...(res ? { proposedOutcome: res.proposedOutcome } : {}),
+      subjectConfirmState:
+        input.by === m.subjectUserId ? "confirmed" : (res?.subjectConfirmState ?? "pending"),
+    });
+    emitMarketUpdated(ctx, next);
+    await syncOpportunity(ctx, next);
+    return { market: next, positions, posted };
+  });
   await sendResults(ctx, settled.market, settled.positions, settled.posted);
   return settled.market;
 }
@@ -477,29 +411,20 @@ async function sendResults(
   const subjectFirst = subject?.firstName ?? "the subject";
   const names = new Map<string, string>();
   for (const p of positions)
-    names.set(
-      p.userId,
-      (await ctx.users.get(p.userId))?.firstName ?? "someone",
-    );
+    names.set(p.userId, (await ctx.users.get(p.userId))?.firstName ?? "someone");
   // Subject first, then friends alphabetically, so every recipient reads the same deterministic line.
   const rows = [...positions]
     .sort(
       (a, b) =>
-        Number(b.userId === m.subjectUserId) -
-          Number(a.userId === m.subjectUserId) ||
+        Number(b.userId === m.subjectUserId) - Number(a.userId === m.subjectUserId) ||
         names.get(a.userId)!.localeCompare(names.get(b.userId)!),
     )
     .map((p) => ({
       firstName: names.get(p.userId)!,
-      net:
-        posted
-          .filter((e) => e.userId === p.userId)
-          .reduce((s, e) => s + e.delta, 0) - p.points,
+      net: posted.filter((e) => e.userId === p.userId).reduce((s, e) => s + e.delta, 0) - p.points,
     }));
   const otherNames = [...names.values()].filter((n) => n !== subjectFirst);
-  const selfShort = positions.some(
-    (p) => p.userId === m.subjectUserId && p.side === "fade",
-  );
+  const selfShort = positions.some((p) => p.userId === m.subjectUserId && p.side === "fade");
   const outcome = (m.outcome ?? "void") as "yes" | "no" | "void";
   const quip = await generateQuip(ctx, {
     outcome,
@@ -514,10 +439,7 @@ async function sendResults(
     subjectFirst,
     otherNames,
   });
-  const recipients = new Set<string>([
-    m.subjectUserId,
-    ...positions.map((p) => p.userId),
-  ]);
+  const recipients = new Set<string>([m.subjectUserId, ...positions.map((p) => p.userId)]);
   for (const userId of recipients) {
     await ctx.notifier.send({
       userId,

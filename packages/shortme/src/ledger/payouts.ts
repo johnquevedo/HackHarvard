@@ -6,16 +6,12 @@ export interface PayoutPosition {
 }
 
 export type PayoutResult =
-  | { pool: number; payouts: { userId: string; payout: number }[] }
-  | { void: true };
+  { pool: number; payouts: { userId: string; payout: number }[] } | { void: true };
 
 // Pari-mutuel, zero-sum, no house cut (Section 8.7). `back` wins on "yes", `fade` wins on "no".
 // Each winner gets floor(pool * stake / winnersTotal); the remainder goes to the largest winning
 // stake (ties: earliest position) so payouts sum to exactly the pool. No counterparty means void.
-export function computePayouts(
-  positions: PayoutPosition[],
-  outcome: "yes" | "no",
-): PayoutResult {
+export function computePayouts(positions: PayoutPosition[], outcome: "yes" | "no"): PayoutResult {
   const winningSide = outcome === "yes" ? "back" : "fade";
   const winners = positions.filter((p) => p.side === winningSide);
   const losers = positions.filter((p) => p.side !== winningSide);
@@ -33,11 +29,7 @@ export function computePayouts(
     for (let i = 1; i < winners.length; i++) {
       const w = winners[i]!;
       const b = winners[best]!;
-      if (
-        w.points > b.points ||
-        (w.points === b.points && w.createdAt < b.createdAt)
-      )
-        best = i;
+      if (w.points > b.points || (w.points === b.points && w.createdAt < b.createdAt)) best = i;
     }
     payouts[best]!.payout += remainder;
   }

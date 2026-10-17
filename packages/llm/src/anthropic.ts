@@ -34,10 +34,7 @@ interface MessageLike {
   stop_reason?: string | null;
 }
 
-export function mapAnthropicError(
-  task: string,
-  err: unknown,
-): LlmUnavailableError {
+export function mapAnthropicError(task: string, err: unknown): LlmUnavailableError {
   if (err instanceof LlmUnavailableError) return err;
   if (err instanceof Anthropic.APIConnectionTimeoutError)
     return new LlmUnavailableError(task, "timeout", "request timed out");
@@ -47,8 +44,7 @@ export function mapAnthropicError(
     return new LlmUnavailableError(task, "upstream", "connection error");
   if (err instanceof Anthropic.APIError) {
     const status = err.status ?? 0;
-    if (status >= 500)
-      return new LlmUnavailableError(task, "upstream", `http ${status}`);
+    if (status >= 500) return new LlmUnavailableError(task, "upstream", `http ${status}`);
     if (status === 401 || status === 403)
       return new LlmUnavailableError(task, "config", `http ${status}`);
     return new LlmUnavailableError(task, "refused", `http ${status}`);
@@ -63,9 +59,7 @@ export function mapAnthropicError(
 }
 
 function userContent(call: TransportCall): string {
-  return call.correctiveNote
-    ? `${call.user}\n\n${call.correctiveNote}`
-    : call.user;
+  return call.correctiveNote ? `${call.user}\n\n${call.correctiveNote}` : call.user;
 }
 
 function toolName(task: string): string {
@@ -110,10 +104,7 @@ export class AnthropicLlm implements StructuredLlm {
     )) as unknown as MessageLike;
   }
 
-  private async callTool<T>(
-    req: StructuredRequest<T>,
-    call: TransportCall,
-  ): Promise<MessageLike> {
+  private async callTool<T>(req: StructuredRequest<T>, call: TransportCall): Promise<MessageLike> {
     const name = toolName(req.task);
     return (await this.client.messages.create(
       {
