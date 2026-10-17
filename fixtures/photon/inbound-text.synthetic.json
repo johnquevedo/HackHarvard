@@ -1,0 +1,26 @@
+{
+  "id": "pho_msg_synthetic",
+  "platform": "imessage",
+  "status": "received",
+  "space": {
+    "id": "pho_spc_synthetic",
+    "kind": "direct",
+    "participantIds": ["pho_usr_agent", "pho_usr_sender"]
+  },
+  "sentBy": {
+    "id": "pho_usr_sender",
+    "handle": "alice@example.test",
+    "platform": "imessage"
+  },
+  "receivedBy": {
+    "id": "pho_usr_agent"
+  },
+  "content": {
+    "type": "text",
+    "format": "plain",
+    "text": "Synthetic test message"
+  },
+  "timestamps": {
+    "receivedAt": "2026-10-17T12:00:00.000Z"
+  }
+}

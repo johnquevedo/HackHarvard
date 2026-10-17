@@ -1,0 +1,14 @@
+{
+  "name": "@dennis/server",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@dennis/platform": "workspace:*",
+    "@hono/node-server": "2.1.5",
+    "hono": "4.13.13",
+    "@dennis/purchasing": "workspace:*",
+    "@dennis/shortme": "workspace:*",
+    "@dennis/llm": "workspace:*",
+    "@dennis/eval-data": "workspace:*"
+  }
+}

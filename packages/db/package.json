@@ -1,0 +1,22 @@
+{
+  "name": "@dennis/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "db:push": "tsx src/push.ts",
+    "db:reset": "tsx src/reset.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "13.0.3",
+    "drizzle-orm": "0.45.4"
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.31.11"
+  }
+}

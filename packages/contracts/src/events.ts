@@ -1,3 +1,4 @@
+import { A2A_PAYLOAD_SCHEMAS } from "./a2a.ts";
 import { z } from "zod";
 import { idSchema, Cents } from "./ids.ts";
 import {
@@ -38,6 +39,15 @@ export const NewEvent = z.object({
 const s = z.string();
 const b = z.boolean();
 const n = z.number().int().nonnegative();
+function validateSharedA2A(
+  value: { type: string; payload: Record<string, unknown> },
+  ctx: z.RefinementCtx,
+): void {
+  const schema =
+    A2A_PAYLOAD_SCHEMAS[value.type as keyof typeof A2A_PAYLOAD_SCHEMAS];
+  if (!schema?.safeParse(value.payload).success)
+    ctx.addIssue({ code: "custom", message: "Invalid minimal A2A payload" });
+}
 export const EVENT_PAYLOAD_SCHEMAS = {
   "message.received": z
     .object({ messageId: s, provider: z.enum(["photon", "sim"]), text: s })
@@ -104,7 +114,8 @@ export const EVENT_PAYLOAD_SCHEMAS = {
       toAgentId: s,
       payload: JsonObject,
     })
-    .strict(),
+    .strict()
+    .superRefine(validateSharedA2A),
   "a2a.handled": z
     .object({ a2aId: s, type: s, toAgentId: s, ok: b, error: s.optional() })
     .strict(),

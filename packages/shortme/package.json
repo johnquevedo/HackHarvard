@@ -1,0 +1,10 @@
+{
+  "name": "@dennis/shortme",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@dennis/platform": "workspace:*",
+    "hono": "4.13.13"
+  }
+}

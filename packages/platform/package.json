@@ -1,0 +1,21 @@
+{
+  "name": "@dennis/platform",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@dennis/contracts": "workspace:*",
+    "@dennis/db": "workspace:*",
+    "@dennis/messaging": "workspace:*",
+    "hono": "4.13.13",
+    "zod": "4.6.7",
+    "drizzle-orm": "0.45.4"
+  }
+}

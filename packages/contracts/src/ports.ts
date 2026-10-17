@@ -238,6 +238,7 @@ export interface ApprovalService {
     kind: ApprovalKindT;
     payloadHash: string;
   }): Promise<ApprovalT>;
+  consumeInTransaction(approvalId: string, tx: unknown): void; // CR-A2-001: synchronous, inside the caller transaction.
   consume(approvalId: string): Promise<void>; // call inside the same DB transaction as the guarded action
   onDecided(kind: ApprovalKindT, handler: ApprovalDecidedHandler): void;
   expireDue(): Promise<number>;
