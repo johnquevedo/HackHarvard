@@ -24,6 +24,7 @@ import {
 import { onConfirmDecided } from "./resolution/service";
 import { shortmeRoutes } from "./routes";
 import { ensureShortmeSchema } from "./schema";
+import { reportChalkStatus } from "./chalk-status";
 
 const SWEEP_MS = 30_000;
 const timers = new WeakMap<PlatformContext, NodeJS.Timeout>();
@@ -55,14 +56,14 @@ export const shortmeModule: FeatureModule = {
     ctx.commands.register("pass", passHandler(ctx));
     if (ctx.llm instanceof MockStructuredLlm)
       ctx.log.info("shortme.llm", { provider: "mock", label: "SIMULATED LLM" });
-    if (!timers.has(ctx) && process.env.NODE_ENV !== "test") {
-      const t = setInterval(
-        () =>
-          void sweep(ctx).catch((err) =>
-            ctx.log.warn("shortme.sweep_failed", { message: String(err) }),
-          ),
-        SWEEP_MS,
-      );
+    if (!timers.has(ctx) && ctx.config.nodeEnv !== "test") {
+      reportChalkStatus(ctx);
+      const t = setInterval(() => {
+        reportChalkStatus(ctx);
+        void sweep(ctx).catch((err) =>
+          ctx.log.warn("shortme.sweep_failed", { message: String(err) }),
+        );
+      }, SWEEP_MS);
       t.unref();
       timers.set(ctx, t);
     }

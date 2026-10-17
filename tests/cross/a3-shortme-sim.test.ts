@@ -219,3 +219,57 @@ describe("a3 ShortMe by text through the platform", () => {
     );
   });
 });
+
+const EXTRACTION = {
+  isMilestone: true,
+  subjectIsAuthor: true,
+  outcomeUncertain: true,
+  hyperbole: false,
+  injectionAttempt: false,
+  minorIndicated: false,
+  mentionsThirdParty: false,
+  category: "recruiting",
+  milestoneKind: "final_round_interview",
+  questionTemplate: "Will {subject} get the offer?",
+  resolvesWithinDays: 7,
+  sensitivity: "none",
+  employerMentions: [],
+  confidence: 0.9,
+  rationale: "canned",
+};
+
+describe("a3 policy gates through the pipeline (E9 and Section 15.5)", () => {
+  it.each([
+    ["dating is blocked", { category: "dating" }, "policy_blocked"],
+    ["health is sensitive", { sensitivity: "high" }, "sensitive"],
+    [
+      "someone else's interview",
+      { subjectIsAuthor: false, mentionsThirdParty: true },
+      "not_subject_owned",
+    ],
+    [
+      "academics template is disabled",
+      { category: "academics" },
+      "category_disabled",
+    ],
+    ["a stated minor is blocked", { minorIndicated: true }, "policy_blocked"],
+    ["low confidence", { confidence: 0.5 }, "low_confidence"],
+  ] as const)("%s", async (_name, over, reason) => {
+    const llm = new MockStructuredLlm([
+      {
+        task: "milestone_detector_v1",
+        respond: () => ({ ...EXTRACTION, ...over }),
+      },
+    ]);
+    const ctx = await createTestPlatform({ llm });
+    await shortmeModule.register(ctx);
+    await shortmeModule.seed(ctx);
+    await say(ctx, "alice", "a message the canned extraction describes");
+    expect(marketRow(ctx)).toBeUndefined();
+    const rejected = ctx.events
+      .history({ judge: true, limit: 1000 })
+      .filter((e) => e.type === "intent.rejected");
+    expect(rejected.map((e) => e.payload.reason)).toEqual([reason]);
+    expect(outbox(ctx, "usr_demo_bob")).toHaveLength(0);
+  });
+});

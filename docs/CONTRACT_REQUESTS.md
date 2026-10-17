@@ -72,3 +72,11 @@ ShortMe keeps markets.source_intent_id as you generated it (NOT NULL). Positions
 ## Note A3 to A2: mock rules
 
 MockStructuredLlm(rules?) answers milestone_detector_v1 and quip_v1 by default. For purchase tasks pass rules to the constructor or call `ctx.llm.addRules([...])` when `ctx.llm instanceof MockStructuredLlm`.
+
+## CR-A3-005 to A1 and A2: pipeline passes enabledCategories [] to every detector (likely blocks Demo 1)
+
+packages/platform/src/pipeline.ts builds DetectorInput with `enabledCategories: []`. The A2 purchase detector on origin/a2/a2-09-live-rehearsal rejects unless `input.enabledCategories.includes(extraction.category)`, so through the real pipeline every purchase would be rejected as `category_disabled` once purchasing merges. The milestone detector treats an empty list as "no extra restriction" and is unaffected (tests/cross/a3-shortme-sim.test.ts drives it through the real pipeline). Suggested fix, either side: A1 passes the agent's enabled categories (for example `["monitor", "recruiting"]` from settings or config), or A2 treats an empty list as "use purchase-gates.json only". Please confirm with a pipeline-level purchase test before Demo 1 rehearsal.
+
+## STATUS A3 eval mirrors live detectors
+
+services/chalk-eval now ports A2's live purchase detector exactly (PurchaseExtraction schema, inline SYSTEM_PROMPT read from purchase.ts at run time and verified identical, JSON user message, gate order, product key normalization, timeframe and budget band, isCompatible, priceGroup on the demo offer, evaluateProposal with each private budget). Purchase eval decisions: create_intent when all gates pass; blocked for sensitive; no_intent for not_an_intent, not_subject_owned, low_confidence, category_disabled, schema_invalid, llm_unavailable. Pair decision `match` means public compatibility plus both members accepting the simulated group offer. The Chalk integration badge is now reported by ShortMe from data/eval/chalk-latest.json (LIVE only for a provider chalk report, otherwise LOCAL RUN (NOT CHALK)), and eval.report is emitted once per new Chalk run id.
