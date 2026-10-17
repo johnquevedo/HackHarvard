@@ -24,47 +24,41 @@ export async function runReset(ctx: ResetContext): Promise<{ runId: string }> {
   return { runId };
 }
 
-async function loadModule(name: string): Promise<Record<string, unknown> | null> {
-  try {
-    const importer = new Function("specifier", "return import(specifier)") as (
-      specifier: string,
-    ) => Promise<Record<string, unknown>>;
-    return await importer(name);
-  } catch {
-    return null;
-  }
+interface LivePlatform {
+  events: { emit(event: unknown): Promise<void> };
+}
+
+async function loadModule(name: string): Promise<Record<string, unknown>> {
+  const importer = new Function("specifier", "return import(specifier)") as (
+    specifier: string,
+  ) => Promise<Record<string, unknown>>;
+  return importer(name);
 }
 
 async function loadLiveContext(): Promise<ResetContext> {
-  const platform = await loadModule("@dennis/platform");
+  const platform = await loadModule("@dennis/platform/foundation");
+  const configMod = await loadModule("@dennis/platform/config");
   const purchasing = await loadModule("@dennis/purchasing");
   const shortme = await loadModule("@dennis/shortme");
-  if (!platform || !purchasing || !shortme) {
-    throw new Error(
-      "demo reset needs @dennis/platform, @dennis/purchasing, and @dennis/shortme. They are not merged yet.",
-    );
-  }
-  const create = platform.createPlatform as (() => Promise<Record<string, unknown>>) | undefined;
-  if (!create)
-    throw new Error("createPlatform is not exported yet. See docs/CONTRACT_REQUESTS.md.");
-  const ctx = await create();
-  const purchaseModule = purchasing.purchasingModule as {
-    reset: (value: unknown) => Promise<void>;
-    seed: (value: unknown) => Promise<void>;
-  };
-  const shortModule = shortme.shortmeModule as {
-    reset: (value: unknown) => Promise<void>;
-    seed: (value: unknown) => Promise<void>;
-  };
+  const loadConfig = configMod.loadConfig as (env: NodeJS.ProcessEnv) => unknown;
+  const createPlatform = platform.createPlatform as (opts: {
+    config: unknown;
+  }) => Promise<LivePlatform>;
+  const ctx = await createPlatform({ config: loadConfig(process.env) });
   const resetCore = platform.resetCore as (
-    value: unknown,
+    value: LivePlatform,
     opts: { keepUsers: true },
   ) => Promise<void>;
+  const purchaseModule = purchasing.purchasingModule as {
+    reset: (value: LivePlatform) => Promise<void>;
+    seed: (value: LivePlatform) => Promise<void>;
+  };
+  const shortModule = shortme.shortmeModule as {
+    reset: (value: LivePlatform) => Promise<void>;
+    seed: (value: LivePlatform) => Promise<void>;
+  };
   return {
-    async setPaused(paused) {
-      const kv = ctx.kv as { set?: (key: string, value: string) => Promise<void> } | undefined;
-      await kv?.set?.("inbound_paused", String(paused));
-    },
+    async setPaused() {},
     async drain() {},
     resetCore: (opts) => resetCore(ctx, opts),
     purchasing: {
@@ -79,8 +73,7 @@ async function loadLiveContext(): Promise<ResetContext> {
       return null;
     },
     async emitDemoReset(runId) {
-      const events = ctx.events as { emit?: (event: unknown) => Promise<void> } | undefined;
-      await events?.emit?.({
+      await ctx.events.emit({
         type: "demo.reset",
         visibility: "system",
         payload: { runId },

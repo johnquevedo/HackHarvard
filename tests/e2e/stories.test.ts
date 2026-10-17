@@ -40,10 +40,33 @@ describe("e2e catalog", () => {
 });
 
 const base = process.env.E2E_BASE_URL;
+const admin = process.env.E2E_ADMIN_TOKEN ?? "";
 
 describe.skipIf(!base)("live simulated stories", () => {
-  it("reaches health before the story driver", async () => {
-    const response = await fetch(`${base}/api/health`);
-    expect(response.ok).toBe(true);
+  it("boots, accepts both demo scripts, and keeps Alice private text off Bob's lens", async () => {
+    const health = await fetch(`${base}/api/health`);
+    expect(health.ok).toBe(true);
+    const headers = {
+      "content-type": "application/json",
+      "x-dennis-admin": admin,
+    };
+    for (const name of ["shortme_alice", "purchase_alice", "purchase_bob"]) {
+      const script = await fetch(`${base}/api/demo/script/${name}`, { method: "POST", headers });
+      expect(script.ok).toBe(true);
+      const body = (await script.json()) as { messageId?: string; label?: string };
+      expect(body.label).toBe("SIMULATED INBOUND");
+      expect(body.messageId).toBeTruthy();
+    }
+    const judge = await fetch(`${base}/api/events?limit=200`, { headers });
+    expect(judge.ok).toBe(true);
+    const judgeBody = (await judge.json()) as {
+      events: { visibility: string; payload: unknown; type: string }[];
+    };
+    expect(judgeBody.events.some((event) => event.type === "shortme.market.updated")).toBe(true);
+    for (const event of judgeBody.events) expect(findSharedLeaks(event)).toEqual([]);
+    const bob = await fetch(`${base}/api/events?viewerAgentId=agt_demo_bob&limit=200`, { headers });
+    expect(bob.ok).toBe(true);
+    const bobText = await bob.text();
+    expect(bobText).not.toContain("maybe $350 or under");
   });
 });

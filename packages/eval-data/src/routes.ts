@@ -1,6 +1,5 @@
 import { readFileSync, existsSync } from "node:fs";
 import { Hono } from "hono";
-import type { PlatformContext } from "@dennis/platform";
 import { EvalReport } from "./schema";
 import { DEMO_SCRIPTS, type DemoScriptName } from "./scripts";
 import { reportPath } from "./report";
@@ -29,8 +28,41 @@ function unavailable(message: string) {
   return { error: { code: "integration_unavailable", message } };
 }
 
-export function evalDemoRoutes(ctx: PlatformContext): Hono {
-  const host = ctx as PlatformContext & EvalHost;
+interface ScriptContext {
+  messaging: { name: string };
+  users: { get(id: string): Promise<{ handle: string } | null> };
+  clock: { nowIso(): string };
+  config: { photonAccountKey: string };
+}
+
+async function sendSimulated(
+  ctx: ScriptContext,
+  input: {
+    provider: "sim";
+    accountKey: string;
+    providerMessageId: string;
+    providerSpaceId: null;
+    providerSenderId: null;
+    senderHandle: string;
+    text: string;
+    receivedAt: string;
+    mode: "simulated";
+  },
+): Promise<{ messageId: string | null }> {
+  const importer = new Function("specifier", "return import(specifier)") as (
+    specifier: string,
+  ) => Promise<{
+    ingestInbound: (
+      value: ScriptContext,
+      message: unknown,
+    ) => Promise<{ messageId: string | null }>;
+  }>;
+  const mod = await importer("@dennis/platform/pipeline");
+  return mod.ingestInbound(ctx, input);
+}
+
+export function evalDemoRoutes(ctx: ScriptContext & EvalHost): Hono {
+  const host = ctx;
   const app = new Hono();
 
   app.post("/api/demo/script/:name", async (c) => {
@@ -39,10 +71,23 @@ export function evalDemoRoutes(ctx: PlatformContext): Hono {
       return c.json({ error: { code: "not_found", message: "unknown script" } }, 404);
     const script = DEMO_SCRIPTS[name as DemoScriptName];
     if (!host.simulateInbound) {
-      return c.json(
-        unavailable("simulator ingest is not wired. Agent 1 must pass simulateInbound into evalDemoRoutes."),
-        503,
-      );
+      if (ctx.messaging.name !== "sim") {
+        return c.json(unavailable("Simulator provider is not active"), 409);
+      }
+      const user = await ctx.users.get(script.fromUserId);
+      if (!user) return c.json({ error: { code: "not_found", message: "User not found" } }, 404);
+      const result = await sendSimulated(ctx, {
+        provider: "sim",
+        accountKey: ctx.config.photonAccountKey,
+        providerMessageId: `script_${name}_${ctx.clock.nowIso()}`,
+        providerSpaceId: null,
+        providerSenderId: null,
+        senderHandle: user.handle,
+        text: script.text,
+        receivedAt: ctx.clock.nowIso(),
+        mode: "simulated",
+      });
+      return c.json({ messageId: result.messageId, label: "SIMULATED INBOUND" });
     }
     const result = await host.simulateInbound({
       fromUserId: script.fromUserId,
