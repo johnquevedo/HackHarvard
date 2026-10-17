@@ -1,7 +1,6 @@
 import { PurchaseIntentPublic, type A2AMessage, type AgentT, type IntentT } from "@dennis/contracts";
 import { merchantOffers } from "@dennis/db";
 import type { FeatureModule, PlatformContext } from "@dennis/platform";
-import { Hono } from "hono";
 
 import { purchaseDetector } from "./detector/purchase.js";
 import {
@@ -15,6 +14,7 @@ import { isCompatible } from "./matching/matcher.js";
 import { matchingRules } from "./matching/rules.js";
 import { DEMO_MONITOR_OFFER } from "./offers/demo.js";
 import { handlePaymentDecision, recoverSubmittingPayments } from "./payments/index.js";
+import { purchasingRoutes } from "./routes.js";
 
 const PROBE_REASON_BY_RULE: Record<string, string> = {
   budget_overlap: "budget_overlap",
@@ -130,8 +130,8 @@ export const purchasingModule: FeatureModule = {
     ctx.approvals.onDecided("authorize_payment", (approval) => handlePaymentDecision(ctx, approval));
     ctx.consent.onRevoked((userId, scope) => handlePurchaseConsentRevoked(ctx, userId, scope));
   },
-  routes() {
-    return new Hono();
+  routes(ctx) {
+    return purchasingRoutes(ctx);
   },
   async seed(ctx) {
     ctx.db

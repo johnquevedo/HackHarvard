@@ -95,6 +95,12 @@ export async function createGroupFromCompatibleProbe(
   });
   const candidateIntent = candidateIntents.at(-1);
   if (!candidateIntent) throw new Error("Candidate purchase intent not found");
+  const claimedIntent = ctx.db
+    .select()
+    .from(groupPurchaseMembers)
+    .where(inArray(groupPurchaseMembers.intentId, [leadIntent.id, candidateIntent.id]))
+    .get();
+  if (claimedIntent) return;
   const offer = offerRow(ctx, DEMO_OFFER_ID);
   if (!offer || !offer.isSimulated) throw new Error("Required simulated offer is missing");
   const price = priceGroup(offer as MerchantOfferT, 2);
@@ -160,6 +166,8 @@ export async function createGroupFromCompatibleProbe(
       ])
       .run();
   });
+  await ctx.intents.setStatus(leadIntent.id, "matched");
+  await ctx.intents.setStatus(candidateIntent.id, "matched");
   await emitGroupUpdated(ctx, groupId);
   await ctx.a2a.send({
     type: "purchase.proposal",

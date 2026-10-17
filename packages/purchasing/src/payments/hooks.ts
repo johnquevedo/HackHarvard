@@ -60,12 +60,12 @@ export async function handlePaymentDecision(
     .from(groupPurchaseMembers)
     .where(eq(groupPurchaseMembers.groupId, member.groupId))
     .all();
-  if (!members.every((item) => item.payState === "authorized")) {
+  if (!members.every((item) => item.payState === "authorized" || item.payState === "settled")) {
     await emitGroupUpdated(ctx, member.groupId);
     return;
   }
 
-  for (const item of members) {
+  for (const item of members.filter((candidate) => candidate.payState === "authorized")) {
     if (!(await ctx.consent.has(item.userId, "sandbox_payments"))) {
       setGroupStatus(ctx, member.groupId, "cancelled", "sandbox_payments consent missing");
       await emitGroupUpdated(ctx, member.groupId);
@@ -92,7 +92,7 @@ export async function handlePaymentDecision(
   }
   setGroupStatus(ctx, member.groupId, "ready_to_settle");
   await emitGroupUpdated(ctx, member.groupId);
-  for (const item of members) {
+  for (const item of members.filter((candidate) => candidate.payState === "authorized")) {
     if (!item.payApprovalId) throw new Error("Authorized member has no payment approval");
     await executeApprovedPayment(ctx, item.payApprovalId);
   }

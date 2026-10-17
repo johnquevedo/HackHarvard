@@ -32,3 +32,4 @@ export {
   verifyTransfer,
   type BalanceSnapshot,
 } from "./payments/index.js";
+export { purchasingRoutes } from "./routes.js";
