@@ -86,5 +86,3 @@ export class MockPurchaseDetector implements Detector {
     return { detections: [makeDetection(input, deps)], rejected: [], llm: null };
   }
 }
-
-export const purchaseDetector: Detector = new MockPurchaseDetector();

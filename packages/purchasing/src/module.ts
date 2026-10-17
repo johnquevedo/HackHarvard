@@ -4,7 +4,7 @@ import type { AgentT, IntentT } from "@dennis/contracts";
 import { merchantOffers } from "@dennis/db";
 import type { FeatureModule, PlatformContext } from "@dennis/platform";
 
-import { purchaseDetector } from "./detector/mock.js";
+import { purchaseDetector } from "./detector/purchase.js";
 import { DEMO_MONITOR_OFFER } from "./offers/demo.js";
 
 function isMonitorIntent(intent: IntentT): boolean {

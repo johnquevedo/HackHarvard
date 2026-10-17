@@ -11,7 +11,8 @@
     "@dennis/contracts": "workspace:*",
     "@dennis/db": "workspace:*",
     "@dennis/platform": "workspace:*",
-    "hono": "4.13.13"
+    "hono": "4.13.13",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "typescript": "5.9.3",
