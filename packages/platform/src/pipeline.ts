@@ -19,6 +19,7 @@ interface StoredInbound {
   status: string;
   receivedAt: string;
   provider: string;
+  providerSpaceId: string | null;
 }
 function claimOnboarding(ctx: PlatformContext, identity: string): boolean {
   const key = "onboarding:" + identity;
@@ -186,6 +187,13 @@ export async function ingestInbound(
         });
       return { messageId, outcome: "ignored" };
     }
+    if (agent.settings.ackMode === "reaction" && msg.provider === "photon") {
+      try {
+        await ctx.messaging.acknowledge?.(msg);
+      } catch {
+        ctx.log.warn("Message acknowledgement unavailable");
+      }
+    }
     ctx.events.emit({
       type: "message.received",
       actor: { kind: "user", agentId: agent.id, userId: user.id },
@@ -246,7 +254,22 @@ export async function runPipeline(ctx: PlatformContext, messageId: string): Prom
       recentContext: recent,
       regionCode: user.regionCode,
     };
+    const typingSpace =
+      agent.settings.ackMode === "reaction" && m.provider === "photon" ? m.providerSpaceId : null;
+    async function typing(enabled: boolean) {
+      if (!typingSpace) return;
+      try {
+        await ctx.messaging.setTyping?.(
+          typingSpace,
+          enabled,
+          "typing:" + messageId + ":" + enabled,
+        );
+      } catch {
+        ctx.log.warn("Typing indicator unavailable");
+      }
+    }
     try {
+      await typing(true);
       for (const detector of ctx.detectors.list()) {
         const kind = detector.intentKind;
         const scope = kind === "purchase" ? "purchase_matching" : "shortme_free_play";
@@ -341,6 +364,8 @@ export async function runPipeline(ctx: PlatformContext, messageId: string): Prom
         messageId,
       );
       throw error;
+    } finally {
+      await typing(false);
     }
   });
 }

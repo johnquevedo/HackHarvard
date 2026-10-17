@@ -25,6 +25,7 @@ import { insert, row, rows } from "./storage.ts";
 import { createEventBus } from "./events.ts";
 import { createConsent, createIntentStore, createOpportunityStore } from "./stores.ts";
 import { createApprovals, createNotifier } from "./approvals.ts";
+import { registerIntegrationHealth } from "./integrations.ts";
 import { createA2ABus } from "./a2a.ts";
 const silent: Logger = { debug() {}, info() {}, warn() {}, error() {} };
 export function createClock(): Clock {
@@ -211,6 +212,8 @@ export function buildPlatform(opts: {
       lastCheckedAt: clock.nowIso(),
       lastSuccessAt: null,
     });
+  registerIntegrationHealth(ctx, "photon", () => ctx.messaging.health());
+  registerIntegrationHealth(ctx, "llm", () => ctx.llm.health());
   return ctx;
 }
 export async function seedCore(ctx: PlatformContext): Promise<void> {

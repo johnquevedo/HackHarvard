@@ -411,3 +411,26 @@ it("routes recognized direct inbound through the configured account and ignores 
   await provider.receive(fixture);
   expect(messages).toHaveLength(1);
 });
+
+it("sends typed tapback and typing content with stable retry keys", async () => {
+  const requests: { headers: Headers; body: Record<string, unknown> }[] = [];
+  const fake: typeof fetch = async (input, init) => {
+    const request = new Request(input, init);
+    requests.push({
+      headers: request.headers,
+      body: (await request.json()) as Record<string, unknown>,
+    });
+    return Response.json(message, { status: 202 });
+  };
+  const provider = new PhotonBetaProvider(config, { db: db(), clock, log }, { fetch: fake });
+  await provider.acknowledge(normalizePhotonEvent(fixture, "pho_usr_agent")!);
+  await provider.setTyping(space.id, true, "typing:start");
+  await provider.setTyping(space.id, false, "typing:stop");
+  expect(requests[0]!.headers.get("idempotency-key")).toBe("ack:" + fixture.id);
+  expect(requests[0]!.body).toMatchObject({
+    parentMessageId: fixture.id,
+    content: { type: "reaction", action: "add" },
+  });
+  expect(requests[1]!.body.content).toEqual({ type: "space.typing.update", typing: true });
+  expect(requests[2]!.body.content).toEqual({ type: "space.typing.update", typing: false });
+});

@@ -6,3 +6,4 @@ export * from "./pipeline.ts";
 export * from "./runtime.ts";
 export * from "./stores.ts";
 export * from "./routes.ts";
+export * from "./integrations.ts";

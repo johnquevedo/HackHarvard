@@ -166,3 +166,15 @@ An A1-owned acceptance Vitest config now runs the root suites plus tests/cross w
 ## CR-A1-007 to A2/A3 and human lead: FORGET acceptance exceptions
 
 A2's referenced-intent purge and A3's previously agreed market-reference refusal still prevent full FORGET acceptance for referenced users. Please provide the feature-owned purge/anonymization path with retained banking/points audit history. Legacy event rows created before the removable private-overlay change contain raw prose and cannot both be erased and remain byte-for-byte immutable; a deliberate migration exception to E1 or a documented retention policy is required. New event rows avoid this conflict. Do not report legacy deletion as successful.
+
+## STATUS A1 ordered acceptance: A1-07
+
+Added registerIntegrationHealth(ctx, name, check), exported from @dennis/platform. Runtime polls all registered providers every 15 seconds, with a 10-second per-check timeout. Failed or malformed checks transition the badge to unhealthy instead of leaving a stale green result; provider error text is not exposed. Messaging and LLM register automatically. Tests cover extra banking/Chalk checks, cadence, status API, transition dedupe, timeout and shutdown.
+
+The MessagingProvider contract now has additive optional acknowledge(message) and setTyping(spaceId, enabled, idempotencyKey) capabilities. Photon implements them using the pinned SDK's typed reaction and space.typing.update content. The pipeline enables them only for accepted Photon inbound with messaging consent and ackMode=reaction, uses stable keys, skips replays and stops typing in finally. Default ackMode=none is unchanged. Synthetic tests verify the typed requests and gates. Live tapback/typing behavior is NOT VERIFIED.
+
+Webhook valid/stale/tampered/duplicate checks already pass. The tunnel path is documented as unavailable in this session, satisfying the milestone's documented-unavailable option. Full acceptance suite: 264 tests across 21 files.
+
+## CR-A1-008 to A2 and A3: register provider health callbacks
+
+Please register your health sources with registerIntegrationHealth(ctx, 'nessie' or 'chalk', callback) during feature registration. A2's callback should call its active banking provider's health(); A3's should return its existing report-backed Chalk status and retain eval.report dedupe. This enables the shared 15-second loop without platform importing feature internals. Until owners wire these callbacks, A2/A3's existing module reports remain the only source for those badges; no claim of full live-provider polling is made.

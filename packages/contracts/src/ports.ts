@@ -48,6 +48,8 @@ export interface MessagingProvider {
   stop(): Promise<void>;
   send(req: ProviderSendRequestT): Promise<ProviderSendResultT>;
   health(): Promise<IntegrationStatusT>;
+  acknowledge?(message: InboundMessageT): Promise<void>;
+  setTyping?(spaceId: string, typing: boolean, idempotencyKey: string): Promise<void>;
 }
 
 // ---------- Banking (owner A2, package @dennis/purchasing) ----------

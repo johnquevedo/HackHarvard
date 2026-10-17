@@ -6,6 +6,7 @@ import type {
   Logger,
   MessagingProvider,
   InboundHandler,
+  InboundMessageT,
   ProviderSendRequestT,
   ProviderSendResultT,
 } from "@dennis/contracts";
@@ -104,6 +105,38 @@ export class PhotonBetaProvider implements MessagingProvider {
         spaceId,
         photonUserId: userId,
       };
+    } catch (error) {
+      throw photonError(error);
+    }
+  }
+  async acknowledge(message: InboundMessageT): Promise<void> {
+    if (message.provider !== "photon" || !message.providerSpaceId) return;
+    try {
+      await this.client.projects.sendMessage({
+        path: { id: this.config.photonProjectId! },
+        headers: { "idempotency-key": "ack:" + message.providerMessageId },
+        body: {
+          spaceId: message.providerSpaceId,
+          senderId: this.config.photonAgentUserId!,
+          parentMessageId: message.providerMessageId,
+          content: { type: "reaction", action: "add", reaction: "👍" },
+        },
+      });
+    } catch (error) {
+      throw photonError(error);
+    }
+  }
+  async setTyping(spaceId: string, typing: boolean, idempotencyKey: string): Promise<void> {
+    try {
+      await this.client.projects.sendMessage({
+        path: { id: this.config.photonProjectId! },
+        headers: { "idempotency-key": idempotencyKey },
+        body: {
+          spaceId,
+          senderId: this.config.photonAgentUserId!,
+          content: { type: "space.typing.update", typing },
+        },
+      });
     } catch (error) {
       throw photonError(error);
     }

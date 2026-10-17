@@ -5,6 +5,7 @@ import type { ProviderSendResultT } from "@dennis/contracts";
 import type { OutboxRecordT } from "@dennis/contracts";
 import type { PlatformContext } from "./context.ts";
 import { rows, row, update } from "./storage.ts";
+import { pollIntegrationHealth } from "./integrations.ts";
 import { recoverA2A } from "./a2a.ts";
 import { ingestInbound, runPipeline } from "./pipeline.ts";
 export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
@@ -152,15 +153,7 @@ export async function startRuntime(ctx: PlatformContext): Promise<{ stop(): Prom
   async function health(): Promise<void> {
     await ctx.runExclusive("runtime-health", async () => {
       if (stopped) return;
-      for (const provider of [ctx.messaging, ctx.llm]) {
-        if (stopped) return;
-        try {
-          const status = await provider.health();
-          if (!stopped) ctx.integrations.report(status);
-        } catch {
-          ctx.log.warn("Provider health unavailable");
-        }
-      }
+      await pollIntegrationHealth(ctx, () => !stopped);
     });
   }
   function stop(): Promise<void> {
