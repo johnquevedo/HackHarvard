@@ -181,6 +181,7 @@ dennis: dream all u want. im here to protect the cap table
 };
 
 export interface ScriptStep {
+  speaker: string; // the script character who sends this line ("michael")
   text: string; // the human line that triggers this step
   replies: string[]; // Dennis's scripted lines that follow it (possibly none)
 }
@@ -188,7 +189,26 @@ export interface ScriptStep {
 export interface DemoScript {
   name: string;
   steps: ScriptStep[];
+  topic: RegExp; // a message on this topic can start the script even when worded differently
 }
+
+// Script characters. Dennis's lines name them; at runtime each is replaced by a real person.
+export const SCRIPT_CAST = ["michael", "steven", "isaac", "john"] as const;
+
+const TOPICS: Record<string, RegExp> = {
+  minute: /\b(meta|technical|final round|interview|onsite|superday|recruiter|oa|coding round)\b/i,
+  proposal: /\b(propos\w*|engaged|engagement ring|marry|put a ring)\b/i,
+  layoffs: /\b(lay ?offs?|laid off|getting cut|fired|let go|downsizing|restructuring)\b/i,
+  marathon: /\b(marathon|half marathon|10k|5k|race day|triathlon)\b/i,
+  moving: /\b(nyc|new york|moving to|move to|relocat\w*)\b/i,
+  cancun: /\b(cancun|spring break|vacation|beach trip|trip to|miami|vegas)\b/i,
+  exam: /\b(midterm|midterms|final exam|finals|exam|quiz|orgo|physics test|mcat|lsat)\b/i,
+  concert: /\b(tickets?|concert|tour|festival|presale|ticketmaster)\b/i,
+  dating:
+    /\b(ask(ing)? (this|a|her|him|them)?\s?(girl |guy )?out|first date|date tonight|my crush|rizz)\b/i,
+  gift: /\b(birthday|bday|b day)\b/i,
+  startup: /\b(startup|start up|business idea|side hustle|start a company|billion dollar idea)\b/i,
+};
 
 function parse(name: string, raw: string): DemoScript {
   const steps: ScriptStep[] = [];
@@ -198,9 +218,9 @@ function parse(name: string, raw: string): DemoScript {
     const [, speaker, text] = match;
     if (speaker === "dennis") {
       if (steps.length) steps[steps.length - 1]!.replies.push(text!.trim());
-    } else steps.push({ text: text!.trim(), replies: [] });
+    } else steps.push({ speaker: speaker!, text: text!.trim(), replies: [] });
   }
-  return { name, steps };
+  return { name, steps, topic: TOPICS[name] ?? /$^/ };
 }
 
 export const DEMO_SCRIPTS: DemoScript[] = Object.entries(RAW_SCRIPTS).map(([name, raw]) =>
