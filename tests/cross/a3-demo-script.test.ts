@@ -200,7 +200,7 @@ describe("demo group chat, ShortMe part", () => {
     await settle(ctx);
     // john shorted himself for $500, steven backed him for $200, john did not pass: insurance pays out.
     expect(lastDennisTo(ctx, "steven")).toBe(
-      "john took the L. hedge fund behavior, respect the risk management. john +$200, steven -$200. (sim $, no real money moved)",
+      "john took the L. hedge fund behavior, respect the risk management. john +$200, steven -$200.",
     );
     expect((await checkLedgerInvariants(ctx)).every((c) => c.ok)).toBe(true);
   });

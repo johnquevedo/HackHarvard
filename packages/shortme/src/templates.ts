@@ -64,7 +64,7 @@ export function publishMarketPrompt(p: {
 }): string {
   if (p.mode === "normal") {
     const audience = p.names.length ? ` for ${p.names.map(voiceName).join(", ")}` : "";
-    return `want me to open a private points-only market${audience}: "${p.question}"? no real money moves.`;
+    return `want me to open a private market${audience}: "${p.question}"?`;
   }
   const ou = overUnderOf(fillSubject(p.question, p.first));
   if (ou) {
@@ -103,12 +103,13 @@ export function marketCreatedText(p: {
   if (p.mode === "normal")
     return `market's open: "${p.question}"${
       p.subjectStakePoints ? ` with ${dollars(p.subjectStakePoints)} sim from the subject` : ""
-    }. points only, no real money.`;
+    }.`;
   const ou = overUnderOf(p.question);
   if (ou)
     return voiceLine("shortme.created.overunder", [
       `market's live: "${p.question}" ${sides(ou)}.`,
-      `line's open: "${p.question}" ${sides(ou)}. sim $ only.`,
+      `market approved: "${p.question}" ${sides(ou)}. pick a side.`,
+      `line's open: "${p.question}" ${sides(ou)}. get your picks in.`,
       `"${p.question}" is trading. ${sides(ou)}.`,
     ]);
   if (p.subjectStakePoints && p.subjectStakePoints > 0) {
@@ -117,6 +118,7 @@ export function marketCreatedText(p: {
     return voiceLine("shortme.created.stake", [
       `Market created: "${p.question}" ${amount}`,
       `market's live: "${p.question}" ${amount}`,
+      `market approved: "${p.question}" ${amount}. the boys are officially invested`,
       `done. "${p.question}" is open, ${amount}`,
       `"${p.question}" is officially trading. ${amount}`,
     ]);
@@ -124,8 +126,9 @@ export function marketCreatedText(p: {
   return voiceLine("shortme.created", [
     `Market created: "${p.question}" Anyone wanna get in on this?`,
     `market's live: "${p.question}" who's getting in?`,
+    `market approved: "${p.question}" ur friends can now profit off ur life choices`,
     `done. "${p.question}" is open for business. anyone?`,
-    `"${p.question}" is officially trading. place your bets (sim $ only)`,
+    `"${p.question}" is officially trading. place your bets`,
   ]);
 }
 
@@ -140,9 +143,9 @@ export function marketInviteText(p: {
   const ou = overUnderOf(p.question);
   if (ou) {
     const other = ou.direction === "under" ? "over" : "under";
-    return `${s}'s got an over/under: "${p.question}" you've got ${dollars(p.points)} sim to play. BACK $200 ${p.code} for the ${ou.direction} ${ou.line}, FADE $200 ${p.code} for the ${other}, or PASS ${p.code}.`;
+    return `${s}'s got an over/under: "${p.question}" you've got ${dollars(p.points)} to play. BACK $200 ${p.code} for the ${ou.direction} ${ou.line}, FADE $200 ${p.code} for the ${other}, or PASS ${p.code}.`;
   }
-  return `${s}'s got a market: "${p.question}" you've got ${dollars(p.points)} sim to play. BACK $200 ${p.code} if ${s} makes it, FADE $200 ${p.code} if not, or PASS ${p.code}.`;
+  return `${s}'s got a market: "${p.question}" you've got ${dollars(p.points)} to play. BACK $200 ${p.code} if ${s} makes it, FADE $200 ${p.code} if not, or PASS ${p.code}.`;
 }
 
 export function stakeRecordedText(p: {
@@ -160,17 +163,20 @@ export function stakeRecordedText(p: {
       `${who} bought ${amount} of insurance on themself. respect.`,
       `${who} just hedged ${amount} against themself. risk management king.`,
       `${who} shorted themself for ${amount}. respect the hedge.`,
+      `${who} just hedged ${amount} against urself. that's called risk management`,
     ]);
   if (p.side === "back")
     return voiceLine("shortme.stake.back", [
       `${who}'s in for ${amount} backing ${subject}.`,
       `${who} put ${amount} on ${subject}. believer.`,
       `${who} is long ${subject} for ${amount}.`,
+      `${who} put ${amount} on ${subject}. a true believer in the underlying asset`,
     ]);
   return voiceLine("shortme.stake.fade", [
     `${who} put ${amount} against ${subject}. cold.`,
     `${who} is short ${subject} for ${amount}. brutal.`,
     `${who} bet ${amount} against ${subject}. no loyalty.`,
+    `${who} just shorted ${subject} for ${amount}. no loyalty in this chat`,
   ]);
 }
 
@@ -188,7 +194,7 @@ export function outcomeSentence(p: {
 }
 
 export function disputeText(question: string): string {
-  return `"${question}" is disputed. payouts frozen till an admin sorts it out. ${SIM_MONEY_NOTE}`;
+  return `"${question}" is disputed. payouts frozen till an admin sorts it out.`;
 }
 
 export function formatDelta(points: number): string {

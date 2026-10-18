@@ -11,7 +11,7 @@ export function joinGroupCopy(input: {
   const product = input.productLabel;
   const save = formatUsd(input.savingsCents);
   const prices = `${formatUsd(input.groupCents)} instead of ${formatUsd(input.individualCents)}`;
-  const fine = `sim offer from ${input.merchant}, nothing charged yet, joining shares your first name.`;
+  const fine = `sample offer from ${input.merchant}, nothing charged yet, joining shares ur first name.`;
   return voiceLine("purchase.join", [
     `Dennis for ${input.first}: another Dennis user is also shopping for a ${product}. Together you'd each pay ${prices}, saving ${formatUsd(input.savingsCents)}. SIMULATED group offer from ${input.merchant}. If you join, your first name is shared with them. Nothing is charged yet. Reply YES {code} to join or NO {code} to skip.`,
     `wait. found a match. another friend's agent has been tracking the same ${product}. group deal saves you both ${save} each (${prices}). want me to coordinate? ${fine} yes {code} / no {code}`,

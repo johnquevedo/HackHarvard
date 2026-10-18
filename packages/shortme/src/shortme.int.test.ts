@@ -187,7 +187,7 @@ describe("E6 ShortMe happy path", () => {
     expect(JSON.stringify(invites[0]!.payload)).not.toContain("quant firm");
     const bobInvite = outbox(ctx, BOB).find((o) => o.kind === "invite");
     expect(bobInvite?.text).toMatch(
-      /^alice's got a market: "Will alice get the offer after the final round\?" you've got \$10,000 sim to play\. BACK \$200 [a-z2-9]{4} if alice makes it/,
+      /^alice's got a market: "Will alice get the offer after the final round\?" you've got \$10,000 to play\. BACK \$200 [a-z2-9]{4} if alice makes it/,
     );
 
     expect(await cmd(ctx, BOB, BOB_AGENT, { kind: "back", points: 500, code: null }, 1)).toContain(
@@ -221,9 +221,7 @@ describe("E6 ShortMe happy path", () => {
     expect(inv.map((c) => c.id)).toEqual(["L1", "L2", "L3", "L4", "L5", "L6"]);
     {
       const result = outbox(ctx, BOB).find((o) => o.kind === "result")!.text;
-      expect(result).toMatch(
-        /^alice took the L\. .+ alice \+\$500, bob -\$500\. \(sim \$, no real money moved\)$/,
-      );
+      expect(result).toMatch(/^alice took the L\. .+ alice \+\$500, bob -\$500\.$/);
       expect(outbox(ctx, ALICE).some((o) => o.kind === "result")).toBe(true);
     }
   });

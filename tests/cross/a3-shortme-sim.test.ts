@@ -74,7 +74,7 @@ describe("a3 ShortMe by text through the platform", () => {
     await say(ctx, "alice", "YES");
     expect(marketRow(ctx)?.status).toBe("open");
     const invite = outbox(ctx, "usr_demo_bob").find((o) => o.kind === "invite")!;
-    expect(invite.text).toContain("you've got $10,000 sim to play.");
+    expect(invite.text).toContain("you've got $10,000 to play.");
     expect(invite.text).not.toContain("quant firm");
 
     await say(ctx, "bob", "BACK 50");
@@ -109,7 +109,7 @@ describe("a3 ShortMe by text through the platform", () => {
     expect(getBalance(ctx, "usr_demo_bob")).toBe(995);
     expect((await checkLedgerInvariants(ctx)).every((c) => c.ok)).toBe(true);
     const result = outbox(ctx, "usr_demo_bob").find((o) => o.kind === "result")!;
-    expect(result.text).toMatch(/alice \+\$50, bob -\$50\. \(sim \$, no real money moved\)$/);
+    expect(result.text).toMatch(/alice \+\$50, bob -\$50\.$/);
 
     // Privacy scan: no shared event carries the source text or a handle.
     const shared = JSON.stringify(

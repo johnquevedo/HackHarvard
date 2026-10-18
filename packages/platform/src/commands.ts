@@ -193,7 +193,7 @@ export async function handleCommand(
     return {
       reply:
         decision === "approve"
-          ? voiceLine("command.approved", ["Approved.", "bet.", "say less.", "done."])
+          ? voiceLine("command.approved", ["Approved.", "bet.", "say less.", "locked in."])
           : voiceLine("command.declined", [
               "Declined.",
               "got it, skipped.",

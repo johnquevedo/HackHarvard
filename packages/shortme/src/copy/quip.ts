@@ -1,4 +1,3 @@
-import { SIM_MONEY_NOTE } from "../templates";
 export const QUIP_FALLBACK = "ouch and congratulations, in that order.";
 export const QUIP_MAX_LENGTH = 140;
 
@@ -86,5 +85,5 @@ export function renderResultMessage(
   opts: QuipNameRules = {},
 ): string {
   const safe = quip !== null && validateQuip(quip, opts) ? quip.trim() : QUIP_FALLBACK;
-  return `${input.outcomeSentence} ${safe} ${input.deltaLine}. ${SIM_MONEY_NOTE}`;
+  return `${input.outcomeSentence} ${safe} ${input.deltaLine}.`;
 }

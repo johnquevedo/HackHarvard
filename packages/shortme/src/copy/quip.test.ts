@@ -36,7 +36,7 @@ describe("renderResultMessage", () => {
 
   it("uses a valid quip", () => {
     expect(renderResultMessage(input, "Shorting yourself is a bold kind of self care.")).toBe(
-      "Alice did not get it this time. Shorting yourself is a bold kind of self care. Alice +50, Bob -50. (sim $, no real money moved)",
+      "Alice did not get it this time. Shorting yourself is a bold kind of self care. Alice +50, Bob -50.",
     );
   });
 

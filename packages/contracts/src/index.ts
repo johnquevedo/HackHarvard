@@ -11,3 +11,4 @@ export * from "./api.ts";
 export * from "./eval.ts";
 export * from "./config.ts";
 export * from "./voice.ts";
+export * from "./voice-guide.ts";
