@@ -43,7 +43,7 @@ export function PhoneSim() {
           Load thread
         </button>
       </div>
-      <div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {messages.length === 0 ? <p className="muted">Thread is empty until you load it.</p> : null}
         {messages.map((message, index) => (
           <div key={`${message.ts}-${index}`} className={`bubble ${message.direction}`}>
@@ -59,6 +59,7 @@ export function PhoneSim() {
         style={{ width: "100%" }}
       />
       <button
+        className="btn"
         type="button"
         onClick={() => {
           void api("/api/sim/inbound", { method: "POST", body: { fromUserId: userId, text } }).then(
@@ -79,11 +80,12 @@ export function PhoneSim() {
 export function ApprovalFallback() {
   const [result, setResult] = useState("");
   return (
-    <section className="panel">
+    <section className="card">
       <h2>Approvals</h2>
-      <p className="warn">DASHBOARD FALLBACK. These buttons are not iMessage.</p>
+      <p className="fallback">DASHBOARD FALLBACK. These buttons are not iMessage.</p>
       <div className="row">
         <button
+          className="btn"
           type="button"
           onClick={() => {
             void api("/api/approvals/apr_join_alice/decision", {
@@ -95,6 +97,7 @@ export function ApprovalFallback() {
           Approve as Alice. DASHBOARD FALLBACK
         </button>
         <button
+          className="btn"
           type="button"
           onClick={() => {
             void api("/api/approvals/apr_join_bob/decision", {
