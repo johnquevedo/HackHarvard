@@ -160,6 +160,14 @@ export async function handleMilestoneDetection(
     return (log("template_disabled"), null);
   const existing = ctx.db.select().from(markets).where(eq(markets.sourceIntentId, intent.id)).get();
   if (existing) return existing;
+  // One offer at a time: a follow-up about the same event ("sub 4 easy" after "signed up for boston")
+  // must not stack a second market offer while the first is still waiting for an answer.
+  const pendingOffer = ctx.db.$client
+    .prepare(
+      "SELECT 1 FROM approvals WHERE user_id=? AND kind='publish_market' AND status='pending' AND expires_at>? LIMIT 1",
+    )
+    .get(intent.userId, ctx.clock.nowIso());
+  if (pendingOffer) return (log("offer_already_pending"), null);
   const user = await ctx.users.get(intent.userId);
   if (!user) return (log("no_user"), null);
 

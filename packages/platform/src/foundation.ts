@@ -228,9 +228,19 @@ export async function seedCore(ctx: PlatformContext): Promise<void> {
     ] as const) {
       const userId = "usr_demo_" + name;
       const agentId = "agt_demo_" + name;
+      if (name === "friend")
+        ctx.db.$client
+          .prepare("UPDATE users SET first_name=?, display_name=? WHERE id=? AND first_name<>?")
+          .run(
+            ctx.config.demoFriendName,
+            ctx.config.demoFriendName,
+            userId,
+            ctx.config.demoFriendName,
+          );
       if (!row(ctx.db, "SELECT id FROM users WHERE id=?", userId)) {
         const { handle, kind } = normalizeHandle(raw);
-        const first = name[0]!.toUpperCase() + name.slice(1);
+        const first =
+          name === "friend" ? ctx.config.demoFriendName : name[0]!.toUpperCase() + name.slice(1);
         insert(ctx.db, "users", {
           id: userId,
           displayName: first,

@@ -1,4 +1,6 @@
 import { withTyping } from "./typing.ts";
+import { PRIVACY_ACK_PREFIX, isPrivacyOff, outboxConversation } from "./privacy-switch.ts";
+
 import { drainPlatform } from "./foundation.ts";
 import { DennisError } from "@dennis/contracts";
 import { PhotonBetaProvider } from "@dennis/messaging";
@@ -11,6 +13,16 @@ import { recoverA2A } from "./a2a.ts";
 import { ingestInbound, runPipeline } from "./pipeline.ts";
 import { cancelConversationalReplies } from "./conversation.ts";
 import { cancelPlanning } from "./planning.ts";
+
+function outboxKey(ctx: PlatformContext, outboxId: string): string | null {
+  return (
+    row<{ idempotencyKey: string }>(
+      ctx.db,
+      "SELECT idempotency_key FROM outbox WHERE id=?",
+      outboxId,
+    )?.idempotencyKey ?? null
+  );
+}
 function emitDeliveryLatency(
   ctx: PlatformContext,
   outboxId: string,
@@ -39,6 +51,14 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
       "SELECT * FROM outbox WHERE (status IN ('queued','failed') AND attempts < 4) OR (status='queued' AND last_error='interrupted_send') ORDER BY created_at",
     );
     for (const item of pending) {
+      // "dennis off": hold everything for that conversation, untouched, until "dennis on".
+      const holder = await ctx.users.get(item.userId);
+      if (
+        holder &&
+        !(outboxKey(ctx, item.id) ?? "").startsWith(PRIVACY_ACK_PREFIX) &&
+        isPrivacyOff(ctx, outboxConversation(ctx, item, holder.handle))
+      )
+        continue;
       const retryMs =
         item.lastError === "interrupted_send"
           ? 0

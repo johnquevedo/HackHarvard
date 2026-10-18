@@ -528,6 +528,19 @@ describe("state machine table", () => {
   });
 });
 
+describe("one market offer at a time", () => {
+  it("does not stack a second offer while the first is still waiting for an answer", async () => {
+    const ctx = await setup();
+    const first = await detectAndPropose(ctx, INTERVIEW);
+    expect(first.market).toBeTruthy();
+    const second = await detectAndPropose(ctx, `${INTERVIEW} for real`);
+    expect(second.market).toBeFalsy();
+    await approve(ctx, ALICE, "publish_market");
+    const third = await detectAndPropose(ctx, `${INTERVIEW} again`);
+    expect(third.market).toBeTruthy();
+  });
+});
+
 describe("ledger properties through the database", () => {
   it("200 random markets: zero-sum, never negative, replays are no-ops", async () => {
     let s = 7;

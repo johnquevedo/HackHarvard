@@ -26,6 +26,8 @@ export const AppConfigSchema = z.object({
   demoStevenHandle: z.string().default("steven@example.test"),
   demoIsaacHandle: z.string().default("isaac@example.test"),
   demoFriendHandle: z.string().default("friend@example.test"),
+  // First name for the person on DEMO_FRIEND_HANDLE (Dennis addresses people by first name).
+  demoFriendName: z.string().min(1).default("Friend"),
   demoScenario: z.enum(["legacy", "group"]).default("legacy"),
   photonMode: z.enum(["live", "sim"]).default("sim"),
   photonApiBaseUrl: z.string().url().default("https://api.photon.codes"),
