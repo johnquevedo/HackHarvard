@@ -1,35 +1,41 @@
-# Dennis
+# dennis
 
-Personal agents in iMessage. Agent to agent to user.
+**The mom friend and the menace in your group chat.**
 
-## Quickstart
+dennis is an always-on social AI agent that turns everyday conversations into opportunities. You don’t have to keep prompting him. He notices what’s happening in conversations you’ve opted into, coordinates with other people’s agents, and comes back with something useful.
 
-```
-corepack enable && corepack prepare pnpm@10.34.7 --activate
-cp .env.example .env
-pnpm install --frozen-lockfile
-pnpm dev
-```
+## The Mom Friend
 
-Agent 4 local ports are `PORT_SERVER=4104` and `PORT_WEB=3104`. The web app runs with `NEXT_PUBLIC_API_MODE=mock` until the server from Agent 1 is on `main`. In mock mode the dashboard renders fixtures and labels every simulated integration.
+_Financially responsible. Socially unstoppable._
 
-`pnpm db:reset` and `pnpm dev:server` need `packages/db` and `apps/server` from Agent 1.
+“bro i need a new monitor mine’s cooked”
 
-## Checks
+Someone in another conversation wants the same monitor. Neither of you knows it—but your agents do. They discover the overlap, compare group-buying options, and bring you a proposal. You approve before anything happens.
 
-- `pnpm verify` runs Prettier, typecheck, unit tests, and the ownership check.
-- `pnpm demo:check` checks secret prefixes and, outside mock mode, `/api/health` and `/api/integrations`.
-- `pnpm eval:local` writes `data/eval/local-latest.json`.
-- `pnpm e2e:sim` runs the privacy scan now, and the HTTP stories when `apps/server` exists.
+In our demo, dennis finds a simulated bulk deal that saves two friends **$45 each**, with separate approvals for joining and authorizing sandbox payments.
 
-Do not put secrets in git or in `NEXT_PUBLIC_*`.
+The bigger vision: getting trips out of the group chat, comparing costs, drafting itineraries, and keeping shared plans moving.
 
-## Conversation modes
+## The Menace
 
-`CONVERSATION_MODE=normal` is the live product behavior. Dennis reads every authorized message,
-batches rapid group-chat turns, speaks selectively, and grounds replies in current application
-state. Natural `yes`/`no` is treated as an approval only when that sender has exactly one pending
-approval.
+_Short yourself. Back your friends._
 
-`CONVERSATION_MODE=demo` enables the fixed scripted-demo grammar and copy, including the special
-`I'll put $…` shortcuts and seeded outside purchase match. Keep this mode off during normal use.
+“i’m so cooked for my meta technical tomorrow”
+
+dennis sees a ShortMe opportunity: **Will Alex pass his Meta technical?**
+
+Friends can back or fade the outcome. Alex can even short himself. Interviews, exams, milestones, romantic plot twists—your friend group suddenly has positions.
+
+The subject approves the market before publication, outcomes require confirmation, and disputes freeze settlement. Stakes are displayed as **simulated dollars backed by virtual points. No real money moves.**
+
+## Agent → Agent → User
+
+Most chatbots wait for a question. dennis looks for useful connections within authorized conversations.
+
+Your agent shares limited, permissioned context with other agents. Together, they discover opportunities, coordinate the details, and bring the decision back to you.
+
+The dashboard makes that process visible through purchase opportunities, ShortMe markets, private and shared agent activity, consent controls, and an iMessage-style simulator.
+
+**Agents coordinate. You decide.**
+
+Built at **HackHarvard 2026**.
