@@ -1,14 +1,23 @@
-# Photon Beta spike status
+# Photon Spectrum group-chat status
 
-Status: NOT LIVE VERIFIED. Active fallback: ladder rung 5, SIMULATED messaging.
-No project credentials or assigned demo lines were available in this session.
-No real inbound fixture, delivered message, round-trip p50, echo behavior, or line capacity is claimed.
+Status: IMPLEMENTED, CREDENTIAL AND PHONE VERIFICATION PENDING. The Photon-provided
+account exposes a Spectrum Cloud UUID and project secret and reports two end users.
+No real inbound, outbound, group membership, timing, or delivery observation is claimed yet.
 
 ## Evidence collected
 
 The pinned @photon-ai/api 0.5.0 package was installed and its generated TypeScript declarations inspected. Operations compile as photon.projects.createOrGetUser, photon.projects.createOrGetSpace, photon.projects.sendMessage, photon.projects.getMessage, and photon.projects.platforms.getImessage. This version requires headers with the literal key "idempotency-key", correcting the specification's camelCase example.
 
 The current [Beta Node example](https://photon.codes/docs/beta/websocket/example) and [event delivery documentation](https://photon.codes/docs/beta/websocket/events) specify Socket.IO at the API origin with path /v1/projects/{id}/events/ws, bearer authentication in extraHeaders, a subscribe command with startSeq, and delivery(event, { seq, replyExpected }). There is no processing acknowledgement callback. Dennis persists a cursor after its handler completes and retains it on failure. A project-level local lock prevents concurrent integration listeners on this machine.
+
+The provided account is a Spectrum Cloud project, not a Photon Beta project. It uses
+`PHOTON_PROJECT_ID` (a UUID) plus `PHOTON_PROJECT_SECRET`; it does not provide or
+require `PHOTON_API_KEY` or `PHOTON_AGENT_USER_ID`. The integration uses
+`spectrum-ts` 12.2.0 and the official iMessage provider. Spectrum models both DMs
+and group chats as spaces, exposes group members, and accepts replies to the same
+space. Dennis rejects a group event unless every human member maps to a registered
+user with active `messaging_context` consent. Consent, approval, payment, STOP,
+and other commands remain direct-message only.
 
 ## Assumptions table
 
@@ -36,8 +45,8 @@ These capabilities are tested with synthetic transports. They are not live spike
 Commands, once a local environment file exists:
 
 ```sh
-node --env-file=.env.local --import tsx scripts/spike-photon.ts --catalog-only
-node --env-file=.env.local --import tsx scripts/spike-photon.ts --samples 3
+node --env-file=.env --import tsx scripts/spike-photon.ts --catalog-only
+node --env-file=.env --import tsx scripts/spike-photon.ts --samples 3
 ```
 
 Catalog-only mode needs PHOTON_PROJECT_ID and PHOTON_API_KEY and makes read-only API calls. Live mode additionally needs DEMO_ALICE_HANDLE and DEMO_BOB_HANDLE. Set PHOTON_AGENT_USER_ID explicitly if discovery finds zero or multiple candidates. Keep every secret out of git and chat. Agent 4's root tooling now exposes pnpm spike:photon and pnpm photon:doctor. The direct commands also load a local environment file explicitly.
@@ -46,13 +55,20 @@ The runner writes event-catalog.json, inbound-text.json (and numbered subsequent
 
 ## Next live steps
 
-1. Sign into the Photon Beta dashboard. In this session the dashboard opened at its sign-in page; no authenticated project was available.
-2. Create or select the Beta project, enable iMessage, assign the shared line for each demo sender, and configure the local environment. Neither project creation nor assigned lines are verified yet.
-3. Run the catalog-only command. It must print PASS event type listing and save the actual API version and event names.
-4. Stop any integration server so only one listener owns the project. Run the three-sample command. Text the assigned line from both configured demo phones when prompted. No outbound is sent before a recognized demo inbound.
-5. Review the redacted live envelope, incoming schema and results. If normalization fails, use the captured shape to correct the adapter and repeat.
-6. Record actual phone round-trip timing and check own-message echo and first-outbound behavior manually. Record line capacity and observed rate-limit behavior without inducing load. Fill in the assumptions table with evidence.
-7. Mark A1-02 accepted only after its live criteria are satisfied, then resume the planned A1-06, A1-03, A1-04, A1-05, A1-08, A1-07, A1-09 sequence. Do not interpret the historical branch name as completion of A1-09.
+1. In `.env`, paste the dashboard's existing Project secret into
+   `PHOTON_PROJECT_SECRET` and fill `DEMO_JOHN_HANDLE`, `DEMO_STEVEN_HANDLE`, and
+   `DEMO_ISAAC_HANDLE` with the three real E.164 phone numbers or Apple ID email
+   addresses. Do not commit `.env`.
+2. Keep `PHOTON_MODE=live` and `PHOTON_SPACE_MODE=either`. The legacy Beta fields
+   may stay blank; they are ignored whenever `PHOTON_PROJECT_SECRET` is present.
+3. Run `node --env-file=.env --import tsx scripts/photon-doctor.ts --preflight-only`.
+   It must print that Spectrum Cloud credentials were accepted.
+4. Run the same command without `--preflight-only`, then send a new iMessage from
+   any configured handle. Confirm the automated reply appears on the phone.
+5. Create one iMessage group containing the Photon line and both demo users. Send
+   one ordinary message from each user and confirm the reply remains in that group.
+6. Run consent, approval, payment, and STOP commands only in each user's direct
+   thread. Record phone timing, echo behavior, and a restart/reconnect check.
 
 The fixture inbound-text.synthetic.json contains invented test data based on the documented resource. It is not evidence of a live provider call.
 
@@ -61,7 +77,7 @@ The fixture inbound-text.synthetic.json contains invented test data based on the
 All remaining local code and simulator integration work is prepared on a1/a1-09-recovery-hardening for human review. Main was not pushed during this pass. A2 at f84abd3 is integrated, including the two purchasing fixes that were previously only a proposed patch.
 
 - pnpm install --frozen-lockfile passes.
-- pnpm verify passes, including formatting, root TypeScript, 373 tests across 42 files and the explicitly scoped integration-review ownership check.
+- pnpm verify passes, including formatting, root TypeScript, 380 tests across 43 files, and the ownership check.
 - pnpm e2e:sim passes its three tests. The server scenario now proves group creation, both join and payment approval stages, settlement and the three simulated account balances.
 - pnpm exec tsx packages/platform/rehearse-purchasing.ts passes with two members, two simulated transfers of 28499 cents, replay protection and a shared-data privacy scan.
 
@@ -101,4 +117,6 @@ The migration retains event IDs, sequence, timestamps and actor metadata; it mov
 
 ## Remaining live steps
 
-Configure PHOTON_PROJECT_ID, PHOTON_API_KEY, PHOTON_AGENT_USER_ID and both assigned demo handles locally, then run the catalog and three-sample spike described above. Verify real approval delivery and manual phone timing/echo behavior. Run doctor successfully three times and exercise a real conversation across restart. Until those observations exist, A1-02, A1-05 and A1-09 are not live accepted, regardless of simulator results.
+Configure `PHOTON_PROJECT_SECRET` and all three demo handles locally, run the Spectrum
+doctor, and exercise a real DM and group conversation across restart. Until those
+observations exist, Photon is configured in code but not live verified.

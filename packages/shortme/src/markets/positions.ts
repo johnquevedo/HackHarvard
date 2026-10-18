@@ -388,6 +388,7 @@ export function putHandler(ctx: PlatformContext) {
               question: live.question,
               subjectStakePoints: points,
               category: live.category,
+              mode: ctx.config.conversationMode,
             }),
           };
     }

@@ -61,6 +61,12 @@ export const EVENT_PAYLOAD_SCHEMAS = {
         "non_text",
         "own_message",
         "replay",
+        "provider_identity_mismatch",
+        "group_participants_unresolved",
+        "group_sender_mismatch",
+        "group_member_unknown",
+        "group_member_without_consent",
+        "group_command_requires_direct",
       ]),
     })
     .strict(),

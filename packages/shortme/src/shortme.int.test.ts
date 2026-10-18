@@ -174,8 +174,8 @@ describe("E6 ShortMe happy path", () => {
       invitees: [{ userId: BOB, firstName: "Bob" }],
       pointsOnly: true,
     });
-    expect(publish.promptText).toMatch(
-      /^Yo alice why don't you short yourself, i'll set up a market\. Anyone wanna get in on this\? \([a-z0-9]{4}\)$/,
+    expect(publish.promptText).toBe(
+      "Yo alice why don't you short yourself, i'll set up a market. Anyone wanna get in on this?",
     );
     expect(getMarket(ctx, market!.id)!.status).toBe("open");
 

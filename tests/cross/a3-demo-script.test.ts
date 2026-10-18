@@ -47,12 +47,12 @@ async function setup() {
   for (const p of Object.values(PEOPLE)) {
     ctx.db.$client
       .prepare(
-        "INSERT INTO users (id, display_name, first_name, handle, handle_kind, photon_user_id, is_demo, region_code, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO users (id, display_name, first_name, handle, handle_kind, photon_user_id, is_demo, region_code, created_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET handle=excluded.handle, handle_kind=excluded.handle_kind",
       )
       .run(p.id, p.first, p.first, p.handle, "phone", null, 1, "boston-cambridge", now);
     ctx.db.$client
       .prepare(
-        "INSERT INTO agents (id, user_id, name, status, settings, created_at) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO agents (id, user_id, name, status, settings, created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING",
       )
       .run(
         p.agent,
@@ -117,8 +117,6 @@ function lastDennisTo(ctx: PlatformContext, who: Who): string {
   return rows[0]?.text ?? "";
 }
 
-const withoutCode = (t: string) => t.replace(/ \([a-z0-9]{4}\)$/, "");
-
 function market(ctx: PlatformContext, subject: Who) {
   return ctx.db.$client
     .prepare(
@@ -133,8 +131,7 @@ describe("demo group chat, ShortMe part", () => {
     const ctx = await setup();
 
     await say(ctx, "john", line(0));
-    expect(withoutCode(lastDennisTo(ctx, "john"))).toBe(line(1));
-    expect(lastDennisTo(ctx, "john")).toMatch(/ \([a-z0-9]{4}\)$/);
+    expect(lastDennisTo(ctx, "john")).toBe(line(1));
     expect(market(ctx, "john")).toMatchObject({
       status: "proposed",
       question: "Will john pass his Meta final round?",
@@ -147,7 +144,7 @@ describe("demo group chat, ShortMe part", () => {
     const stevenFirst = line(4);
     expect(await put(ctx, "steven", stevenFirst)).toBe("steven's in for $200 backing john.");
     await say(ctx, "steven", stevenFirst);
-    expect(withoutCode(lastDennisTo(ctx, "steven"))).toBe(line(5));
+    expect(lastDennisTo(ctx, "steven")).toBe(line(5));
     expect(market(ctx, "steven")).toMatchObject({
       status: "proposed",
       category: "dating",

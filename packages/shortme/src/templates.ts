@@ -26,18 +26,23 @@ export function voiceName(first: string): string {
   return first.toLowerCase();
 }
 
-// Dennis's opener when it spots a ShortMe moment. Approving publishes; the trailing code is only
-// needed when the person has more than one thing pending.
+// Dennis's opener when it spots a ShortMe moment. In the group-chat demo the subject can approve
+// naturally (for example, "run it") when this is their only pending action.
 export function publishMarketPrompt(p: {
   first: string;
   question: string;
   category: string;
   names: string[];
+  mode?: "normal" | "demo";
 }): string {
-  if (p.category === "dating") {
-    return "ur chopped, thats a high risk asset. wanna open a market on whether or not she ghosts you? ({code})";
+  if (p.mode === "normal") {
+    const audience = p.names.length ? ` for ${p.names.map(voiceName).join(", ")}` : "";
+    return `want me to open a private points-only market${audience}: "${p.question}"? no real money moves.`;
   }
-  return `Yo ${voiceName(p.first)} why don't you short yourself, i'll set up a market. Anyone wanna get in on this? ({code})`;
+  if (p.category === "dating") {
+    return "ur chopped, thats a high risk asset. wanna open a market on whether or not she ghosts you?";
+  }
+  return `Yo ${voiceName(p.first)} why don't you short yourself, i'll set up a market. Anyone wanna get in on this?`;
 }
 
 // Posted once the market is live. Mentions the subject's own stake when they put money in.
@@ -45,7 +50,12 @@ export function marketCreatedText(p: {
   question: string;
   subjectStakePoints: number | null;
   category: string;
+  mode?: "normal" | "demo";
 }): string {
+  if (p.mode === "normal")
+    return `market's open: "${p.question}"${
+      p.subjectStakePoints ? ` with ${dollars(p.subjectStakePoints)} sim from the subject` : ""
+    }. points only, no real money.`;
   if (p.subjectStakePoints && p.subjectStakePoints > 0) {
     const what = p.category === "dating" ? "on the line" : "insurance for sale";
     return `Market created: "${p.question}" ${dollars(p.subjectStakePoints)} ${what}`;

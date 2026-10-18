@@ -251,6 +251,8 @@ export interface NotifyRequest {
   userId: string;
   kind: "info" | "approval_request" | "result" | "invite";
   text: string;
+  /** Explicit conversation destination. Used for shared group-chat replies. */
+  spaceId?: string;
   approvalId?: string;
   opportunityId?: string;
   idempotencyKey: string;
@@ -346,7 +348,7 @@ export interface CommandHandler {
   (input: CommandInput): Promise<{ reply?: string }>;
 }
 export interface CommandRegistry {
-  register(kind: "back" | "fade" | "pass", handler: CommandHandler): void;
+  register(kind: "back" | "fade" | "pass" | "put", handler: CommandHandler): void;
 }
 export interface IntegrationRegistry {
   report(status: IntegrationStatusT): void; // emits integration.status when mode or health changes

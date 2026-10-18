@@ -486,7 +486,11 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
       const key = "webhook:" + headers["webhook-id"];
       if (row(ctx.db, "SELECT key FROM photon_cursors WHERE key=?", key))
         return c.json({ ok: true });
-      const message = normalizePhotonEvent(event, ctx.config.photonAgentUserId!);
+      const message = normalizePhotonEvent(
+        event,
+        ctx.config.photonAgentUserId!,
+        ctx.config.photonSpaceMode,
+      );
       if (message)
         await ingestInbound(ctx, {
           ...message,

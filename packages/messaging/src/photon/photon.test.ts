@@ -9,6 +9,7 @@ import type { io } from "socket.io-client";
 import { Webhook } from "standardwebhooks";
 import { normalizePhotonEvent } from "./normalize.ts";
 import { PhotonBetaProvider } from "./provider.ts";
+import { PhotonSpectrumProvider } from "./provider-spectrum.ts";
 import { SocketIoEventSource } from "./events-socketio.ts";
 import { verifyPhotonWebhook } from "./events-webhook.ts";
 import { normalizeHandle, createMessagingProvider } from "../index.ts";
@@ -67,6 +68,27 @@ it("normalizes documented resources from explicitly synthetic fixtures", () => {
   expect(normalizePhotonEvent({ ...fixture, status: "delivered" }, "pho_usr_agent")).toBeNull();
   expect(normalizePhotonEvent({ unexpected: true }, "pho_usr_agent")).toBeNull();
 });
+it("normalizes legacy Photon group spaces only when group mode is enabled", () => {
+  const group = {
+    ...fixture,
+    space: {
+      ...fixture.space,
+      kind: "group",
+      participantIds: ["pho_usr_agent", fixture.sentBy.id, "pho_usr_bob"],
+    },
+  };
+  expect(normalizePhotonEvent(group, "pho_usr_agent")).toBeNull();
+  expect(normalizePhotonEvent(group, "pho_usr_agent", "group")).toMatchObject({
+    providerSpaceKind: "group",
+    providerParticipantIds: ["pho_usr_agent", fixture.sentBy.id, "pho_usr_bob"],
+    providerSenderId: fixture.sentBy.id,
+  });
+  expect(normalizePhotonEvent(fixture, "pho_usr_agent", "group")).toBeNull();
+  expect(normalizePhotonEvent(group, "pho_usr_agent", "either")).toBeTruthy();
+  expect(normalizePhotonEvent(fixture, "pho_usr_agent", "either")).toMatchObject({
+    providerSpaceKind: "direct",
+  });
+});
 it.each([
   ["(617) 555-0101", "+16175550101"],
   ["16175550101", "+16175550101"],
@@ -82,6 +104,32 @@ it("rejects invalid handles and labels missing-credential fallback", async () =>
   expect(provider.name).toBe("sim");
   expect((await provider.health()).mode).toBe("simulated");
 });
+it("selects Spectrum for UUID and project-secret credentials", () => {
+  const provider = createMessagingProvider(
+    {
+      ...config,
+      photonProjectId: "313967b8-9f3b-4b02-ba58-aff4bf9a9044",
+      photonProjectSecret: "test-project-secret",
+      photonApiKey: undefined,
+      photonAgentUserId: undefined,
+      photonSpaceMode: "either",
+    },
+    { db: db(), clock, log, ids: { next: () => "unused" } },
+  );
+  expect(provider).toBeInstanceOf(PhotonSpectrumProvider);
+});
+it.each(["group", "either"] as const)(
+  "refuses legacy %s mode without the Socket.IO participant resolver",
+  (photonSpaceMode) => {
+    expect(
+      () =>
+        new PhotonBetaProvider(
+          { ...config, photonSpaceMode, photonInbound: "webhook" },
+          { db: db(), clock, log },
+        ),
+    ).toThrow("requires Socket.IO");
+  },
+);
 const ts = "2026-10-17T12:00:00.000Z";
 const user = {
   id: "pho_usr_sender",
@@ -364,9 +412,8 @@ it("resumes the durable cursor after restart and ignores the stopped socket", as
   ).toMatchObject({ value: "8" });
 });
 
-it("rejects group and unrelated sender resources even when the space kind is omitted", () => {
+it("rejects malformed or unrelated spaces", () => {
   for (const participantIds of [
-    ["pho_usr_agent", fixture.sentBy.id, "pho_usr_third"],
     ["pho_usr_agent", "pho_usr_unrelated"],
     [fixture.sentBy.id, "pho_usr_unrelated"],
   ]) {
@@ -377,6 +424,48 @@ it("rejects group and unrelated sender resources even when the space kind is omi
       ),
     ).toBeNull();
   }
+});
+it("resolves every human participant before delivering a legacy group event", async () => {
+  let receive: (raw: unknown) => Promise<void> = async () => {};
+  const source = {
+    async start(handler: typeof receive) {
+      receive = handler;
+    },
+    async stop() {},
+  };
+  const fake: typeof fetch = async (input) => {
+    const pathname = new URL(input instanceof Request ? input.url : String(input)).pathname;
+    expect(pathname).toBe("/v1/projects/pho_prj_test/users/pho_usr_bob");
+    return Response.json({
+      ...user,
+      id: "pho_usr_bob",
+      handle: "bob@example.test",
+      createdAt: ts,
+      updatedAt: ts,
+    });
+  };
+  const provider = new PhotonBetaProvider(
+    { ...config, photonSpaceMode: "group" },
+    { db: db(), clock, log },
+    { fetch: fake, source: source as unknown as SocketIoEventSource },
+  );
+  const messages: unknown[] = [];
+  await provider.start(async (value) => {
+    messages.push(value);
+  });
+  await receive({
+    ...fixture,
+    space: {
+      ...fixture.space,
+      kind: "group",
+      participantIds: ["pho_usr_agent", fixture.sentBy.id, "pho_usr_bob"],
+    },
+  });
+  expect(messages).toHaveLength(1);
+  expect(messages[0]).toMatchObject({
+    providerSpaceKind: "group",
+    providerParticipantHandles: ["alice@example.test", "bob@example.test"],
+  });
 });
 it("routes recognized direct inbound through the configured account and ignores own-message echoes", async () => {
   let receive: (raw: unknown) => Promise<void> = async () => {};

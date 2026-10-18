@@ -3,14 +3,12 @@
 // inputs with the scripted mock LLM (LLM_PROVIDER=mock, labeled SIMULATED LLM). Every action behind
 // them (markets, stakes, ledger, agent-to-agent messages) runs for real; amounts are sim dollars.
 //
-// `owner` says which module produces a Dennis line. A `trailingCode` line ends with the approval code
-// in parentheses until group-chat approvals no longer need one (CR-A3-007).
+// `owner` says which module produces a Dennis line.
 
 export interface ScriptLine {
   from: "john" | "steven" | "isaac" | "dennis" | "system";
   text: string;
   owner?: "shortme" | "purchasing" | "platform";
-  trailingCode?: boolean;
 }
 
 export const DEMO_CAST = ["john", "steven", "isaac"] as const;
@@ -20,7 +18,6 @@ export const DEMO_GROUP_CHAT: ScriptLine[] = [
   {
     from: "dennis",
     owner: "shortme",
-    trailingCode: true,
     text: "Yo john why don't you short yourself, i'll set up a market. Anyone wanna get in on this?",
   },
   { from: "john", text: "LMAO run it. I’ll put $500" },
@@ -36,7 +33,6 @@ export const DEMO_GROUP_CHAT: ScriptLine[] = [
   {
     from: "dennis",
     owner: "shortme",
-    trailingCode: true,
     text: "ur chopped, thats a high risk asset. wanna open a market on whether or not she ghosts you?",
   },
   { from: "steven", text: "💀💀lowk sure. $20 tho. i think she likes me." },

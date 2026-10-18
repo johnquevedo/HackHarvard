@@ -20,7 +20,7 @@ This file is the single source of truth for four concurrent coding agents. Commi
 | --- | --- | --- |
 | D1 | "Photon 2.0" means the Photon platform API v1 at `https://api.photon.codes/v1` (project IDs start `pho_prj_`, project API keys start `pho_sk_`, TypeScript client `@photon-ai/api`). It does not mean the older Spectrum SDK (`spectrum-ts`). | Photon's docs split into Stable (Spectrum) and Beta (Photon platform). The hackathon challenge text says projects must be built on Photon 2.0, which launched in public beta on October 15, 2026. [VERIFIED] |
 | D2 | Inbound messages arrive through Photon's Socket.IO event delivery (outbound connection from our server, no public URL). A Standard-Webhooks HTTPS endpoint is the second option. A built-in phone simulator is the last resort. | Socket.IO needs no tunnel, which removes the most common demo failure. Both delivery modes exist in the beta docs index. [VERIFIED that both exist; exact handshake and event names are ASSUMED until spike A1-02] |
-| D3 | Authorized conversation means one specific thing: the 1:1 Photon space between a consenting registered user and the Dennis agent line. Dennis never reads any other thread. Group-chat listening is a stretch item that needs per-space consent from every member. | Photon gives an agent access only to spaces the agent participates in. Users "talk to their agent like a notes thread" and never ask it to coordinate anything. |
+| D3 | An authorized conversation is either a consenting user's 1:1 Photon space or a group space where every human participant is registered and has granted `messaging_context`. Dennis reads every authorized message, but speaks selectively like a normal group member. | The available Photon Spectrum account supports the group-chat product surface; unanimous consent preserves the trust boundary. |
 | D4 | Two distinct personal agents (Alice's and Bob's) are logical identities on one Photon agent identity: separate `agents` rows, separate state, separate intents, separate approvals, separate outbound persona labels. A second real line per agent is a stretch item. | A free-plan project provides a shared iMessage line; a second dedicated line is unconfirmed and likely paid. The adapter contract carries an `accountKey`, so a second line needs no schema change. |
 | D5 | Two processes: `apps/server` (Node, Hono, long-running: Photon listener, schedulers, API, SSE) and `apps/web` (Next.js dashboard only). | Photon's Socket.IO listener and our schedulers need a long-lived process. Separate processes also give agents a clean HTTP contract to develop against. |
 | D6 | SQLite file via `better-sqlite3` and Drizzle ORM. No migration history. Schema is applied with `drizzle-kit push`; `pnpm db:reset` deletes the file and re-pushes. | Demo state is disposable. Skipping migrations removes the biggest merge-conflict source. Each agent owns one schema file. |
@@ -39,6 +39,7 @@ This file is the single source of truth for four concurrent coding agents. Commi
 | D19 | Contracts freeze at tag `contracts-v1` after milestone A1-01, with one planned additive revision window at sync point S2 (`contracts-v1.1`). | Gives all agents a stable target while allowing spike findings in. |
 | D20 | Sandbox safety caps: one transfer at most $500.00 (`NESSIE_MAX_TRANSFER_CENTS=50000`), only between accounts in the seeded `bank_links` allowlist, only after an approved `authorize_payment` approval, only with the `sandbox_payments` consent. | Defense in depth around the only financial action. |
 | D21 | Raw message text is stored only for users with `messaging_context` consent, shown only in the owner's lane, and deleted on `FORGET` or `POST /api/privacy/forget`. | Digital Trust track. |
+| D22 | `CONVERSATION_MODE=normal` is the product default. `CONVERSATION_MODE=demo` exclusively enables scripted copy, seeded matches, and demo-only natural-language shortcuts. | Prevents the fixed judging script from contaminating ordinary group conversation. |
 
 ---
 
@@ -72,7 +73,7 @@ This file is the single source of truth for four concurrent coding agents. Commi
 | ID | Capability |
 | --- | --- |
 | R1 | Two registered demo users with two independent agents, seeded consents, one Photon agent identity. |
-| R2 | Real inbound iMessage through Photon 2.0 triggers the pipeline; real outbound iMessages for every approval, result, and invite. |
+| R2 | Real inbound iMessage through Photon triggers the pipeline in authorized direct or group spaces; real outbound iMessages carry conversation replies, approvals, results, and invites. |
 | R3 | LLM detectors with schema-validated output for purchase intent and for milestone intent, plus deterministic gates. |
 | R4 | Agent-to-agent protocol over the backend: probe, probe result, proposal, proposal result (purchasing); invite (ShortMe). Visible in the dashboard. |
 | R5 | Deterministic matching, pricing, savings, with human-readable explanations. |
@@ -93,7 +94,7 @@ This file is the single source of truth for four concurrent coding agents. Commi
 | S2 | Typing indicator or tapback acknowledgement through Photon (`SendSpaceTypingUpdateContent`, `SendReactionContent` exist in the verified contract). | P1 |
 | S3 | Chalk model gateway as an LLM provider option. | P1 |
 | S4 | Second Photon line for Bob's agent. | P2 |
-| S5 | Group-chat listening with per-space consent. | P2 |
+| S5 | Advanced multi-group membership management beyond the authorized demo group. | P2 |
 | S6 | Moving-service purchase category using the same matcher. | P2 |
 | S7 | Academics and friend-event ShortMe templates (present as disabled templates). | P2 |
 | S8 | Playwright browser test of the dashboard. | P2 |
@@ -101,7 +102,7 @@ This file is the single source of truth for four concurrent coding agents. Commi
 ### 3.3 Explicit exclusions
 
 - No real-money betting, wagering deposits, or cash settlement. ShortMe never touches Nessie.
-- No reading of any message outside the authorized 1:1 space.
+- No reading of any message outside an authorized direct space or a group space whose human members all consented.
 - No dating-category markets in the MVP (the detector must classify and block them).
 - No minors: ShortMe requires an explicit 18+ confirmation recorded as a consent.
 - No Redis, Kafka, Kubernetes, microservices, vector database, or custom cryptography.

@@ -21,6 +21,7 @@ export async function createTestPlatform(
   const config = AppConfigSchema.parse({
     dennisAdminToken: "test-admin-token-at-least-16",
     dennisMode: "sim",
+    conversationMode: "demo",
     photonMode: "sim",
     nessieMode: "sim",
     llmProvider: "mock",

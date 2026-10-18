@@ -12,7 +12,7 @@ import type {
 import { runStructured, type Transport, type TransportCall } from "./core";
 import { LlmUnavailableError } from "./errors";
 
-export type AnthropicMode = "output_format" | "tool";
+export type AnthropicMode = "output_format" | "tool" | "json";
 
 export interface AnthropicLlmOptions {
   apiKey: string;
@@ -70,6 +70,7 @@ export class AnthropicLlm implements StructuredLlm {
   readonly name = "anthropic" as const;
   private readonly client: Pick<Anthropic, "messages" | "models">;
   private mode: AnthropicMode;
+  private temperatureSupported = true;
   private lastSuccessAt: string | null = null;
 
   constructor(private readonly opts: AnthropicLlmOptions) {
@@ -95,7 +96,7 @@ export class AnthropicLlm implements StructuredLlm {
       {
         model: this.opts.model,
         max_tokens: call.maxTokens,
-        temperature: call.temperature,
+        ...(this.temperatureSupported ? { temperature: call.temperature } : {}),
         system: call.system,
         messages: [{ role: "user", content: userContent(call) }],
         output_config: { format: zodOutputFormat(req.schema as z.ZodType) },
@@ -110,7 +111,7 @@ export class AnthropicLlm implements StructuredLlm {
       {
         model: this.opts.model,
         max_tokens: call.maxTokens,
-        temperature: call.temperature,
+        ...(this.temperatureSupported ? { temperature: call.temperature } : {}),
         system: call.system,
         messages: [{ role: "user", content: userContent(call) }],
         tools: [
@@ -126,12 +127,46 @@ export class AnthropicLlm implements StructuredLlm {
     )) as unknown as MessageLike;
   }
 
+  private async callJson<T>(req: StructuredRequest<T>, call: TransportCall): Promise<MessageLike> {
+    const schema = JSON.stringify(z.toJSONSchema(req.schema as z.ZodType));
+    return (await this.client.messages.create(
+      {
+        model: this.opts.model,
+        max_tokens: call.maxTokens,
+        ...(this.temperatureSupported ? { temperature: call.temperature } : {}),
+        system: `${call.system}\nReturn only one valid JSON object matching this JSON Schema, with no markdown or commentary:\n${schema}`,
+        messages: [{ role: "user", content: userContent(call) }],
+      } as never,
+      { timeout: call.timeoutMs, maxRetries: 0 },
+    )) as unknown as MessageLike;
+  }
+
+  private async withModelCompatibility(call: () => Promise<MessageLike>): Promise<MessageLike> {
+    try {
+      return await call();
+    } catch (error) {
+      if (
+        this.temperatureSupported &&
+        error instanceof Anthropic.BadRequestError &&
+        /temperature.*deprecated/i.test(error.message)
+      ) {
+        this.temperatureSupported = false;
+        this.opts.log.warn("llm.parameter_fallback", {
+          parameter: "temperature",
+          model: this.opts.model,
+        });
+        return call();
+      }
+      throw error;
+    }
+  }
+
   private transport: Transport = async (req, call) => {
     let msg: MessageLike;
     try {
       if (this.mode === "output_format") {
         try {
-          msg = await this.callOutputFormat(req, call);
+          msg = await this.withModelCompatibility(() => this.callOutputFormat(req, call));
         } catch (err) {
           // A 400 here usually means the structured-output path rejected a schema constraint:
           // switch to the forced tool call path (Section 10.4) and keep using it.
@@ -141,7 +176,17 @@ export class AnthropicLlm implements StructuredLlm {
               to: "tool",
             });
             this.mode = "tool";
-            msg = await this.callTool(req, call);
+            try {
+              msg = await this.withModelCompatibility(() => this.callTool(req, call));
+            } catch (toolError) {
+              if (!(toolError instanceof Anthropic.BadRequestError)) throw toolError;
+              this.opts.log.warn("llm.mode_fallback", {
+                task: req.task,
+                to: "json",
+              });
+              this.mode = "json";
+              msg = await this.withModelCompatibility(() => this.callJson(req, call));
+            }
           } else if (
             err instanceof Anthropic.APIError ||
             (err instanceof Error && err.name === "AbortError")
@@ -156,8 +201,20 @@ export class AnthropicLlm implements StructuredLlm {
             };
           }
         }
+      } else if (this.mode === "tool") {
+        try {
+          msg = await this.withModelCompatibility(() => this.callTool(req, call));
+        } catch (err) {
+          if (!(err instanceof Anthropic.BadRequestError)) throw err;
+          this.opts.log.warn("llm.mode_fallback", {
+            task: req.task,
+            to: "json",
+          });
+          this.mode = "json";
+          msg = await this.withModelCompatibility(() => this.callJson(req, call));
+        }
       } else {
-        msg = await this.callTool(req, call);
+        msg = await this.withModelCompatibility(() => this.callJson(req, call));
       }
     } catch (err) {
       throw mapAnthropicError(req.task, err);

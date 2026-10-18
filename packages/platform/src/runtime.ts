@@ -8,6 +8,7 @@ import { rows, row, update } from "./storage.ts";
 import { pollIntegrationHealth } from "./integrations.ts";
 import { recoverA2A } from "./a2a.ts";
 import { ingestInbound, runPipeline } from "./pipeline.ts";
+import { cancelConversationalReplies } from "./conversation.ts";
 function emitDeliveryLatency(
   ctx: PlatformContext,
   outboxId: string,
@@ -78,16 +79,23 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
         item.id,
       );
       try {
+        const explicitSpace = row<{ value: string }>(
+          ctx.db,
+          "SELECT value FROM kv WHERE key=?",
+          "outbox-route:" + item.id,
+        )?.value;
         const result = await ctx.messaging.send({
           accountKey: ctx.config.photonAccountKey,
           toHandle: user.handle,
           toPhotonUserId: user.photonUserId,
           spaceId:
+            explicitSpace ??
             row<{ photonSpaceId: string }>(
               ctx.db,
               "SELECT photon_space_id FROM photon_spaces WHERE user_id=?",
               user.id,
-            )?.photonSpaceId ?? null,
+            )?.photonSpaceId ??
+            null,
           text: item.text,
           idempotencyKey: stored.idempotencyKey,
         });
@@ -192,6 +200,7 @@ export async function startRuntime(ctx: PlatformContext): Promise<{ stop(): Prom
   function stop(): Promise<void> {
     if (stopTask) return stopTask;
     stopped = true;
+    cancelConversationalReplies(ctx);
     for (const timer of timers) clearInterval(timer);
     stopTask = (async () => {
       try {

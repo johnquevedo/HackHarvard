@@ -23,3 +23,13 @@ Agent 4 local ports are `PORT_SERVER=4104` and `PORT_WEB=3104`. The web app runs
 - `pnpm e2e:sim` runs the privacy scan now, and the HTTP stories when `apps/server` exists.
 
 Do not put secrets in git or in `NEXT_PUBLIC_*`.
+
+## Conversation modes
+
+`CONVERSATION_MODE=normal` is the live product behavior. Dennis reads every authorized message,
+batches rapid group-chat turns, speaks selectively, and grounds replies in current application
+state. Natural `yes`/`no` is treated as an approval only when that sender has exactly one pending
+approval.
+
+`CONVERSATION_MODE=demo` enables the fixed scripted-demo grammar and copy, including the special
+`I'll put $…` shortcuts and seeded outside purchase match. Keep this mode off during normal use.

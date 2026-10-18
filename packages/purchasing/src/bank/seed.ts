@@ -4,9 +4,13 @@ import type { PlatformContext } from "@dennis/platform";
 
 import { createBankingProvider } from "./factory.js";
 
-const DEMO_MEMBERS = [
+const LEGACY_DEMO_MEMBERS = [
   { linkKey: "usr_demo_alice", displayName: "Alice", startCents: 150_000 },
   { linkKey: "usr_demo_bob", displayName: "Bob", startCents: 120_000 },
+];
+const GROUP_DEMO_MEMBERS = [
+  { linkKey: "usr_demo_isaac", displayName: "Isaac", startCents: 150_000 },
+  { linkKey: "usr_demo_friend", displayName: "Demo Friend", startCents: 120_000 },
 ];
 
 export async function seedBank(
@@ -19,7 +23,8 @@ export async function seedBank(
     log: ctx.log,
   });
   const runTag = opts.runTag ?? ctx.config.nessieRunTag ?? `demo-${ctx.clock.now().getTime()}`;
-  const result = await provider.ensureSeeded({ members: DEMO_MEMBERS, poolStartCents: 0, runTag });
+  const members = ctx.config.demoScenario === "group" ? GROUP_DEMO_MEMBERS : LEGACY_DEMO_MEMBERS;
+  const result = await provider.ensureSeeded({ members, poolStartCents: 0, runTag });
 
   ctx.db.transaction((tx) => {
     for (const account of result.accounts) {

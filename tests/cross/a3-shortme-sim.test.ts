@@ -68,7 +68,7 @@ describe("a3 ShortMe by text through the platform", () => {
     expect(marketRow(ctx)?.status).toBe("proposed");
     const proposal = outbox(ctx, "usr_demo_alice").find((o) => o.kind === "approval_request")!;
     expect(proposal.text).toContain("Yo alice why don't you short yourself, i'll set up a market.");
-    expect(proposal.text).toMatch(/ \([a-z0-9]{4}\)$/);
+    expect(proposal.text).not.toMatch(/ \([a-z0-9]{4}\)$/);
     expect(outbox(ctx, "usr_demo_bob")).toHaveLength(0);
 
     await say(ctx, "alice", "YES");
