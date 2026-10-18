@@ -160,14 +160,29 @@ export async function handleMilestoneDetection(
     return (log("template_disabled"), null);
   const existing = ctx.db.select().from(markets).where(eq(markets.sourceIntentId, intent.id)).get();
   if (existing) return existing;
-  // One offer at a time: a follow-up about the same event ("sub 4 easy" after "signed up for boston")
-  // must not stack a second market offer while the first is still waiting for an answer.
-  const pendingOffer = ctx.db.$client
+  // One offer at a time. A follow-up about the same event a moment later ("sub 4 easy" right after
+  // "signed up for boston") must not stack a second offer; a new event later replaces any stale offer
+  // that nobody answered (declining it closes that market quietly).
+  const pendingOffers = ctx.db.$client
     .prepare(
-      "SELECT 1 FROM approvals WHERE user_id=? AND kind='publish_market' AND status='pending' AND expires_at>? LIMIT 1",
+      "SELECT id, created_at AS createdAt FROM approvals WHERE user_id=? AND kind='publish_market' AND status='pending' AND expires_at>?",
     )
-    .get(intent.userId, ctx.clock.nowIso());
-  if (pendingOffer) return (log("offer_already_pending"), null);
+    .all(intent.userId, ctx.clock.nowIso()) as { id: string; createdAt: string }[];
+  const followUpCutoff = new Date(ctx.clock.now().getTime() - 5 * 60_000).toISOString();
+  if (pendingOffers.some((offer) => offer.createdAt > followUpCutoff))
+    return (log("offer_already_pending"), null);
+  for (const offer of pendingOffers) {
+    try {
+      await ctx.approvals.decide({
+        approvalId: offer.id,
+        userId: intent.userId,
+        decision: "decline",
+        via: "dashboard_fallback",
+      });
+    } catch {
+      log("stale_offer_not_closed");
+    }
+  }
   const user = await ctx.users.get(intent.userId);
   if (!user) return (log("no_user"), null);
 

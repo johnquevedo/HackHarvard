@@ -118,6 +118,16 @@ async function research(
 /** Runs one planning pass for the conversation this message belongs to. Exported for tests. */
 export async function runPlanning(ctx: PlatformContext, message: PlanningMessage): Promise<void> {
   const key = conversationKey(message);
+  // A scripted demo is playing in this chat: never drop a background plan into the middle of it.
+  const script = row<{ value: { at: string } }>(
+    ctx.db,
+    "SELECT value FROM kv WHERE key=?",
+    "script-pos:" + key,
+  )?.value;
+  if (script && ctx.clock.now().getTime() - Date.parse(script.at) < 30 * 60_000) {
+    ctx.log.info("Planning skipped", { reason: "script_active" });
+    return;
+  }
   const since = kvGet(ctx, "planning-since:" + key) ?? "";
   const lines = transcript(ctx, message, since);
   if (lines.length < MIN_MESSAGES) {

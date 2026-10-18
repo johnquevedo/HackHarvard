@@ -539,6 +539,23 @@ describe("one market offer at a time", () => {
     const third = await detectAndPropose(ctx, `${INTERVIEW} again`);
     expect(third.market).toBeTruthy();
   });
+
+  it("replaces a stale unanswered offer when a new event comes in later", async () => {
+    const ctx = await setup();
+    const first = await detectAndPropose(ctx, INTERVIEW);
+    ctx.db.$client
+      .prepare("UPDATE approvals SET created_at=? WHERE user_id=? AND kind='publish_market'")
+      .run(new Date(Date.parse(ctx.clock.nowIso()) - 10 * 60_000).toISOString(), ALICE);
+    const second = await detectAndPropose(ctx, `${INTERVIEW} for real`);
+    expect(second.market).toBeTruthy();
+    expect(
+      (
+        ctx.db.$client.prepare("SELECT status FROM markets WHERE id=?").get(first.market!.id) as {
+          status: string;
+        }
+      ).status,
+    ).toBe("declined");
+  });
 });
 
 describe("ledger properties through the database", () => {

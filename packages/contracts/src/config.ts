@@ -4,7 +4,8 @@ export const AppConfigSchema = z.object({
   dennisMode: z.enum(["live", "hybrid", "sim"]).default("hybrid"),
   conversationMode: z.enum(["normal", "demo"]).default("normal"),
   // Temporary: "video" makes Dennis answer only the exact recorded script (packages/platform/src/scripted-demo.ts).
-  demoScript: z.enum(["off", "video"]).default("off"),
+  // "hybrid" plays every script in packages/platform/src/demo-scripts.ts word for word alongside live Dennis.
+  demoScript: z.enum(["off", "video", "hybrid"]).default("off"),
   // Milliseconds of iMessage typing bubble before every message Dennis sends (0 = send at once).
   typingMs: z.coerce.number().int().min(0).max(10000).default(0),
   // Background planning: how long a chat must be quiet before Dennis compiles a plan (0 = off).

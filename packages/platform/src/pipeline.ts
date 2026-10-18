@@ -11,7 +11,7 @@ import type { PlatformContext } from "./context.ts";
 import { insert, row, rows, update } from "./storage.ts";
 import { normalizeHandle } from "@dennis/messaging";
 import { handleCommand, ONBOARDING } from "./commands.ts";
-import { handleScriptedDemo } from "./scripted-demo.ts";
+import { handleHybridScript, handleScriptedDemo } from "./scripted-demo.ts";
 import { handlePrivacySwitch } from "./privacy-switch.ts";
 import { withTyping } from "./typing.ts";
 import { scheduleConversationalReply } from "./conversation.ts";
@@ -94,6 +94,10 @@ export async function ingestInbound(
     const privacy = await handlePrivacySwitch(ctx, msg);
     if (privacy) return privacy;
     if (ctx.config.demoScript === "video") return handleScriptedDemo(ctx, msg);
+    if (ctx.config.demoScript === "hybrid") {
+      const scripted = await handleHybridScript(ctx, msg);
+      if (scripted) return scripted;
+    }
     let handle: string;
     try {
       handle = normalizeHandle(msg.senderHandle).handle;

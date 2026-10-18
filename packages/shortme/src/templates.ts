@@ -163,14 +163,14 @@ export function stakeRecordedText(p: {
       `${who} bought ${amount} of insurance on themself. respect.`,
       `${who} just hedged ${amount} against themself. risk management king.`,
       `${who} shorted themself for ${amount}. respect the hedge.`,
-      `${who} just hedged ${amount} against urself. that's called risk management`,
+      `${who} just bet ${amount} against urself. that's called a hedge`,
     ]);
   if (p.side === "back")
     return voiceLine("shortme.stake.back", [
       `${who}'s in for ${amount} backing ${subject}.`,
       `${who} put ${amount} on ${subject}. believer.`,
       `${who} is long ${subject} for ${amount}.`,
-      `${who} put ${amount} on ${subject}. a true believer in the underlying asset`,
+      `${who} put ${amount} on ${subject}. a true believer`,
     ]);
   return voiceLine("shortme.stake.fade", [
     `${who} put ${amount} against ${subject}. cold.`,
