@@ -188,7 +188,11 @@ async function generateReply(ctx: PlatformContext, message: ConversationMessage)
     user: `<conversation>\n${transcript(ctx, message)}\n</conversation>\n<application_state>${clean(applicationState(ctx, message.userId, message.providerSpaceId))}</application_state>\n<current_message id="${message.id}" directly_addresses_dennis="${addressed}">${clean(message.text)}</current_message>`,
   });
   let reply = result.value.behavior === "reply" ? result.value.reply?.trim() : null;
-  if (addressed && !reply)
+  // Only answer a bare mention with a filler line when Dennis hasn't spoken in the last 15 seconds;
+  // right after a reply, staying quiet reads more naturally than "i'm here".
+  const spokeRecently =
+    recentDennis !== null && ctx.clock.now().getTime() - Date.parse(recentDennis.createdAt) < 15000;
+  if (addressed && !reply && !spokeRecently)
     reply = voiceLine("conversation.here", [
       "yeah, i'm here—what's up?",
       "present. what's the move?",

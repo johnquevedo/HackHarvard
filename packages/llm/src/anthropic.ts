@@ -64,6 +64,13 @@ function userContent(call: TransportCall): string {
   return call.correctiveNote ? `${call.user}\n\n${call.correctiveNote}` : call.user;
 }
 
+// This model may think before answering, and thinking spends output tokens. A small max_tokens can
+// end the turn before the JSON is written, which surfaces as a null result. Only used tokens are billed.
+const MIN_STRUCTURED_OUTPUT_TOKENS = 4000;
+function outputBudget(requested: number): number {
+  return Math.max(requested, MIN_STRUCTURED_OUTPUT_TOKENS);
+}
+
 function toolName(task: string): string {
   return task.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "result";
 }
@@ -97,7 +104,7 @@ export class AnthropicLlm implements StructuredLlm {
     return (await this.client.messages.parse(
       {
         model: this.opts.model,
-        max_tokens: call.maxTokens,
+        max_tokens: outputBudget(call.maxTokens),
         ...(this.temperatureSupported ? { temperature: call.temperature } : {}),
         system: call.system,
         messages: [{ role: "user", content: userContent(call) }],
@@ -112,7 +119,7 @@ export class AnthropicLlm implements StructuredLlm {
     return (await this.client.messages.create(
       {
         model: this.opts.model,
-        max_tokens: call.maxTokens,
+        max_tokens: outputBudget(call.maxTokens),
         ...(this.temperatureSupported ? { temperature: call.temperature } : {}),
         system: call.system,
         messages: [{ role: "user", content: userContent(call) }],
@@ -134,7 +141,7 @@ export class AnthropicLlm implements StructuredLlm {
     return (await this.client.messages.create(
       {
         model: this.opts.model,
-        max_tokens: call.maxTokens,
+        max_tokens: outputBudget(call.maxTokens),
         ...(this.temperatureSupported ? { temperature: call.temperature } : {}),
         system: `${call.system}\nReturn only one valid JSON object matching this JSON Schema, with no markdown or commentary:\n${schema}`,
         messages: [{ role: "user", content: userContent(call) }],
@@ -224,6 +231,8 @@ export class AnthropicLlm implements StructuredLlm {
     if (msg.stop_reason === "refusal")
       throw new LlmUnavailableError(req.task, "refused", "model refused");
     let raw: unknown = null;
+    if (msg.stop_reason === "max_tokens")
+      this.opts.log.warn("llm.output_truncated", { task: req.task, mode: this.mode });
     if (this.mode === "tool") {
       raw = msg.content.find((b) => b.type === "tool_use")?.input ?? null;
     } else if (msg.parsed_output !== undefined && msg.parsed_output !== null) {

@@ -159,7 +159,16 @@ export async function handleCommand(
       reply:
         "i'm already listening—no @ needed. talk normally and i'll jump in when i spot a market or group-buy opportunity. you can also say status, pause, resume, stop, or forget. if i ask for approval, reply yes or no with the 4-character code.",
     };
-  if (kind === "presence") return { reply: "yeah i'm here. i'm listening—no @ needed." };
+  if (kind === "presence")
+    return {
+      reply: voiceLine("command.presence", [
+        "yeah i'm here. i'm listening—no @ needed.",
+        "present. what's the move?",
+        "i'm here. who's cooked now?",
+        "always watching. what's up?",
+        "yeah yeah i'm here. talk to me.",
+      ]),
+    };
   if (["approve", "decline", "confirm", "dispute"].includes(kind) && "code" in command) {
     const pending = await ctx.approvals.findPending(userId, command.code);
     const matches =

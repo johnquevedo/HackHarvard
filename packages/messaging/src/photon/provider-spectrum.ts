@@ -92,8 +92,17 @@ export class PhotonSpectrumProvider implements MessagingProvider {
   private async consume(): Promise<void> {
     try {
       const { app } = await this.getConnection();
+      this.deps.log.info("Photon message stream subscribed");
       for await (const [space, message] of app.messages) {
         if (this.stopped) break;
+        if (process.env.PHOTON_DEBUG === "1")
+          this.deps.log.info("Photon event", {
+            direction: message.direction,
+            platform: message.platform,
+            content: message.content.type,
+            spaceKind: imessage(space).type,
+            hasSender: Boolean(message.sender?.id),
+          });
         if (message.direction !== "inbound" || message.platform !== "imessage") continue;
         if (message.content.type !== "text" && message.content.type !== "markdown") continue;
         const senderHandle = message.sender?.id;
@@ -129,11 +138,22 @@ export class PhotonSpectrumProvider implements MessagingProvider {
         };
         await this.handler?.(inbound);
       }
+      if (!this.stopped) this.deps.log.warn("Photon message stream ended; resubscribing");
     } catch (error) {
       if (!this.stopped)
-        this.deps.log.error("Photon Spectrum message stream stopped", {
+        this.deps.log.error("Photon Spectrum message stream stopped; resubscribing", {
           error: error instanceof Error ? error.message : String(error),
         });
+    }
+    // Keep listening: a dropped stream reconnects with a fresh connection after a short pause.
+    if (!this.stopped) {
+      this.connection = null;
+      setTimeout(() => {
+        if (!this.stopped && !this.consumeTask)
+          this.consumeTask = this.consume().finally(() => {
+            this.consumeTask = null;
+          });
+      }, 3000).unref();
     }
   }
 
