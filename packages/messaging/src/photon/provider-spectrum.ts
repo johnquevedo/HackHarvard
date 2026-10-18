@@ -175,19 +175,28 @@ export class PhotonSpectrumProvider implements MessagingProvider {
           (await platform.space.get(routed!.id, routed!.phone ? { phone: routed!.phone } : {})))
         : await platform.space.create(req.toHandle);
       const message = await space.send(text(req.text));
-      if (!message)
-        throw new DennisError("integration_unavailable", "Photon did not return a message", 503);
-      const routedSpaceId = encodeSpaceId(space.id, imessage(space).phone);
-      this.spaces.set(routedSpaceId, imessage(space));
-      if (!req.spaceId) {
-        this.deps.db.$client
-          .prepare(
-            "INSERT INTO photon_spaces (user_id,photon_space_id,created_at) SELECT id,?,? FROM users WHERE handle=? ON CONFLICT(user_id) DO UPDATE SET photon_space_id=excluded.photon_space_id",
-          )
-          .run(routedSpaceId, this.deps.clock.nowIso(), req.toHandle);
+      // From here on the text has been handed to Photon. Nothing below may throw, or the outbox
+      // would retry and the group would see the same message twice.
+      let routedSpaceId = req.spaceId ?? space.id;
+      try {
+        routedSpaceId = encodeSpaceId(space.id, imessage(space).phone);
+        this.spaces.set(routedSpaceId, imessage(space));
+        if (!req.spaceId) {
+          this.deps.db.$client
+            .prepare(
+              "INSERT INTO photon_spaces (user_id,photon_space_id,created_at) SELECT id,?,? FROM users WHERE handle=? ON CONFLICT(user_id) DO UPDATE SET photon_space_id=excluded.photon_space_id",
+            )
+            .run(routedSpaceId, this.deps.clock.nowIso(), req.toHandle);
+        }
+      } catch (error) {
+        this.deps.log.warn("Photon send bookkeeping failed after delivery", {
+          error: this.safeError(error),
+        });
       }
+      if (!message)
+        this.deps.log.warn("Photon accepted a send without returning a message; not retrying");
       return {
-        providerMessageId: message.id,
+        providerMessageId: message?.id ?? `spectrum_unconfirmed_${req.idempotencyKey}`,
         status: "accepted",
         mode: "live",
         spaceId: routedSpaceId,

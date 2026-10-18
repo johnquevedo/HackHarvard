@@ -151,6 +151,11 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
           },
         });
       } catch (error) {
+        ctx.log.warn("Outbox send failed", {
+          outboxId: item.id,
+          attempt: item.attempts + 1,
+          error: error instanceof Error ? error.message : String(error),
+        });
         const permanent =
           error instanceof DennisError &&
           (error.details as { retryable?: boolean } | undefined)?.retryable === false;
