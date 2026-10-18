@@ -23,6 +23,32 @@ export function dollarsToPoints(amount: number): number | null {
   return Number.isInteger(pts) ? pts : null;
 }
 
+// Over/under markets are still yes/no underneath: BACK means the question comes true. These read the
+// line out of a question such as "Will {subject} finish the marathon under 4 hours?".
+export interface OverUnder {
+  direction: "under" | "over";
+  line: string; // "4 hours"
+  topic: string; // "finish the marathon"
+}
+
+export function overUnderOf(question: string): OverUnder | null {
+  // Greedy topic so the last keyword sets the line ("at least 1 interview within 2 weeks" -> 2 weeks).
+  const match =
+    /^will \S+ (.+) (under|over|at least|more than|less than|within|before) (\d[\d.:,%]*(?:\s?(?!(?:on|in|at|by|for|the|to|of|this|next|before|after)\b)[a-z]+)?)(?: (.+?))?\??$/i.exec(
+      question.trim(),
+    );
+  if (!match) return null;
+  const word = match[2]!.toLowerCase();
+  const direction = ["over", "at least", "more than"].includes(word) ? "over" : "under";
+  const topic = match[4] ? `${match[1]!.trim()} ${match[4].trim()}` : match[1]!.trim();
+  return { direction, line: match[3]!.trim(), topic };
+}
+
+function sides(ou: OverUnder): string {
+  const other = ou.direction === "under" ? "over" : "under";
+  return `back = ${ou.direction} ${ou.line}, fade = the ${other}`;
+}
+
 export function voiceName(first: string): string {
   return first.toLowerCase();
 }
@@ -39,6 +65,16 @@ export function publishMarketPrompt(p: {
   if (p.mode === "normal") {
     const audience = p.names.length ? ` for ${p.names.map(voiceName).join(", ")}` : "";
     return `want me to open a private points-only market${audience}: "${p.question}"? no real money moves.`;
+  }
+  const ou = overUnderOf(fillSubject(p.question, p.first));
+  if (ou) {
+    const first = voiceName(p.first);
+    return voiceLine("shortme.open.overunder", [
+      `${first} wants to ${ou.topic}? over/under ${ou.line}. i'll set the line, who's taking the ${ou.direction === "under" ? "over" : "under"}?`,
+      `ok bookie hours. ${first} to ${ou.topic}: over/under ${ou.line}. want me to open it?`,
+      `line is set: ${ou.line} for ${first} to ${ou.topic}. over or under, place your bets?`,
+      `${first} to ${ou.topic}... i'm putting the line at ${ou.line}. who's hammering the ${ou.direction === "under" ? "over" : "under"}?`,
+    ]);
   }
   if (p.category === "dating") {
     return voiceLine("shortme.open.dating", [
@@ -68,6 +104,13 @@ export function marketCreatedText(p: {
     return `market's open: "${p.question}"${
       p.subjectStakePoints ? ` with ${dollars(p.subjectStakePoints)} sim from the subject` : ""
     }. points only, no real money.`;
+  const ou = overUnderOf(p.question);
+  if (ou)
+    return voiceLine("shortme.created.overunder", [
+      `market's live: "${p.question}" ${sides(ou)}.`,
+      `line's open: "${p.question}" ${sides(ou)}. sim $ only.`,
+      `"${p.question}" is trading. ${sides(ou)}.`,
+    ]);
   if (p.subjectStakePoints && p.subjectStakePoints > 0) {
     const what = p.category === "dating" ? "on the line" : "insurance for sale";
     const amount = `${dollars(p.subjectStakePoints)} ${what}`;
@@ -94,6 +137,11 @@ export function marketInviteText(p: {
   code: string;
 }): string {
   const s = voiceName(p.subjectFirst);
+  const ou = overUnderOf(p.question);
+  if (ou) {
+    const other = ou.direction === "under" ? "over" : "under";
+    return `${s}'s got an over/under: "${p.question}" you've got ${dollars(p.points)} sim to play. BACK $200 ${p.code} for the ${ou.direction} ${ou.line}, FADE $200 ${p.code} for the ${other}, or PASS ${p.code}.`;
+  }
   return `${s}'s got a market: "${p.question}" you've got ${dollars(p.points)} sim to play. BACK $200 ${p.code} if ${s} makes it, FADE $200 ${p.code} if not, or PASS ${p.code}.`;
 }
 

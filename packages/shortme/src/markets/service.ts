@@ -31,6 +31,7 @@ import {
   TEMPLATE_KEY,
 } from "../rules";
 import { emitMarketUpdated } from "./events";
+import { writeOpener } from "../copy/opener";
 import { assertTransition, TERMINAL, type MarketStatus } from "./state";
 
 export type MarketRow = typeof markets.$inferSelect;
@@ -143,6 +144,7 @@ export async function handleMilestoneDetection(
     proposedQuestion?: string;
     redactions?: string[];
     resolvesWithinDays?: number | null;
+    sourceExcerpt?: string;
   };
   const log = (reason: string) =>
     ctx.log.info("shortme.no_market", { intentId: intent.id, reason });
@@ -211,19 +213,27 @@ export async function handleMilestoneDetection(
   emitMarketUpdated(ctx, row);
 
   const payload: PublishPayload = { question, invitees, pointsOnly: true };
+  const opener = await writeOpener(ctx, {
+    first: user.firstName,
+    question,
+    category: p.category ?? "other",
+    sourceText: p.sourceExcerpt ?? null,
+  });
   await ctx.approvals.request({
     kind: "publish_market",
     userId: user.id,
     agentId: agent.id,
     opportunityId: opp.id,
     payload: payload as unknown as Record<string, unknown>,
-    promptText: publishMarketPrompt({
-      first: user.firstName,
-      question,
-      category: p.category,
-      names: invitees.map((i) => i.firstName),
-      mode: ctx.config.conversationMode,
-    }),
+    promptText:
+      opener ??
+      publishMarketPrompt({
+        first: user.firstName,
+        question,
+        category: p.category,
+        names: invitees.map((i) => i.firstName),
+        mode: ctx.config.conversationMode,
+      }),
     ttlMinutes: approvalTtlMinutes(user.isDemo),
     idempotencyKey: `publish_market:${marketId}`,
   });

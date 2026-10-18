@@ -98,7 +98,8 @@ export function createMilestoneDetector(
         resolvesWithinDays: x.resolvesWithinDays ?? gates.defaultResolvesWithinDays,
         sensitivity: x.sensitivity,
         redactions: gate.redactions,
-        sourceExcerpt: excerpt(input.text, x.employerMentions),
+        // Group-chat rules keep employer names (redactEmployerNames false); only redact when the rules say so.
+        sourceExcerpt: excerpt(input.text, gates.redactEmployerNames ? x.employerMentions : []),
       };
       const detection: Detection = {
         kind: "milestone",

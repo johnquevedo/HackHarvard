@@ -26,7 +26,7 @@ const BASE: MilestoneExtractionT = {
 describe("rules file", () => {
   it("has the specified values", () => {
     expect(gates).toMatchObject({
-      minConfidence: 0.75,
+      minConfidence: 0.65,
       enabledTemplates: ["recruiting", "dating", "academics", "friend_event", "other"],
       blockedCategories: [],
       blockHighSensitivity: false,
@@ -54,8 +54,8 @@ describe("applyMilestoneGates (same table as the Python eval)", () => {
     [{ subjectIsAuthor: false }, "blocked_policy", "not_subject_owned"],
     [{ mentionsThirdParty: true }, "pass", null],
     [{ outcomeUncertain: false }, "no_market", "not_an_intent"],
-    [{ confidence: 0.74 }, "no_market", "low_confidence"],
-    [{ confidence: 0.75 }, "pass", null],
+    [{ confidence: 0.64 }, "no_market", "low_confidence"],
+    [{ confidence: 0.65 }, "pass", null],
     [{ category: "academics" }, "pass", null],
     [{ category: "friend_event" }, "pass", null],
     [{ category: "other", sensitivity: "high" }, "pass", null],
@@ -79,6 +79,18 @@ describe("sanitizeQuestion without redaction (group chat, v2 rules)", () => {
       [],
     ],
     ["Will she ghost {subject}?", [], "Will she ghost {subject}?", []],
+    [
+      "Will {subject} finish the marathon under 4 hours?",
+      [],
+      "Will {subject} finish the marathon under 4 hours?",
+      [],
+    ],
+    [
+      "Will {subject} score over 80% on the midterm?",
+      [],
+      "Will {subject} score over 80% on the midterm?",
+      [],
+    ],
     [
       "Will {subject} beat Bob at Meta?",
       ["Meta"],

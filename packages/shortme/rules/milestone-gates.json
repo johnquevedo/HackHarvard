@@ -1,6 +1,6 @@
 {
   "version": "v2",
-  "minConfidence": 0.75,
+  "minConfidence": 0.65,
   "enabledTemplates": ["recruiting", "dating", "academics", "friend_event", "other"],
   "blockedCategories": [],
   "blockHighSensitivity": false,

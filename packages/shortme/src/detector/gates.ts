@@ -46,7 +46,9 @@ const FALLBACK_QUESTIONS: Record<string, string> = {
 };
 const GENERIC_QUESTION = "Will it work out for {subject}?";
 const REDACTION_REPLACEMENT = "the company";
-const FORBIDDEN_IN_QUESTION = /[0-9@$€£#<>[\]]|https?:|www\./i;
+// Short numbers are allowed for over/under lines ("under 4 hours", "4:30", "80%"). Money symbols,
+// links, long digit runs, and phone-number shapes are not.
+const FORBIDDEN_IN_QUESTION = /[@$€£#<>[\]]|https?:|www\.|\d{5,}|\d+[-.]\d+[-.]\d+/i;
 
 function block(reason: GateReason, detail: string): GateResult {
   return { pass: false, reason, detail, evalDecision: "blocked_policy" };

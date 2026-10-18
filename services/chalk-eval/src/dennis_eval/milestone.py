@@ -102,7 +102,8 @@ def validate_extraction(raw: Any) -> dict[str, Any]:
     return raw
 
 
-_FORBIDDEN_IN_QUESTION = re.compile(r"[0-9@$€£#<>\[\]]|https?:|www\.", re.IGNORECASE)
+# Short numbers are allowed for over/under lines; money, links, long digit runs, and phone shapes are not.
+_FORBIDDEN_IN_QUESTION = re.compile(r"[@$€£#<>\[\]]|https?:|www\.|\d{5,}|\d+[-.]\d+[-.]\d+", re.IGNORECASE)
 
 
 def _question_ok(q: str, allowed_proper: set[str] | None = None) -> bool:
