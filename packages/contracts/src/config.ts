@@ -3,6 +3,12 @@ export const AppConfigSchema = z.object({
   nodeEnv: z.enum(["development", "test", "production"]).default("development"),
   dennisMode: z.enum(["live", "hybrid", "sim"]).default("hybrid"),
   conversationMode: z.enum(["normal", "demo"]).default("normal"),
+  // Temporary: "video" makes Dennis answer only the exact recorded script (packages/platform/src/scripted-demo.ts).
+  demoScript: z.enum(["off", "video"]).default("off"),
+  // Milliseconds of iMessage typing bubble before every message Dennis sends (0 = send at once).
+  typingMs: z.coerce.number().int().min(0).max(10000).default(0),
+  // Background planning: how long a chat must be quiet before Dennis compiles a plan (0 = off).
+  planningQuietMs: z.coerce.number().int().min(0).default(120000),
   portServer: z.coerce.number().int().min(1).max(65535).default(4000),
   portWeb: z.coerce.number().int().min(1).max(65535).default(3000),
   databaseUrl: z.string().default("file:./data/dennis.db"),

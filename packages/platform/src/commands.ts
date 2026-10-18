@@ -1,4 +1,4 @@
-import { ConsentScope, DennisError } from "@dennis/contracts";
+import { ConsentScope, DennisError, voiceLine } from "@dennis/contracts";
 import type { CommandInput } from "@dennis/contracts";
 import type { PlatformContext } from "./context.ts";
 import { cleanPrivateReferences } from "./privacy.ts";
@@ -181,7 +181,16 @@ export async function handleCommand(
       decision,
       via: ctx.messaging.name === "sim" ? "sim_phone" : "imessage",
     });
-    return { reply: decision === "approve" ? "Approved." : "Declined." };
+    return {
+      reply:
+        decision === "approve"
+          ? voiceLine("command.approved", ["Approved.", "bet.", "say less.", "done."])
+          : voiceLine("command.declined", [
+              "Declined.",
+              "got it, skipped.",
+              "no worries, dropped it.",
+            ]),
+    };
   }
   if (kind === "back" || kind === "fade" || kind === "pass" || kind === "put") {
     const handler = commandHandlers.get(ctx)?.get(kind);

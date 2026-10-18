@@ -1,9 +1,9 @@
 {
   "version": "v2",
   "minConfidence": 0.75,
-  "enabledTemplates": ["recruiting", "dating", "academics"],
+  "enabledTemplates": ["recruiting", "dating", "academics", "friend_event", "other"],
   "blockedCategories": [],
-  "blockHighSensitivity": true,
+  "blockHighSensitivity": false,
   "requireSubjectIsAuthor": true,
   "requireOutcomeUncertain": true,
   "blockThirdPartyExposure": false,
@@ -15,7 +15,5 @@
   "approvalTtlMinutesNonDemo": 1440,
   "inviteTtlMinutes": 1440,
   "defaultResolvesWithinDays": 14,
-  "disabledTemplates": {
-    "friend_event": "Will {subject} actually show up?"
-  }
+  "disabledTemplates": {}
 }

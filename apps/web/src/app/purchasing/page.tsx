@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { PurchasingView, type PurchaseCard } from "@/components/PurchasingView";
-import { api } from "@/lib/api";
+import { mockMode } from "@/lib/api";
+import { loadPurchaseCard } from "@/lib/live-cards";
 
 const STATES = ["verified", "unverified", "failed", "simulated"] as const;
 
@@ -21,9 +22,14 @@ const deals = [
 export default function PurchasingPage() {
   const [state, setState] = useState<(typeof STATES)[number]>("verified");
   const [card, setCard] = useState<PurchaseCard | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    void api<PurchaseCard>(`/api/purchasing/groups?state=${state}`).then(setCard);
+    setLoaded(false);
+    void loadPurchaseCard(state)
+      .then(setCard)
+      .catch(() => setCard(null))
+      .finally(() => setLoaded(true));
   }, [state]);
 
   return (
@@ -45,7 +51,10 @@ export default function PurchasingPage() {
               <div style={{ fontSize: 26, fontWeight: 700 }}>27&quot; 4K Monitor (2-pack)</div>
               <div className="muted">Matched from &quot;new monitor&quot; in NYC Crew</div>
               <div style={{ fontSize: 30, fontWeight: 700, color: "#1B7F55" }}>
-                $80 off each <s className="muted" style={{ fontSize: 16, fontWeight: 400 }}>$400</s>
+                $80 off each{" "}
+                <s className="muted" style={{ fontSize: 16, fontWeight: 400 }}>
+                  $400
+                </s>
               </div>
             </div>
           </div>
@@ -64,13 +73,21 @@ export default function PurchasingPage() {
             <span>Approvals</span>
             <span className="muted">Order placed</span>
           </div>
-          <div className="pills">
-            {STATES.map((item) => (
-              <button key={item} type="button" className={state === item ? "pill on" : "pill"} onClick={() => setState(item)}>
-                {item}
-              </button>
-            ))}
-          </div>
+          {/* Fixture states exist only in mock mode; live mode shows the newest real group. */}
+          {mockMode ? (
+            <div className="pills">
+              {STATES.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={state === item ? "pill on" : "pill"}
+                  onClick={() => setState(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </section>
         <aside className="card">
           <h2>Who&apos;s in</h2>
@@ -100,7 +117,11 @@ export default function PurchasingPage() {
           ))}
         </div>
       </div>
-      {card ? <PurchasingView card={card} /> : <p className="muted">Loading purchasing fixture.</p>}
+      {card ? (
+        <PurchasingView card={card} />
+      ) : (
+        <p className="muted">{loaded ? "No group purchases yet." : "Loading group purchases."}</p>
+      )}
     </div>
   );
 }

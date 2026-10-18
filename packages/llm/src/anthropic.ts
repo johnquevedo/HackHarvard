@@ -5,6 +5,8 @@ import type {
   Clock,
   IntegrationStatusT,
   Logger,
+  ResearchRequest,
+  ResearchResult,
   StructuredLlm,
   StructuredRequest,
   StructuredResult,
@@ -253,6 +255,64 @@ export class AnthropicLlm implements StructuredLlm {
     });
     this.lastSuccessAt = this.opts.clock.nowIso();
     return result;
+  }
+
+  // Separate from the structured transport so a rejected web-search request never changes this.mode.
+  async research(req: ResearchRequest): Promise<ResearchResult> {
+    const started = this.opts.clock.now().getTime();
+    type Block = { type: string; text?: string; content?: unknown };
+    const messages: { role: "user" | "assistant"; content: unknown }[] = [
+      { role: "user", content: req.user },
+    ];
+    const blocks: Block[] = [];
+    let model = this.opts.model;
+    try {
+      // Server-side web search can pause a long turn; continue it a couple of times.
+      for (let turn = 0; turn < 3; turn++) {
+        const msg = (await this.client.messages.create(
+          {
+            model: this.opts.model,
+            max_tokens: req.maxTokens ?? 2500,
+            system: req.system,
+            messages,
+            tools: [
+              { type: "web_search_20250305", name: "web_search", max_uses: req.maxSearches ?? 3 },
+            ],
+          } as never,
+          { timeout: req.timeoutMs ?? 60000, maxRetries: 0 },
+        )) as unknown as { content: Block[]; model?: string; stop_reason?: string | null };
+        blocks.push(...msg.content);
+        model = msg.model ?? model;
+        if (msg.stop_reason !== "pause_turn") break;
+        messages.push({ role: "assistant", content: msg.content });
+      }
+      const text = blocks
+        .filter((block) => block.type === "text")
+        .map((block) => block.text ?? "")
+        .join("")
+        .trim();
+      const sources: { title: string; url: string }[] = [];
+      for (const block of blocks) {
+        if (block.type !== "web_search_tool_result" || !Array.isArray(block.content)) continue;
+        for (const item of block.content as { type?: string; title?: string; url?: string }[])
+          if (
+            item.type === "web_search_result" &&
+            item.url &&
+            !sources.some((s) => s.url === item.url)
+          )
+            sources.push({ title: item.title ?? item.url, url: item.url });
+      }
+      this.lastSuccessAt = this.opts.clock.nowIso();
+      return {
+        text,
+        sources: sources.slice(0, 6),
+        searched: sources.length > 0,
+        model,
+        latencyMs: this.opts.clock.now().getTime() - started,
+      };
+    } catch (err) {
+      throw mapAnthropicError(req.task, err);
+    }
   }
 
   async health(): Promise<IntegrationStatusT> {

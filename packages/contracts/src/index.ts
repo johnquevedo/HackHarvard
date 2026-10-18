@@ -10,3 +10,4 @@ export * from "./shortme.ts";
 export * from "./api.ts";
 export * from "./eval.ts";
 export * from "./config.ts";
+export * from "./voice.ts";

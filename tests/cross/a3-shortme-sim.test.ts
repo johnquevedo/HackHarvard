@@ -203,13 +203,11 @@ const EXTRACTION = {
 
 describe("a3 policy gates through the pipeline (E9 and Section 15.5)", () => {
   it.each([
-    ["health is sensitive", { sensitivity: "high" }, "sensitive"],
     [
       "someone else's interview",
       { subjectIsAuthor: false, mentionsThirdParty: true },
       "not_subject_owned",
     ],
-    ["friend_event template is disabled", { category: "friend_event" }, "category_disabled"],
     ["a stated minor is blocked", { minorIndicated: true }, "policy_blocked"],
     ["low confidence", { confidence: 0.5 }, "low_confidence"],
   ] as const)("%s", async (_name, over, reason) => {
@@ -228,6 +226,25 @@ describe("a3 policy gates through the pipeline (E9 and Section 15.5)", () => {
       .history({ judge: true, limit: 1000 })
       .filter((e) => e.type === "intent.rejected");
     expect(rejected.map((e) => e.payload.reason)).toEqual([reason]);
+    expect(outbox(ctx, "usr_demo_bob")).toHaveLength(0);
+  });
+
+  // Every category is allowed, health included; the subject still approves before anyone is invited.
+  it.each([
+    ["health", { category: "other", sensitivity: "high" }],
+    ["friend_event", { category: "friend_event" }],
+  ] as const)("%s markets are proposed to the subject", async (_name, over) => {
+    const llm = new MockStructuredLlm([
+      {
+        task: "milestone_detector_v1",
+        respond: () => ({ ...EXTRACTION, ...over }),
+      },
+    ]);
+    const ctx = await createTestPlatform({ llm });
+    await shortmeModule.register(ctx);
+    await shortmeModule.seed(ctx);
+    await say(ctx, "alice", "a message the canned extraction describes");
+    expect(marketRow(ctx)).toBeDefined();
     expect(outbox(ctx, "usr_demo_bob")).toHaveLength(0);
   });
 });

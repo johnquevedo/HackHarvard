@@ -127,9 +127,26 @@ export interface StructuredResult<T> {
   latencyMs: number;
   attempts: number;
 }
+export interface ResearchRequest {
+  task: string;
+  system: string;
+  user: string;
+  maxSearches?: number;
+  maxTokens?: number;
+  timeoutMs?: number;
+}
+export interface ResearchResult {
+  text: string;
+  sources: { title: string; url: string }[];
+  searched: boolean; // true only when live web results came back
+  model: string;
+  latencyMs: number;
+}
 export interface StructuredLlm {
   readonly name: "anthropic" | "chalk_gateway" | "mock";
   generate<T>(req: StructuredRequest<T>): Promise<StructuredResult<T>>;
+  /** Optional free-text research with live web search. Callers must handle its absence or failure. */
+  research?(req: ResearchRequest): Promise<ResearchResult>;
   health(): Promise<IntegrationStatusT>;
 }
 

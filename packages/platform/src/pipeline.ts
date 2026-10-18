@@ -11,7 +11,10 @@ import type { PlatformContext } from "./context.ts";
 import { insert, row, rows, update } from "./storage.ts";
 import { normalizeHandle } from "@dennis/messaging";
 import { handleCommand, ONBOARDING } from "./commands.ts";
+import { handleScriptedDemo } from "./scripted-demo.ts";
+import { withTyping } from "./typing.ts";
 import { scheduleConversationalReply } from "./conversation.ts";
+import { notePlanningActivity } from "./planning.ts";
 interface StoredInbound {
   id: string;
   userId: string;
@@ -87,6 +90,7 @@ export async function ingestInbound(
     if (previous) return { messageId: previous.id, outcome: "replay" };
     if (msg.provider === "photon" && msg.providerSenderId === ctx.config.photonAgentUserId)
       return { messageId: null, outcome: "ignored" };
+    if (ctx.config.demoScript === "video") return handleScriptedDemo(ctx, msg);
     let handle: string;
     try {
       handle = normalizeHandle(msg.senderHandle).handle;
@@ -119,14 +123,16 @@ export async function ingestInbound(
       const identity = "handle:" + createHash("sha256").update(handle).digest("hex");
       await ctx.runExclusive("onboarding:" + identity, async () => {
         if (msg.providerSpaceKind !== "group" && claimOnboarding(ctx, identity))
-          await ctx.messaging.send({
-            accountKey: ctx.config.photonAccountKey,
-            toHandle: handle,
-            toPhotonUserId: msg.providerSenderId,
-            spaceId: msg.providerSpaceId,
-            text: ONBOARDING.replace("{first}", "there"),
-            idempotencyKey: "onboarding:" + messageId,
-          });
+          await withTyping(ctx, msg.providerSpaceId, "onboarding:" + messageId, () =>
+            ctx.messaging.send({
+              accountKey: ctx.config.photonAccountKey,
+              toHandle: handle,
+              toPhotonUserId: msg.providerSenderId,
+              spaceId: msg.providerSpaceId,
+              text: ONBOARDING.replace("{first}", "there").toLowerCase(),
+              idempotencyKey: "onboarding:" + messageId,
+            }),
+          );
       });
       return { messageId, outcome: "ignored" };
     }
@@ -428,6 +434,7 @@ export async function runPipeline(ctx: PlatformContext, messageId: string): Prom
         messageId,
       );
       scheduleConversationalReply(ctx, { ...m, text: m.text }, detected);
+      notePlanningActivity(ctx, { ...m, text: m.text });
     } catch (error) {
       update(
         ctx.db,

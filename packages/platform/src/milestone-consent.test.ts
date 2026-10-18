@@ -40,7 +40,7 @@ it("walks STOP, hi, onboarding, AGREE and optional scopes without storing uncons
   await text(ctx, "stop", "STOP");
   expect((await text(ctx, "hi", "hi")).outcome).toBe("ignored");
   const sent = (ctx.messaging as SimMessagingProvider).sent;
-  expect(sent.at(-1)?.text).toContain("Reply AGREE");
+  expect(sent.at(-1)?.text).toContain("reply agree");
   const count = sent.length;
   await text(ctx, "hi-again", "private unconsented message");
   expect(sent).toHaveLength(count);

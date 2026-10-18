@@ -3,6 +3,7 @@ import {
   type A2AMessage,
   type ApprovalT,
   type MerchantOfferT,
+  voiceLine,
 } from "@dennis/contracts";
 import { bankLinks, groupPurchaseMembers, groupPurchases, merchantOffers } from "@dennis/db";
 import type { PlatformContext } from "@dennis/platform";
@@ -321,7 +322,11 @@ async function revealNamesAndRequestPayment(ctx: PlatformContext, groupId: strin
     await ctx.notifier.send({
       userId: member.userId,
       kind: "info",
-      text: `You're buying with ${otherUser.firstName}.`,
+      text: voiceLine("purchase.partner", [
+        `You're buying with ${otherUser.firstName}.`,
+        `you and ${otherUser.firstName} are buying together now.`,
+        `locked in with ${otherUser.firstName}. teamwork.`,
+      ]),
       opportunityId: group.opportunityId,
       idempotencyKey: `purchase:name-reveal:${groupId}:${member.userId}`,
     });

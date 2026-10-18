@@ -27,9 +27,9 @@ describe("rules file", () => {
   it("has the specified values", () => {
     expect(gates).toMatchObject({
       minConfidence: 0.75,
-      enabledTemplates: ["recruiting", "dating", "academics"],
+      enabledTemplates: ["recruiting", "dating", "academics", "friend_event", "other"],
       blockedCategories: [],
-      blockHighSensitivity: true,
+      blockHighSensitivity: false,
       requireSubjectIsAuthor: true,
       blockThirdPartyExposure: false,
       redactEmployerNames: false,
@@ -50,14 +50,15 @@ describe("applyMilestoneGates (same table as the Python eval)", () => {
     [{ isMilestone: false }, "no_market", "not_an_intent"],
     [{ hyperbole: true }, "no_market", "not_an_intent"],
     [{ category: "dating" }, "pass", null],
-    [{ sensitivity: "high" }, "blocked_policy", "sensitive"],
+    [{ sensitivity: "high" }, "pass", null],
     [{ subjectIsAuthor: false }, "blocked_policy", "not_subject_owned"],
     [{ mentionsThirdParty: true }, "pass", null],
     [{ outcomeUncertain: false }, "no_market", "not_an_intent"],
     [{ confidence: 0.74 }, "no_market", "low_confidence"],
     [{ confidence: 0.75 }, "pass", null],
     [{ category: "academics" }, "pass", null],
-    [{ category: "friend_event" }, "no_market", "category_disabled"],
+    [{ category: "friend_event" }, "pass", null],
+    [{ category: "other", sensitivity: "high" }, "pass", null],
     [{ sensitivity: "low" }, "pass", null],
   ] as [Partial<MilestoneExtractionT>, string, string | null][])("%o", (over, decision, reason) => {
     const r = applyMilestoneGates(MilestoneExtraction.parse({ ...BASE, ...over }), gates);

@@ -1,3 +1,4 @@
+import { withTyping } from "./typing.ts";
 import { drainPlatform } from "./foundation.ts";
 import { DennisError } from "@dennis/contracts";
 import { PhotonBetaProvider } from "@dennis/messaging";
@@ -9,6 +10,7 @@ import { pollIntegrationHealth } from "./integrations.ts";
 import { recoverA2A } from "./a2a.ts";
 import { ingestInbound, runPipeline } from "./pipeline.ts";
 import { cancelConversationalReplies } from "./conversation.ts";
+import { cancelPlanning } from "./planning.ts";
 function emitDeliveryLatency(
   ctx: PlatformContext,
   outboxId: string,
@@ -84,21 +86,25 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
           "SELECT value FROM kv WHERE key=?",
           "outbox-route:" + item.id,
         )?.value;
-        const result = await ctx.messaging.send({
-          accountKey: ctx.config.photonAccountKey,
-          toHandle: user.handle,
-          toPhotonUserId: user.photonUserId,
-          spaceId:
-            explicitSpace ??
-            row<{ photonSpaceId: string }>(
-              ctx.db,
-              "SELECT photon_space_id FROM photon_spaces WHERE user_id=?",
-              user.id,
-            )?.photonSpaceId ??
-            null,
-          text: item.text,
-          idempotencyKey: stored.idempotencyKey,
-        });
+        const spaceId =
+          explicitSpace ??
+          row<{ photonSpaceId: string }>(
+            ctx.db,
+            "SELECT photon_space_id FROM photon_spaces WHERE user_id=?",
+            user.id,
+          )?.photonSpaceId ??
+          null;
+        const result = await withTyping(ctx, spaceId, stored.idempotencyKey, () =>
+          ctx.messaging.send({
+            accountKey: ctx.config.photonAccountKey,
+            toHandle: user.handle,
+            toPhotonUserId: user.photonUserId,
+            spaceId,
+            // Dennis texts only in lowercase; the stored outbox keeps the original copy.
+            text: item.text.toLowerCase(),
+            idempotencyKey: stored.idempotencyKey,
+          }),
+        );
         update(
           ctx.db,
           "outbox",
@@ -201,6 +207,7 @@ export async function startRuntime(ctx: PlatformContext): Promise<{ stop(): Prom
     if (stopTask) return stopTask;
     stopped = true;
     cancelConversationalReplies(ctx);
+    cancelPlanning(ctx);
     for (const timer of timers) clearInterval(timer);
     stopTask = (async () => {
       try {

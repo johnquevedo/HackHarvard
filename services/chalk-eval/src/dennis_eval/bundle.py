@@ -19,9 +19,9 @@ BUNDLE_FILE = Path(__file__).with_name("_bundle.json")
 
 DEFAULT_MILESTONE_GATES: dict[str, Any] = {
     "minConfidence": 0.75,
-    "enabledTemplates": ["recruiting", "dating", "academics"],
+    "enabledTemplates": ["recruiting", "dating", "academics", "friend_event", "other"],
     "blockedCategories": [],
-    "blockHighSensitivity": True,
+    "blockHighSensitivity": False,
     "requireSubjectIsAuthor": True,
     "requireOutcomeUncertain": True,
     "blockThirdPartyExposure": False,

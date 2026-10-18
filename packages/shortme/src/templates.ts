@@ -1,6 +1,7 @@
 // ShortMe copy in Dennis's group-chat voice: lowercase, short, a little unhinged, never preachy.
 // Names, amounts, and codes are inserted by code, never by the LLM. Every `{code}` stays literal for
 // the approval service to fill. Amounts are shown in sim dollars: 1 ledger point = GATES.dollarsPerPoint.
+import { voiceLine } from "@dennis/contracts";
 import { GATES } from "./rules";
 
 export const TEMPLATE_VERSION = "v2";
@@ -40,9 +41,20 @@ export function publishMarketPrompt(p: {
     return `want me to open a private points-only market${audience}: "${p.question}"? no real money moves.`;
   }
   if (p.category === "dating") {
-    return "ur chopped, thats a high risk asset. wanna open a market on whether or not she ghosts you?";
+    return voiceLine("shortme.open.dating", [
+      "ur chopped, thats a high risk asset. wanna open a market on whether or not she ghosts you?",
+      "bro that's a volatile position. want a market on whether she leaves you on read?",
+      "high risk, high reward. should i open a market on her ghosting you?",
+      "chopped is strong but the chart isn't looking great. market on whether she ghosts you?",
+    ]);
   }
-  return `Yo ${voiceName(p.first)} why don't you short yourself, i'll set up a market. Anyone wanna get in on this?`;
+  const first = voiceName(p.first);
+  return voiceLine("shortme.open.self", [
+    `Yo ${first} why don't you short yourself, i'll set up a market. Anyone wanna get in on this?`,
+    `${first} if you're that cooked you might as well profit off it. want me to set up a market? who's in?`,
+    `ngl ${first} this is a buy-the-dip moment. short yourself, i'll open the market. anyone wanna get in?`,
+    `say less ${first}. let's turn this into a tradeable asset. i'll set up a market, who's getting in?`,
+  ]);
 }
 
 // Posted once the market is live. Mentions the subject's own stake when they put money in.
@@ -58,9 +70,20 @@ export function marketCreatedText(p: {
     }. points only, no real money.`;
   if (p.subjectStakePoints && p.subjectStakePoints > 0) {
     const what = p.category === "dating" ? "on the line" : "insurance for sale";
-    return `Market created: "${p.question}" ${dollars(p.subjectStakePoints)} ${what}`;
+    const amount = `${dollars(p.subjectStakePoints)} ${what}`;
+    return voiceLine("shortme.created.stake", [
+      `Market created: "${p.question}" ${amount}`,
+      `market's live: "${p.question}" ${amount}`,
+      `done. "${p.question}" is open, ${amount}`,
+      `"${p.question}" is officially trading. ${amount}`,
+    ]);
   }
-  return `Market created: "${p.question}" Anyone wanna get in on this?`;
+  return voiceLine("shortme.created", [
+    `Market created: "${p.question}" Anyone wanna get in on this?`,
+    `market's live: "${p.question}" who's getting in?`,
+    `done. "${p.question}" is open for business. anyone?`,
+    `"${p.question}" is officially trading. place your bets (sim $ only)`,
+  ]);
 }
 
 // 1:1 invite for a friend whose agent got the market over A2A (used until group chats land).
@@ -82,11 +105,25 @@ export function stakeRecordedText(p: {
   isSubject: boolean;
 }): string {
   const who = voiceName(p.first);
+  const amount = dollars(p.points);
+  const subject = voiceName(p.subjectFirst);
   if (p.isSubject && p.side === "fade")
-    return `${who} bought ${dollars(p.points)} of insurance on themself. respect.`;
+    return voiceLine("shortme.stake.self", [
+      `${who} bought ${amount} of insurance on themself. respect.`,
+      `${who} just hedged ${amount} against themself. risk management king.`,
+      `${who} shorted themself for ${amount}. respect the hedge.`,
+    ]);
   if (p.side === "back")
-    return `${who}'s in for ${dollars(p.points)} backing ${voiceName(p.subjectFirst)}.`;
-  return `${who} put ${dollars(p.points)} against ${voiceName(p.subjectFirst)}. cold.`;
+    return voiceLine("shortme.stake.back", [
+      `${who}'s in for ${amount} backing ${subject}.`,
+      `${who} put ${amount} on ${subject}. believer.`,
+      `${who} is long ${subject} for ${amount}.`,
+    ]);
+  return voiceLine("shortme.stake.fade", [
+    `${who} put ${amount} against ${subject}. cold.`,
+    `${who} is short ${subject} for ${amount}. brutal.`,
+    `${who} bet ${amount} against ${subject}. no loyalty.`,
+  ]);
 }
 
 export function confirmResolutionPrompt(p: { question: string; outcome: "yes" | "no" }): string {

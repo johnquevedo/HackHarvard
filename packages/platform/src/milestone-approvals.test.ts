@@ -37,7 +37,7 @@ it("delivers an approval prompt and applies repeated YES once", async () => {
   await dispatchOutbox(ctx);
   const sent = (ctx.messaging as SimMessagingProvider).sent;
   expect(sent).toHaveLength(1);
-  expect(sent[0]!.text).toContain("YES " + approval.shortCode);
+  expect(sent[0]!.text).toContain("yes " + approval.shortCode);
   for (const id of ["yes-one", "yes-two"])
     await ingestInbound(ctx, {
       provider: "sim",

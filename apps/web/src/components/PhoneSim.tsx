@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { approveLatestPending } from "@/lib/live-cards";
 
 interface ThreadMessage {
   direction: "in" | "out";
@@ -11,7 +12,7 @@ interface ThreadMessage {
 }
 
 export function PhoneSim() {
-  const [userId, setUserId] = useState("usr_demo_alice");
+  const [userId, setUserId] = useState("usr_demo_john");
   const [text, setText] = useState(
     "I'm thinking about getting a new 27 inch 4K monitor for my setup, maybe $350 or under.",
   );
@@ -35,6 +36,9 @@ export function PhoneSim() {
               void refresh(event.target.value);
             }}
           >
+            <option value="usr_demo_john">John</option>
+            <option value="usr_demo_steven">Steven</option>
+            <option value="usr_demo_isaac">Isaac</option>
             <option value="usr_demo_alice">Alice</option>
             <option value="usr_demo_bob">Bob</option>
           </select>
@@ -88,10 +92,9 @@ export function ApprovalFallback() {
           className="btn"
           type="button"
           onClick={() => {
-            void api("/api/approvals/apr_join_alice/decision", {
-              method: "POST",
-              body: { userId: "usr_demo_alice", decision: "approved" },
-            }).then(() => setResult("Alice DASHBOARD FALLBACK"));
+            void approveLatestPending("usr_demo_alice")
+              .then((outcome) => setResult(`Alice: ${outcome}. DASHBOARD FALLBACK`))
+              .catch((error: unknown) => setResult(`Alice: ${String(error)}`));
           }}
         >
           Approve as Alice. DASHBOARD FALLBACK
@@ -100,10 +103,9 @@ export function ApprovalFallback() {
           className="btn"
           type="button"
           onClick={() => {
-            void api("/api/approvals/apr_join_bob/decision", {
-              method: "POST",
-              body: { userId: "usr_demo_bob", decision: "approved" },
-            }).then(() => setResult("Bob DASHBOARD FALLBACK"));
+            void approveLatestPending("usr_demo_bob")
+              .then((outcome) => setResult(`Bob: ${outcome}. DASHBOARD FALLBACK`))
+              .catch((error: unknown) => setResult(`Bob: ${String(error)}`));
           }}
         >
           Approve as Bob. DASHBOARD FALLBACK
