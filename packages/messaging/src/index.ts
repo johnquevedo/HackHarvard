@@ -1,6 +1,8 @@
 import { DennisError } from "@dennis/contracts";
 import { PhotonBetaProvider } from "./photon/provider.ts";
+import { PhotonSpectrumProvider } from "./photon/provider-spectrum.ts";
 export { PhotonBetaProvider } from "./photon/provider.ts";
+export { PhotonSpectrumProvider } from "./photon/provider-spectrum.ts";
 export { normalizePhotonEvent } from "./photon/normalize.ts";
 import type {
   AppConfig,
@@ -80,6 +82,8 @@ export function createMessagingProvider(
   cfg: AppConfig,
   deps: { db: Db; clock: Clock; ids: IdFactory; log: Logger },
 ): MessagingProvider {
+  if (cfg.photonMode === "live" && cfg.photonProjectId && cfg.photonProjectSecret)
+    return new PhotonSpectrumProvider(cfg, deps);
   if (cfg.photonMode === "live" && cfg.photonProjectId && cfg.photonApiKey && cfg.photonAgentUserId)
     return new PhotonBetaProvider(cfg, deps);
   if (cfg.photonMode === "live")

@@ -14,7 +14,13 @@ import {
   markets,
 } from "@dennis/db";
 import type { PlatformContext } from "@dennis/platform";
-import { fillSubject, marketInviteText, publishMarketPrompt } from "../templates";
+import {
+  fillSubject,
+  marketCreatedText,
+  marketInviteText,
+  publishMarketPrompt,
+} from "../templates";
+import { stakingOnPublish } from "./publish-state";
 import { ensureStarterGrant, getBalance } from "../ledger/ledger";
 import {
   approvalTtlMinutes,
@@ -214,7 +220,9 @@ export async function handleMilestoneDetection(
     promptText: publishMarketPrompt({
       first: user.firstName,
       question,
+      category: p.category,
       names: invitees.map((i) => i.firstName),
+      mode: ctx.config.conversationMode,
     }),
     ttlMinutes: approvalTtlMinutes(user.isDemo),
     idempotencyKey: `publish_market:${marketId}`,
@@ -262,6 +270,20 @@ export async function onPublishDecided(ctx: PlatformContext, approval: ApprovalT
     emitMarketUpdated(ctx, opened);
     await syncOpportunity(ctx, opened);
     await sendInvites(ctx, opened, approvedInvitees);
+    if (!stakingOnPublish.has(opened.id)) {
+      await ctx.notifier.send({
+        userId: opened.subjectUserId,
+        kind: "info",
+        text: marketCreatedText({
+          question: opened.question,
+          subjectStakePoints: null,
+          category: opened.category,
+          mode: ctx.config.conversationMode,
+        }),
+        opportunityId: opened.opportunityId,
+        idempotencyKey: `market_created:${opened.id}`,
+      });
+    }
   });
 }
 

@@ -157,8 +157,9 @@ export async function handleCommand(
   if (kind === "help")
     return {
       reply:
-        "Commands: AGREE, AGREE SHORTME (18+ confirmation), AGREE PAYMENTS, PAUSE, RESUME, STATUS, STOP, FORGET. Approvals: YES or NO followed by the four-character code.",
+        "i'm already listening—no @ needed. talk normally and i'll jump in when i spot a market or group-buy opportunity. you can also say status, pause, resume, stop, or forget. if i ask for approval, reply yes or no with the 4-character code.",
     };
+  if (kind === "presence") return { reply: "yeah i'm here. i'm listening—no @ needed." };
   if (["approve", "decline", "confirm", "dispute"].includes(kind) && "code" in command) {
     const pending = await ctx.approvals.findPending(userId, command.code);
     const matches =
@@ -182,7 +183,7 @@ export async function handleCommand(
     });
     return { reply: decision === "approve" ? "Approved." : "Declined." };
   }
-  if (kind === "back" || kind === "fade" || kind === "pass") {
+  if (kind === "back" || kind === "fade" || kind === "pass" || kind === "put") {
     const handler = commandHandlers.get(ctx)?.get(kind);
     if (handler) return handler(input);
     return { reply: "No matching ShortMe invitation is available." };

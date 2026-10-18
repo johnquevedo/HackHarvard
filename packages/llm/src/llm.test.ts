@@ -225,6 +225,40 @@ describe("AnthropicLlm with a faked SDK", () => {
     );
   });
 
+  it("falls back to plain JSON when forced tools are unsupported", async () => {
+    const bad = new Anthropic.BadRequestError(
+      400,
+      { error: { message: "unsupported" } },
+      "unsupported",
+      new Headers(),
+    );
+    let creates = 0;
+    const { client, seen } = fakeClient({
+      parse: () => {
+        throw bad;
+      },
+      create: () => {
+        creates += 1;
+        if (creates === 1) throw bad;
+        return msg({ content: [{ type: "text", text: '{"ok":true,"n":9}' }] });
+      },
+    });
+    const llm = new AnthropicLlm({
+      apiKey: "k",
+      model: "m",
+      timeoutMs: 8000,
+      clock,
+      log,
+      client,
+    });
+    expect((await llm.generate(req())).value).toEqual({ ok: true, n: 9 });
+    expect(llm.currentMode).toBe("json");
+    await llm.generate(req());
+    expect(seen.parse).toHaveLength(1);
+    expect(seen.create).toHaveLength(3);
+    expect(JSON.stringify(seen.create[1])).toContain("Return only one valid JSON object");
+  });
+
   it("maps an SDK timeout to a typed timeout after one retry", async () => {
     const { client } = fakeClient({
       parse: () => {

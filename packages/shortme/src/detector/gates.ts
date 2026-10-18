@@ -12,6 +12,7 @@ export interface MilestoneGates {
   requireOutcomeUncertain: boolean;
   blockThirdPartyExposure: boolean;
   redactEmployerNames: boolean;
+  dollarsPerPoint: number;
   maxStake: number;
   starterPoints: number;
   approvalTtlMinutes: number;
@@ -40,6 +41,7 @@ export type GateResult =
 const FALLBACK_QUESTIONS: Record<string, string> = {
   recruiting: "Will {subject} get the offer?",
   academics: "Will {subject} pass?",
+  dating: "Will {subject} get ghosted?",
   friend_event: "Will {subject} make it?",
 };
 const GENERIC_QUESTION = "Will it work out for {subject}?";
@@ -53,14 +55,18 @@ function skip(reason: GateReason, detail: string): GateResult {
   return { pass: false, reason, detail, evalDecision: "no_market" };
 }
 
-function questionOk(q: string): boolean {
+// `allowedProper` holds lowercase words the author themself named (employers, schools) that may stay
+// capitalized when redaction is off; every other capitalized word after the first is refused.
+function questionOk(q: string, allowedProper: Set<string>): boolean {
   if (!q.includes("{subject}") || q.length > 120 || !q.endsWith("?")) return false;
   if (FORBIDDEN_IN_QUESTION.test(q)) return false;
   const rest = q.split("{subject}").join("");
   if (rest.includes("{") || rest.includes("}")) return false;
   // Conservative proper-noun guard: only the first word may be capitalized.
   const words = rest.match(/[A-Za-z][A-Za-z'\-]*/g) ?? [];
-  return words.slice(1).every((w) => w[0] !== w[0]!.toUpperCase());
+  return words
+    .slice(1)
+    .every((w) => w[0] !== w[0]!.toUpperCase() || allowedProper.has(w.toLowerCase()));
 }
 
 function escapeRegex(s: string): string {
@@ -88,7 +94,10 @@ export function sanitizeQuestion(
     }
   }
   q = q.split(/\s+/).join(" ");
-  if (!questionOk(q)) {
+  const allowedProper = new Set(
+    redact ? [] : employerMentions.flatMap((m) => m.toLowerCase().match(/[a-z][a-z'\-]*/g) ?? []),
+  );
+  if (!questionOk(q, allowedProper)) {
     q = FALLBACK_QUESTIONS[category] ?? GENERIC_QUESTION;
     redactions.push("fallback_question");
   }

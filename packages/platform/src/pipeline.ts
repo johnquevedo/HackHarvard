@@ -11,6 +11,7 @@ import type { PlatformContext } from "./context.ts";
 import { insert, row, rows, update } from "./storage.ts";
 import { normalizeHandle } from "@dennis/messaging";
 import { handleCommand, ONBOARDING } from "./commands.ts";
+import { scheduleConversationalReply } from "./conversation.ts";
 interface StoredInbound {
   id: string;
   userId: string;
@@ -21,6 +22,7 @@ interface StoredInbound {
   provider: string;
   providerSpaceId: string | null;
 }
+
 function claimOnboarding(ctx: PlatformContext, identity: string): boolean {
   const key = "onboarding:" + identity;
   const previous = ctx.db.$client
@@ -33,6 +35,39 @@ function claimOnboarding(ctx: PlatformContext, identity: string): boolean {
     )
     .run(key, ctx.clock.nowIso(), ctx.clock.nowIso());
   return true;
+}
+async function groupAuthorizationFailure(
+  ctx: PlatformContext,
+  msg: InboundMessageT,
+): Promise<string | null> {
+  if (msg.providerSpaceKind !== "group") return null;
+  const participantIds = new Set(
+    (msg.providerParticipantIds ?? []).filter((id) => id !== ctx.config.photonAgentUserId),
+  );
+  const normalizedHandles = new Set<string>();
+  for (const raw of msg.providerParticipantHandles ?? []) {
+    try {
+      normalizedHandles.add(normalizeHandle(raw).handle);
+    } catch {
+      return "group_participants_unresolved";
+    }
+  }
+  if (participantIds.size < 2 || normalizedHandles.size !== participantIds.size)
+    return "group_participants_unresolved";
+  let sender: string;
+  try {
+    sender = normalizeHandle(msg.senderHandle).handle;
+  } catch {
+    return "group_participants_unresolved";
+  }
+  if (!normalizedHandles.has(sender)) return "group_sender_mismatch";
+  for (const handle of normalizedHandles) {
+    const participant = await ctx.users.getByHandle(handle);
+    if (!participant) return "group_member_unknown";
+    if (!(await ctx.consent.has(participant.id, "messaging_context")))
+      return "group_member_without_consent";
+  }
+  return null;
 }
 export async function ingestInbound(
   ctx: PlatformContext,
@@ -83,7 +118,7 @@ export async function ingestInbound(
       });
       const identity = "handle:" + createHash("sha256").update(handle).digest("hex");
       await ctx.runExclusive("onboarding:" + identity, async () => {
-        if (claimOnboarding(ctx, identity))
+        if (msg.providerSpaceKind !== "group" && claimOnboarding(ctx, identity))
           await ctx.messaging.send({
             accountKey: ctx.config.photonAccountKey,
             toHandle: handle,
@@ -95,21 +130,51 @@ export async function ingestInbound(
       });
       return { messageId, outcome: "ignored" };
     }
+    let identityFailure: string | null = null;
+    if (msg.provider === "photon" && msg.providerSenderId) {
+      if (user.photonUserId && user.photonUserId !== msg.providerSenderId)
+        identityFailure = "provider_identity_mismatch";
+      else if (!user.photonUserId)
+        ctx.db.$client
+          .prepare("UPDATE users SET photon_user_id=? WHERE id=? AND photon_user_id IS NULL")
+          .run(msg.providerSenderId, user.id);
+    }
     const agent = await ctx.users.getAgentByUserId(user.id);
     if (!agent) throw new DennisError("not_found", "Agent not found", 404);
-    const command = parseCommand(msg.text);
+    const pendingApprovalCount = (await ctx.approvals.findPending(user.id, null)).length;
+    const command = parseCommand(msg.text, {
+      allowNaturalApproval: pendingApprovalCount === 1,
+      allowDemoPut: ctx.config.conversationMode === "demo",
+    });
     const consent = await ctx.consent.has(user.id, "messaging_context");
+    const groupFailure = await groupAuthorizationFailure(ctx, msg);
+    const alsoDetect = command.kind === "put" && command.alsoDetect === true;
+    if (msg.providerSpaceKind === "group" && msg.providerSpaceId && !groupFailure) {
+      for (const handle of new Set(msg.providerParticipantHandles ?? [])) {
+        const participant = await ctx.users.getByHandle(normalizeHandle(handle).handle);
+        if (participant)
+          ctx.db.$client
+            .prepare(
+              "INSERT INTO photon_spaces (user_id,photon_space_id,created_at) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET photon_space_id=excluded.photon_space_id",
+            )
+            .run(participant.id, msg.providerSpaceId, ctx.clock.nowIso());
+      }
+    }
     const paused =
       agent.status === "paused" ||
       row<{ value: boolean }>(ctx.db, "SELECT value FROM kv WHERE key='inbound_paused'")?.value ===
         true;
-    const reason = !consent
-      ? "no_consent"
-      : paused
-        ? "paused"
-        : !msg.text.trim()
-          ? "non_text"
-          : null;
+    const reason = identityFailure
+      ? identityFailure
+      : groupFailure
+        ? groupFailure
+        : !consent
+          ? "no_consent"
+          : paused
+            ? "paused"
+            : !msg.text.trim()
+              ? "non_text"
+              : null;
     const messageId = ctx.ids.next("message");
     insert(ctx.db, "inbound_messages", {
       id: messageId,
@@ -118,13 +183,18 @@ export async function ingestInbound(
       providerSpaceId: msg.providerSpaceId,
       userId: user.id,
       agentId: agent.id,
-      text: consent ? msg.text : null,
-      status: command.kind !== "none" ? "command" : reason ? "ignored" : "received",
+      text: consent && !identityFailure && !groupFailure ? msg.text : null,
+      status:
+        command.kind !== "none" && !alsoDetect && !identityFailure && !groupFailure
+          ? "command"
+          : reason
+            ? "ignored"
+            : "received",
       ignoreReason: reason,
       receivedAt: msg.receivedAt,
-      processedAt: reason || command.kind !== "none" ? ctx.clock.nowIso() : null,
+      processedAt: reason || (command.kind !== "none" && !alsoDetect) ? ctx.clock.nowIso() : null,
     });
-    if (command.kind !== "none") {
+    if (command.kind !== "none" && !identityFailure && !groupFailure) {
       try {
         const result = await handleCommand(ctx, {
           userId: user.id,
@@ -168,7 +238,7 @@ export async function ingestInbound(
         });
         throw error;
       }
-      return { messageId, outcome: "command" };
+      if (!alsoDetect) return { messageId, outcome: "command" };
     }
     if (reason) {
       ctx.events.emit({
@@ -216,7 +286,7 @@ export async function runPipeline(ctx: PlatformContext, messageId: string): Prom
     messageId,
   );
   if (!initial) return;
-  await ctx.runExclusive("pipeline:" + initial.agentId, async () => {
+  await ctx.runExclusive("pipeline:" + (initial.providerSpaceId ?? initial.agentId), async () => {
     const m = row<StoredInbound>(ctx.db, "SELECT * FROM inbound_messages WHERE id=?", messageId);
     if (!m || m.status !== "received" || !m.text) return;
     const agent = await ctx.users.getAgent(m.agentId);
@@ -270,6 +340,7 @@ export async function runPipeline(ctx: PlatformContext, messageId: string): Prom
     }
     try {
       await typing(true);
+      let detected = false;
       for (const detector of ctx.detectors.list()) {
         const kind = detector.intentKind;
         const scope = kind === "purchase" ? "purchase_matching" : "shortme_free_play";
@@ -312,6 +383,7 @@ export async function runPipeline(ctx: PlatformContext, messageId: string): Prom
             payload: { messageId, detectorId: detector.id, ...rejected },
           });
         for (const detection of outcome.detections) {
+          detected = true;
           if (detection.kind !== kind)
             throw new DennisError("validation_error", "Detector kind mismatch", 400);
           // Recheck consent after the external inference call.
@@ -355,6 +427,7 @@ export async function runPipeline(ctx: PlatformContext, messageId: string): Prom
         "id=?",
         messageId,
       );
+      scheduleConversationalReply(ctx, { ...m, text: m.text }, detected);
     } catch (error) {
       update(
         ctx.db,

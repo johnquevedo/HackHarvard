@@ -11,6 +11,7 @@ import { eq, inArray, and } from "drizzle-orm";
 import type { FeatureModule, PlatformContext } from "@dennis/platform";
 
 import { purchaseDetector } from "./detector/purchase.js";
+import { MockPurchaseDetector } from "./detector/mock.js";
 import {
   createGroupFromCompatibleProbe,
   handleJoinDecision,
@@ -178,7 +179,7 @@ export const purchasingModule: FeatureModule = {
         .where(eq(groupPurchaseMembers.userId, userId))
         .run();
     });
-    ctx.detectors.register(purchaseDetector);
+    ctx.detectors.register(ctx.llm.name === "mock" ? new MockPurchaseDetector() : purchaseDetector);
     ctx.detectors.onDetection("purchase", (input) => handlePurchaseDetection(ctx, input));
     ctx.a2a.on("purchase.probe", (msg) => handleProbe(ctx, msg));
     ctx.a2a.on("purchase.probe_result", (msg) => handleProbeResult(ctx, msg));
@@ -211,6 +212,47 @@ export const purchasingModule: FeatureModule = {
         },
       })
       .run();
+    const friendAgent =
+      ctx.config.conversationMode === "demo" && ctx.config.demoScenario === "group"
+        ? await ctx.users.getAgentByUserId("usr_demo_friend")
+        : null;
+    if (friendAgent) {
+      const existing = await ctx.intents.listByAgent(friendAgent.id, { kind: "purchase" });
+      if (!existing.some((intent) => intent.status === "shared")) {
+        const from = ctx.clock.nowIso().slice(0, 10);
+        const toDate = new Date(ctx.clock.now().getTime() + 14 * 86_400_000);
+        const intent = await ctx.intents.create({
+          agentId: friendAgent.id,
+          userId: friendAgent.userId,
+          kind: "purchase",
+          sourceMessageId: null,
+          privatePayload: {
+            productText: "monitor",
+            category: "monitor",
+            quantity: 1,
+            budgetMaxCents: 35000,
+            timeframe: {
+              kind: "flexible",
+              from,
+              to: toDate.toISOString().slice(0, 10),
+            },
+            statedCertainty: "considering",
+            sourceExcerpt: "Seeded demo match; no private message.",
+          },
+          publicPayload: {
+            category: "monitor",
+            productKey: "monitor_generic",
+            quantity: 1,
+            budgetBandMaxCents: 35000,
+            window: { from, to: toDate.toISOString().slice(0, 10) },
+            regionCode: ctx.config.dennisRegionCode,
+          },
+          confidence: 1,
+          rationale: "Seeded external demo friend for the scripted monitor match.",
+        });
+        await ctx.intents.markShared(intent.id);
+      }
+    }
     await seedBank(ctx);
   },
   async reset() {},

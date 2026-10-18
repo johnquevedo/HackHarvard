@@ -46,6 +46,7 @@ EXTRACTION_SCHEMA: dict[str, Any] = {
 FALLBACK_QUESTIONS = {
     "recruiting": "Will {subject} get the offer?",
     "academics": "Will {subject} pass?",
+    "dating": "Will {subject} get ghosted?",
     "friend_event": "Will {subject} make it?",
 }
 GENERIC_QUESTION = "Will it work out for {subject}?"
@@ -104,7 +105,7 @@ def validate_extraction(raw: Any) -> dict[str, Any]:
 _FORBIDDEN_IN_QUESTION = re.compile(r"[0-9@$€£#<>\[\]]|https?:|www\.", re.IGNORECASE)
 
 
-def _question_ok(q: str) -> bool:
+def _question_ok(q: str, allowed_proper: set[str] | None = None) -> bool:
     if "{subject}" not in q or len(q) > 120 or not q.endswith("?"):
         return False
     if _FORBIDDEN_IN_QUESTION.search(q):
@@ -114,7 +115,8 @@ def _question_ok(q: str) -> bool:
         return False
     # Conservative proper-noun guard: only the first word may be capitalized.
     words = re.findall(r"[A-Za-z][A-Za-z'\-]*", rest)
-    return all(not w[0].isupper() for w in words[1:])
+    allowed = allowed_proper or set()
+    return all(not w[0].isupper() or w.lower() in allowed for w in words[1:])
 
 
 def sanitize_question(template: str, category: str, employer_mentions: list[str], redact: bool) -> tuple[str, list[str]]:
@@ -129,7 +131,9 @@ def sanitize_question(template: str, category: str, employer_mentions: list[str]
                 if "employer" not in redactions:
                     redactions.append("employer")
     q = " ".join(q.split())
-    if not _question_ok(q):
+    # Without redaction, words the author themself named (employers, schools) may stay capitalized.
+    allowed = set() if redact else {w for m in employer_mentions for w in re.findall(r"[a-z][a-z'\-]*", m.lower())}
+    if not _question_ok(q, allowed):
         q = FALLBACK_QUESTIONS.get(category, GENERIC_QUESTION)
         if "fallback_question" not in redactions:
             redactions.append("fallback_question")

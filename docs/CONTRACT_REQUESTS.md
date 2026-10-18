@@ -321,3 +321,45 @@ The lead explicitly authorized publishing the completed integration branch to ma
 A3 re-ran every step on a clean checkout of main at b20a666: frozen install PASS, Prettier clean, typecheck 0 errors, 373 tests pass (tests/cross now included), `pnpm e2e:sim` pass, ownership check pass. CR-A2-004, CR-A3-006 and the steps in "verified recipe for a green main" are resolved.
 
 A3 reviewed and accepts A1's edits to A3 files in ce15da1 (nullable `markets.source_intent_id` plus the ShortMe `registerPrivacyCleanup` hook). This is option (b) of CR-A3-003; the bootstrap DDL, the Market contract, and forget-integration.test.ts are consistent with it. CR-A3-003 is closed. Still open for A3: live LLM latency and the real Chalk run (credentials), then the final eval on the 66-case dataset (A3-10).
+
+## LEAD DECISIONS (recorded by A3): Dennis voice, group chat, dollars, dating, cast
+
+The lead redirected the product voice and the demo. These supersede the matching spec items:
+
+1. Voice: Dennis talks like a friend in the group chat, "the mom friend AND the menace": lowercase, short, slang ("cooked", "chopped", "tmr", "tn", "lowk"), dry finance jokes ("high risk asset", "insurance for sale"). No corporate phrasing, no "Reply YES to publish". The pitch is in the lead's message; the canonical demo transcript is `DEMO_GROUP_CHAT` in packages/shortme/src/demo-script.ts.
+2. Group chat (spec stretch S5 becomes P0): Dennis lives in the friends' iMessage group chat, reads it, and replies there.
+3. Money display: stakes show in dollars ("$500"). In the app every amount stays simulated: ShortMe keeps the points ledger at 1 point = $10 (`dollarsPerPoint` in milestone-gates.json), never touches a bank adapter, and results end with "(sim $, no real money moved)". There is no real-money mode.
+4. Dating markets are allowed (no dating block, no third-party block). The market question still never names the other person.
+5. Cast: john, steven, isaac (lowercase in Dennis's lines). The lead's draft has "Yo michael" replying to john; A3 used "john" and assumes that was a typo.
+6. The demo interaction is scripted: with LLM_PROVIDER=mock the scripted rules reproduce it line for line through the real services (markets, stakes, ledger, A2A, approvals). The LLM badge reads SIMULATED LLM in that mode; present it as a scripted run.
+
+## CR-A3-007 to A1: group chat, grammar, and approvals for the demo (P0, blocks the demo)
+
+The ShortMe side is merged with this request (see the A3 status below); these are the platform pieces the demo needs, in priority order:
+
+1. Group chat (S5): accept inbound from a Photon group space whose members are all registered and consented; attribute each message to its sender's user and agent; post Dennis's replies and the ShortMe and purchasing notifications for those users into the group space instead of 1:1. Per-member consent still gates every action.
+2. Grammar, deterministic, additive kind `put` (contract additive change): `I'll put $500`, `i'll put $200`, `$20 tho`, `in for $50` give `{ kind: "put", dollars, approve, code: null }`. `approve: true` when the same message also contains an approval phrase: `run it`, `lowk sure`, `sure`, `do it`, `yeah do it`, `bet`, `send it`, `yes`. Route `put` to the handler ShortMe already registers (`ctx.commands.register("put", ...)`; widen `CommandRegistry.register`'s kind union). Exact expected parses for the demo lines are in `DEMO_EXPECTED_COMMANDS`.
+3. Messages that carry both a command and new content (steven: "nah you got that. I'll put $200. bro ima ask this girl out tn am i chopped?") must run the command AND still go through the detector pipeline (`alsoDetect`).
+4. Bare approval phrases alone ("yeah do it", "run it", "lowk sure") parse as `approve` with no code when exactly one approval is pending (isaac's "yeah do it" approves the group purchase).
+5. Allow `promptText` without the `{code}` token (approve by phrase); until then ShortMe ends its two opener lines with "(code)", which is the only deviation from the transcript.
+6. `BACK $200` and `FADE $200`: accept a `$` and amounts up to $1,000; ShortMe treats BACK and FADE numbers as dollars now (BACK 50 = $50 = 5 points).
+7. Seed john, steven, isaac as the demo users with all consents, friend links among all three, and a fourth friend outside the group whose agent holds the matching monitor intent ("another friend's agent").
+8. Platform copy (onboarding, STOP, HELP, STATUS, AGREE replies) in the same voice.
+
+## CR-A3-008 to A2: purchase copy for the demo
+
+Dennis's purchasing lines in the transcript, with amounts formatted by code: "wait. found a match. another friend's agent has been tracking the same monitor." then "found a group deal that saves you both $40 each. want me to coordinate?" then, after both approvals, "both approved. group purchase organized. simulated Nessie payment ready for confirmation." isaac's trigger: "also anyone tryna buy a monitor? mine's cooked" (no budget, no size, so the generic monitor key must match the friend's intent). The demo offer saves $45.00 today; either set the seeded tier so savings are $40 each or let the line say the real number.
+
+## CR-A3-009 to A4: dashboard, demo scripts, dataset
+
+1. Show the group chat (`DEMO_GROUP_CHAT`) in the simulator view and drive the demo script from it; render the `system` line as a small annotation, not a message bubble.
+2. Cast and copy: john, steven, isaac; Dennis's voice per LEAD DECISIONS; show stakes as sim dollars (points times `dollarsPerPoint`) with the "(sim $, no real money moved)" note.
+3. Dataset: relabel `mil_priv_01` ("I went on a date last night and I think they like me.") to `propose_market`, category dating, label positive; dating is no longer blocked. Consider adding the two demo lines as milestone cases. All other blocked cases stay blocked (someone else's interview, a minor, injection, health).
+4. Runbook: the demo runs with LLM_PROVIDER=mock for the scripted interaction, labeled SIMULATED LLM.
+
+## STATUS A3: Dennis voice and scripted demo, ShortMe side done
+
+- Rules v2: dating and academics enabled, third-party and employer redaction off for group context, `dollarsPerPoint` 10 (fits the existing 1 to 100 point limits: $500 is 50 points). Python eval mirrors them.
+- Copy v2 in Dennis's voice for proposals, market created, invites, stakes, confirmations, disputes, results; quip prompt rewritten in voice; detector prompt understands "cooked", "chopped", "tmr", "tn", and asking someone out.
+- `putHandler`: "I'll put $X" picks the side by role (subject shorts themself, friends back the subject) and, when the subject has a pending proposal, approves and stakes in one step.
+- Scripted mock LLM rules and tests/cross/a3-demo-script.test.ts replay john's and steven's lines word for word through the real platform, plus settlement in dollars.

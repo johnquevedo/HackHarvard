@@ -7,7 +7,7 @@ const Resource = z.object({
   status: z.literal("received"),
   space: z.object({
     id: z.string().min(1),
-    kind: z.literal("direct").optional(),
+    kind: z.enum(["direct", "group"]).optional(),
     participantIds: z.array(z.string()).optional(),
   }),
   sentBy: z.object({
@@ -23,7 +23,11 @@ const Resource = z.object({
   }),
   timestamps: z.object({ receivedAt: z.iso.datetime() }),
 });
-export function normalizePhotonEvent(raw: unknown, agentUserId: string): InboundMessageT | null {
+export function normalizePhotonEvent(
+  raw: unknown,
+  agentUserId: string,
+  spaceMode: "direct" | "group" | "either" = "direct",
+): InboundMessageT | null {
   // Resource shape is documented. Envelope variants remain subject to a live spike.
   const envelope = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const data =
@@ -36,18 +40,19 @@ export function normalizePhotonEvent(raw: unknown, agentUserId: string): Inbound
   const msg = parsed.data;
   if (msg.sentBy.id === agentUserId || (msg.receivedBy && msg.receivedBy.id !== agentUserId))
     return null;
-  if (
-    msg.space.participantIds &&
-    (msg.space.participantIds.length !== 2 ||
-      !msg.space.participantIds.includes(agentUserId) ||
-      !msg.space.participantIds.includes(msg.sentBy.id))
-  )
-    return null;
+  const participants = msg.space.participantIds;
+  if (!participants?.includes(agentUserId) || !participants.includes(msg.sentBy.id)) return null;
+  const inferredKind = msg.space.kind ?? (participants.length > 2 ? "group" : "direct");
+  if (inferredKind === "direct" && participants.length !== 2) return null;
+  if (inferredKind === "group" && participants.length < 3) return null;
+  if (spaceMode !== "either" && inferredKind !== spaceMode) return null;
   return InboundMessage.parse({
     provider: "photon",
     accountKey: "primary",
     providerMessageId: msg.id,
     providerSpaceId: msg.space.id,
+    providerSpaceKind: inferredKind,
+    providerParticipantIds: participants,
     providerSenderId: msg.sentBy.id,
     senderHandle: msg.sentBy.handle,
     text: msg.content.text,

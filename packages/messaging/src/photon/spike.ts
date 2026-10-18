@@ -250,7 +250,7 @@ export async function runPhotonMessageProbe(options: {
         return;
       }
       if (!allowed.has(handle) || sender.id === config.photonAgentUserId) return;
-      const message = normalizePhotonEvent(raw, config.photonAgentUserId!);
+      const message = normalizePhotonEvent(raw, config.photonAgentUserId!, config.photonSpaceMode);
       const type =
         raw && typeof raw === "object" ? String((raw as Record<string, unknown>).type ?? "") : "";
       if (message && seen.has(message.providerMessageId)) return;

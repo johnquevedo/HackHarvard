@@ -10,9 +10,9 @@
     ]
   },
   "scripts": {
-    "dev": "concurrently -n server,web -c blue,green \"tsx scripts/dev-server.ts\" \"node apps/web/dev.mjs dev\"",
-    "dev:server": "tsx scripts/dev-server.ts",
-    "dev:web": "node apps/web/dev.mjs dev",
+    "dev": "concurrently -n server,web -c blue,green \"tsx --env-file=.env scripts/dev-server.ts\" \"node --env-file=.env apps/web/dev.mjs dev\"",
+    "dev:server": "tsx --env-file=.env scripts/dev-server.ts",
+    "dev:web": "node --env-file=.env apps/web/dev.mjs dev",
     "db:push": "tsx scripts/db-push.ts",
     "db:reset": "tsx scripts/db-reset.ts",
     "typecheck": "tsx scripts/typecheck-all.ts",
@@ -22,8 +22,8 @@
     "spike:nessie": "tsx scripts/spike-nessie.ts",
     "spike:llm": "tsx scripts/spike-llm.ts",
     "spike:chalk": "bash scripts/spike-chalk.sh",
-    "demo:reset": "tsx scripts/reset-demo.ts",
-    "demo:check": "tsx scripts/check-env.ts",
+    "demo:reset": "tsx --env-file=.env scripts/reset-demo.ts",
+    "demo:check": "tsx --env-file=.env scripts/check-env.ts",
     "demo:record": "tsx scripts/replay-demo.ts record",
     "demo:replay": "tsx scripts/replay-demo.ts replay",
     "eval:local": "tsx packages/eval-data/src/cli.ts",
@@ -32,11 +32,14 @@
     "nessie:doctor": "tsx scripts/nessie-doctor.ts",
     "e2e:sim": "tsx tests/e2e/run.ts",
     "build:web": "node apps/web/dev.mjs build",
-    "start": "concurrently -n server,web \"tsx apps/server/src/main.ts\" \"node apps/web/dev.mjs start\"",
-    "start:server": "tsx apps/server/src/main.ts",
-    "start:web": "node apps/web/dev.mjs start"
+    "start": "concurrently -n server,web \"tsx --env-file=.env apps/server/src/main.ts\" \"node --env-file=.env apps/web/dev.mjs start\"",
+    "start:server": "tsx --env-file=.env apps/server/src/main.ts",
+    "start:web": "node --env-file=.env apps/web/dev.mjs start"
   },
   "devDependencies": {
+    "@dennis/platform": "workspace:*",
+    "@dennis/purchasing": "workspace:*",
+    "@dennis/shortme": "workspace:*",
     "@types/node": "22.20.5",
     "concurrently": "10.0.6",
     "prettier": "3.9.10",

@@ -33,10 +33,44 @@ const NOT_MILESTONE = {
 };
 
 // Default rules cover the tasks Agent 3 owns. Other modules add their own with addRules().
+// The first two reproduce the scripted demo group chat exactly (labeled SIMULATED LLM when used).
 export const defaultMockRules: MockRule[] = [
   {
     task: "milestone_detector_v1",
-    match: /\b(interview|offer|superday|final round)\b/i,
+    match: /\bask (this|a|her|him|them)\b.*\bout\b|\bfirst date\b|\bon a date\b/i,
+    respond: () => ({
+      ...NOT_MILESTONE,
+      isMilestone: true,
+      outcomeUncertain: true,
+      category: "dating",
+      milestoneKind: "asking_out",
+      questionTemplate: "Will she ghost {subject}?",
+      resolvesWithinDays: 3,
+      sensitivity: "low",
+      mentionsThirdParty: true,
+      confidence: 0.85,
+      rationale: "mock: asking someone out, outcome pending",
+    }),
+  },
+  {
+    task: "milestone_detector_v1",
+    match: /\bmeta\b.*\b(technical|interview|final round)\b/i,
+    respond: () => ({
+      ...NOT_MILESTONE,
+      isMilestone: true,
+      outcomeUncertain: true,
+      category: "recruiting",
+      milestoneKind: "technical_interview",
+      questionTemplate: "Will {subject} pass his Meta final round?",
+      employerMentions: ["Meta"],
+      resolvesWithinDays: 7,
+      confidence: 0.9,
+      rationale: "mock: own technical interview tomorrow",
+    }),
+  },
+  {
+    task: "milestone_detector_v1",
+    match: /\b(interview|technical|offer|superday|final round)\b/i,
     respond: () => ({
       ...NOT_MILESTONE,
       isMilestone: true,
@@ -52,7 +86,7 @@ export const defaultMockRules: MockRule[] = [
   { task: "milestone_detector_v1", respond: () => NOT_MILESTONE },
   {
     task: "quip_v1",
-    respond: () => ({ quip: "Shorting yourself is a bold kind of self care." }),
+    respond: () => ({ quip: "hedge fund behavior, respect the risk management." }),
   },
 ];
 
@@ -71,11 +105,14 @@ export class MockStructuredLlm implements StructuredLlm {
 
   async generate<T>(req: StructuredRequest<T>): Promise<StructuredResult<T>> {
     this.calls.push({ task: req.task, user: req.user });
+    // Match against the current message only: the <message> block when present, never the earlier
+    // context lines, so an old message cannot re-trigger a rule.
+    const subject = /<message>\n?([\s\S]*?)\n?<\/message>/.exec(req.user)?.[1] ?? req.user;
     const rule = this.rules.find(
       (r) =>
         r.task === req.task &&
         (r.match === undefined ||
-          (typeof r.match === "function" ? r.match(req.user) : r.match.test(req.user))),
+          (typeof r.match === "function" ? r.match(subject) : r.match.test(subject))),
     );
     if (!rule) throw new LlmSchemaError(req.task, "no mock rule for this task", 1);
     const parsed = req.schema.safeParse(rule.respond({ user: req.user, system: req.system }));

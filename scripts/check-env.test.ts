@@ -8,4 +8,13 @@ describe("demo check", () => {
     expect(problems[0]).not.toContain("not-a-photon-key");
     expect(prefixProblems({ PHOTON_API_KEY: "pho_sk_example" })).toEqual([]);
   });
+
+  it("accepts Spectrum project credentials without legacy Beta fields", () => {
+    expect(
+      prefixProblems({
+        PHOTON_PROJECT_ID: "313967b8-9f3b-4b02-ba58-aff4bf9a9044",
+        PHOTON_PROJECT_SECRET: "secret-is-never-echoed",
+      }),
+    ).toEqual([]);
+  });
 });

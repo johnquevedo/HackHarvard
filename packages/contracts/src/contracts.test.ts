@@ -274,12 +274,29 @@ const cases: [string, object][] = [
   ["back 50", { kind: "back", points: 50, code: null }],
   ["BACK 100 A7F3!", { kind: "back", points: 100, code: "a7f3" }],
   [" fade  30  a7f3 ", { kind: "fade", points: 30, code: "a7f3" }],
+  ["BACK $200", { kind: "back", points: 200, code: null }],
+  ["FADE $1000", { kind: "fade", points: 1000, code: null }],
+  ["LMAO run it. I’ll put $500", { kind: "put", dollars: 500, approve: true, code: null }],
+  [
+    "nah you got that. I’ll put $200. bro ima ask this girl out tn am i chopped?",
+    { kind: "put", dollars: 200, approve: false, code: null, alsoDetect: true },
+  ],
+  [
+    "💀💀lowk sure. $20 tho. i think she likes me.",
+    { kind: "put", dollars: 20, approve: true, code: null },
+  ],
+  ["yeah do it", { kind: "approve", code: null }],
   ["PASS", { kind: "pass", code: null }],
   ["pass a7f3", { kind: "pass", code: "a7f3" }],
   ["CONFIRM!", { kind: "confirm", code: null }],
   ["confirm A7F3", { kind: "confirm", code: "a7f3" }],
   ["DISPUTE", { kind: "dispute", code: null }],
   ["dispute a7f3.", { kind: "dispute", code: "a7f3" }],
+  ["@Dennis help", { kind: "help" }],
+  ["Dennis: STATUS", { kind: "status" }],
+  ["are you there dennis", { kind: "presence" }],
+  ["Dennis, are you there?", { kind: "presence" }],
+  ["@dennis, back 50 a7f3", { kind: "back", points: 50, code: "a7f3" }],
   ...[
     "",
     "hello",
@@ -290,7 +307,7 @@ const cases: [string, object][] = [
     "AGREE maybe",
     "agree shortme now",
     "back 0",
-    "back 101",
+    "back 1001",
     "back -5",
     "fade 1.5",
     "back 50 wrongcode",
@@ -302,4 +319,21 @@ const cases: [string, object][] = [
 ];
 describe("deterministic commands", () => {
   it.each(cases)("parses %s", (text, expected) => expect(parseCommand(text)).toEqual(expected));
+  it("does not turn ordinary agreement into an approval without pending context", () => {
+    expect(parseCommand("yes", { allowNaturalApproval: false, allowDemoPut: false })).toEqual({
+      kind: "none",
+    });
+    expect(parseCommand("YES a7f3", { allowNaturalApproval: false, allowDemoPut: false })).toEqual({
+      kind: "approve",
+      code: "a7f3",
+    });
+  });
+  it("keeps scripted dollar grammar isolated to demo mode", () => {
+    expect(
+      parseCommand("LMAO run it. I'll put $500", {
+        allowNaturalApproval: false,
+        allowDemoPut: false,
+      }),
+    ).toEqual({ kind: "none" });
+  });
 });

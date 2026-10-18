@@ -221,6 +221,10 @@ export async function seedCore(ctx: PlatformContext): Promise<void> {
     for (const [name, raw] of [
       ["alice", ctx.config.demoAliceHandle],
       ["bob", ctx.config.demoBobHandle],
+      ["john", ctx.config.demoJohnHandle],
+      ["steven", ctx.config.demoStevenHandle],
+      ["isaac", ctx.config.demoIsaacHandle],
+      ["friend", ctx.config.demoFriendHandle],
     ] as const) {
       const userId = "usr_demo_" + name;
       const agentId = "agt_demo_" + name;
@@ -276,6 +280,14 @@ export async function seedCore(ctx: PlatformContext): Promise<void> {
         "INSERT OR IGNORE INTO friend_links (user_id,friend_user_id,can_invite) VALUES (?, ?, 1)",
       )
       .run("usr_demo_bob", "usr_demo_alice");
+    const link = ctx.db.$client.prepare(
+      "INSERT OR IGNORE INTO friend_links (user_id,friend_user_id,can_invite) VALUES (?, ?, 1)",
+    );
+    const cast = ["usr_demo_john", "usr_demo_steven", "usr_demo_isaac"];
+    for (const userId of cast)
+      for (const friendUserId of cast) if (userId !== friendUserId) link.run(userId, friendUserId);
+    link.run("usr_demo_isaac", "usr_demo_friend");
+    link.run("usr_demo_friend", "usr_demo_isaac");
   })();
 }
 export async function resetCore(ctx: PlatformContext, opts: { keepUsers: boolean }): Promise<void> {

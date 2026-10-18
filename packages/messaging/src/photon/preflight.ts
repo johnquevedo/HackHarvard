@@ -50,7 +50,7 @@ export async function photonPreflight(api: PreflightApi, config: AppConfig, cloc
       },
     });
     for (const raw of result.items) {
-      const message = normalizePhotonEvent(raw, config.photonAgentUserId!);
+      const message = normalizePhotonEvent(raw, config.photonAgentUserId!, config.photonSpaceMode);
       if (!message || message.receivedAt < since || message.receivedAt > clock.nowIso()) continue;
       let handle: string;
       try {

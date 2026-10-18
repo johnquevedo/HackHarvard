@@ -29,3 +29,6 @@ export { validateQuip, renderResultMessage, QUIP_FALLBACK } from "./copy/quip";
 export { canTransition, TRANSITIONS, MARKET_STATUSES, type MarketStatus } from "./markets/state";
 export { GATES, STAND_IN_LABEL } from "./rules";
 export * as templates from "./templates";
+export { DEMO_GROUP_CHAT, DEMO_CAST, DEMO_EXPECTED_COMMANDS, type ScriptLine } from "./demo-script";
+export { putHandler, type PutCommand } from "./markets/positions";
+export { dollars, dollarsToPoints } from "./templates";

@@ -27,10 +27,13 @@ describe("rules file", () => {
   it("has the specified values", () => {
     expect(gates).toMatchObject({
       minConfidence: 0.75,
-      enabledTemplates: ["recruiting"],
-      blockedCategories: ["dating"],
+      enabledTemplates: ["recruiting", "dating", "academics"],
+      blockedCategories: [],
       blockHighSensitivity: true,
       requireSubjectIsAuthor: true,
+      blockThirdPartyExposure: false,
+      redactEmployerNames: false,
+      dollarsPerPoint: 10,
       maxStake: 100,
       starterPoints: 1000,
       approvalTtlMinutes: 30,
@@ -46,14 +49,14 @@ describe("applyMilestoneGates (same table as the Python eval)", () => {
     [{ injectionAttempt: true, isMilestone: false }, "blocked_policy", "policy_blocked"],
     [{ isMilestone: false }, "no_market", "not_an_intent"],
     [{ hyperbole: true }, "no_market", "not_an_intent"],
-    [{ category: "dating" }, "blocked_policy", "policy_blocked"],
+    [{ category: "dating" }, "pass", null],
     [{ sensitivity: "high" }, "blocked_policy", "sensitive"],
     [{ subjectIsAuthor: false }, "blocked_policy", "not_subject_owned"],
-    [{ mentionsThirdParty: true }, "blocked_policy", "policy_blocked"],
+    [{ mentionsThirdParty: true }, "pass", null],
     [{ outcomeUncertain: false }, "no_market", "not_an_intent"],
     [{ confidence: 0.74 }, "no_market", "low_confidence"],
     [{ confidence: 0.75 }, "pass", null],
-    [{ category: "academics" }, "no_market", "category_disabled"],
+    [{ category: "academics" }, "pass", null],
     [{ category: "friend_event" }, "no_market", "category_disabled"],
     [{ sensitivity: "low" }, "pass", null],
   ] as [Partial<MilestoneExtractionT>, string, string | null][])("%o", (over, decision, reason) => {
@@ -63,6 +66,35 @@ describe("applyMilestoneGates (same table as the Python eval)", () => {
     } else {
       expect([r.evalDecision, r.reason]).toEqual([decision, reason]);
     }
+  });
+});
+
+describe("sanitizeQuestion without redaction (group chat, v2 rules)", () => {
+  it.each([
+    [
+      "Will {subject} pass his Meta final round?",
+      ["Meta"],
+      "Will {subject} pass his Meta final round?",
+      [],
+    ],
+    ["Will she ghost {subject}?", [], "Will she ghost {subject}?", []],
+    [
+      "Will {subject} beat Bob at Meta?",
+      ["Meta"],
+      "Will {subject} get the offer?",
+      ["fallback_question"],
+    ],
+    [
+      "Will {subject} pass his Google round?",
+      ["Meta"],
+      "Will {subject} get the offer?",
+      ["fallback_question"],
+    ],
+  ] as [string, string[], string, string[]][])("%s", (template, mentions, expected, redactions) => {
+    expect(sanitizeQuestion(template, "recruiting", mentions, false)).toEqual({
+      questionTemplate: expected,
+      redactions,
+    });
   });
 });
 

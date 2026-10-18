@@ -3,6 +3,7 @@ export * from "./config.ts";
 export * from "./foundation.ts";
 export * from "./commands.ts";
 export * from "./pipeline.ts";
+export * from "./conversation.ts";
 export * from "./runtime.ts";
 export * from "./stores.ts";
 export * from "./routes.ts";

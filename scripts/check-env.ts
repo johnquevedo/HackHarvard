@@ -21,7 +21,13 @@ export function loadEnvFile(file = ".env"): Record<string, string> {
 
 export function prefixProblems(env: Record<string, string>): string[] {
   const problems: string[] = [];
+  const spectrum = Boolean(env.PHOTON_PROJECT_SECRET);
   for (const [key, prefix] of Object.entries(PREFIXES)) {
+    if (spectrum) {
+      if (key === "PHOTON_PROJECT_ID" && env[key] && !/^[0-9a-f-]{36}$/i.test(env[key]))
+        problems.push("PHOTON_PROJECT_ID must be the UUID shown in the Photon dashboard");
+      continue;
+    }
     const value = env[key];
     if (value && !value.startsWith(prefix)) problems.push(`${key} must start with ${prefix}`);
   }

@@ -23,12 +23,18 @@ function persistNotification(
     req.idempotencyKey,
   );
   if (previous) {
+    const savedRoute = row<{ value: string }>(
+      ctx.db,
+      "SELECT value FROM kv WHERE key=?",
+      "outbox-route:" + previous.id,
+    )?.value;
     if (
       previous.userId !== req.userId ||
       previous.kind !== req.kind ||
       previous.text !== req.text ||
       previous.approvalId !== (req.approvalId ?? null) ||
-      previous.opportunityId !== (req.opportunityId ?? null)
+      previous.opportunityId !== (req.opportunityId ?? null) ||
+      (savedRoute ?? null) !== (req.spaceId ?? null)
     )
       throw new DennisError("idempotency_conflict", "Outbox key reused with different input", 409);
     return { record: OutboxRecord.parse(previous), created: false };
@@ -51,6 +57,7 @@ function persistNotification(
     deliveredAt: null,
   });
   insert(ctx.db, "outbox", { ...record, idempotencyKey: req.idempotencyKey });
+  if (req.spaceId) insert(ctx.db, "kv", { key: "outbox-route:" + record.id, value: req.spaceId });
   return { record, created: true };
 }
 function emitQueued(ctx: PlatformContext, value: OutboxRecordT): void {
@@ -126,16 +133,8 @@ export function createApprovals(ctx: PlatformContext): ApprovalService {
         const agent = await ctx.users.getAgent(input.agentId);
         if (agent?.userId !== input.userId)
           throw new DennisError("forbidden", "Approval owner mismatch", 403);
-        if (
-          !input.promptText.includes("{code}") ||
-          !Number.isFinite(input.ttlMinutes) ||
-          input.ttlMinutes <= 0
-        )
-          throw new DennisError(
-            "validation_error",
-            "Approval requires a code placeholder and a positive TTL",
-            400,
-          );
+        if (!Number.isFinite(input.ttlMinutes) || input.ttlMinutes <= 0)
+          throw new DennisError("validation_error", "Approval requires a positive TTL", 400);
         let code: string;
         do {
           code = randomBytes(2).toString("hex");

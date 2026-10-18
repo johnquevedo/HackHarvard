@@ -20,6 +20,7 @@ export class PhotonBetaProvider implements MessagingProvider {
   private client: Photon;
   private source: SocketIoEventSource;
   private handler: InboundHandler | null = null;
+  private participantHandles = new Map<string, string>();
   constructor(
     private config: AppConfig,
     private deps: { db: Db; clock: Clock; log: Logger },
@@ -35,6 +36,12 @@ export class PhotonBetaProvider implements MessagingProvider {
         "Photon live configuration is incomplete",
         503,
       );
+    if (config.photonSpaceMode !== "direct" && config.photonInbound !== "socketio")
+      throw new DennisError(
+        "integration_unavailable",
+        "Photon legacy group mode requires Socket.IO participant resolution",
+        503,
+      );
     this.client = options.client ?? createPhotonClient(config, options.fetch);
     this.source = options.source ?? new SocketIoEventSource(config, deps.db, deps.clock, deps.log);
   }
@@ -46,7 +53,32 @@ export class PhotonBetaProvider implements MessagingProvider {
       });
   }
   async receive(raw: unknown): Promise<void> {
-    const msg = normalizePhotonEvent(raw, this.config.photonAgentUserId!);
+    let msg = normalizePhotonEvent(
+      raw,
+      this.config.photonAgentUserId!,
+      this.config.photonSpaceMode,
+    );
+    if (msg?.providerSpaceKind === "group") {
+      const handles: string[] = [];
+      for (const participantId of new Set(msg.providerParticipantIds ?? [])) {
+        if (participantId === this.config.photonAgentUserId) continue;
+        if (participantId === msg.providerSenderId) {
+          this.participantHandles.set(participantId, msg.senderHandle);
+          handles.push(msg.senderHandle);
+          continue;
+        }
+        let handle = this.participantHandles.get(participantId);
+        if (!handle) {
+          const user = await this.client.projects.getUser({
+            path: { id: this.config.photonProjectId!, userId: participantId },
+          });
+          handle = z.string().min(1).parse(user?.handle);
+          this.participantHandles.set(participantId, handle);
+        }
+        handles.push(handle);
+      }
+      msg = { ...msg, providerParticipantHandles: handles };
+    }
     if (msg && this.handler)
       await this.handler({ ...msg, accountKey: this.config.photonAccountKey });
   }
