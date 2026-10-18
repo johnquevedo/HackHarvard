@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import type { InboundMessageT } from "@dennis/contracts";
+import type { InboundMessageT, StructuredLlm, StructuredRequest } from "@dennis/contracts";
 import type { PlatformContext } from "./context.ts";
 import { DEMO_SCRIPTS } from "./demo-scripts.ts";
 import { ingestInbound } from "./pipeline.ts";
@@ -43,6 +43,12 @@ async function settle() {
   for (let i = 0; i < 30; i++) await new Promise((resolve) => setImmediate(resolve));
 }
 
+// Dennis answers once the chat pauses for two seconds.
+async function pause() {
+  await vi.advanceTimersByTimeAsync(2_100);
+  await settle();
+}
+
 function replies(ctx: PlatformContext, space: string): string[] {
   return rows<{ text: string }>(
     ctx.db,
@@ -54,12 +60,12 @@ function replies(ctx: PlatformContext, space: string): string[] {
 it.each(DEMO_SCRIPTS.map((s) => [s.name, s] as const))(
   "%s: replaying the human lines gets the scripted replies word for word",
   async (_name, script) => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const ctx = await setup();
     const space = "pho_spc_" + script.name;
     for (const step of script.steps) {
-      const result = await ingestInbound(ctx, say(ctx, space, step.text));
-      expect(result.outcome).toBe("command");
-      await settle();
+      await ingestInbound(ctx, say(ctx, space, step.text));
+      await pause();
     }
     // Everything comes from one phone (Alice), so she plays every character; Bob is also in the chat.
     const cast: Record<string, string> = {};
@@ -67,18 +73,21 @@ it.each(DEMO_SCRIPTS.map((s) => [s.name, s] as const))(
       cast[step.speaker] ??= "Alice";
       return step.replies.map((line) => castLine(line, cast, ["Alice", "Bob"]));
     });
-    expect(replies(ctx, space)).toEqual(expected);
+    // Every scripted Dennis line goes out once, in order; Dennis may get to a beat before the
+    // exact line arrives, and live Dennis answers anything said after the script is finished.
+    expect(replies(ctx, space).slice(0, expected.length)).toEqual(expected);
     expect(replies(ctx, space).join(" ")).not.toMatch(/\b(michael|steven|isaac|john)\b/i);
   },
 );
 
 it("names the real sender instead of the script character", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   const ctx = await setup();
   await ingestInbound(
     ctx,
     say(ctx, "pho_spc_names", "Im so cooked im failing my meta technical tmr"),
   );
-  await settle();
+  await pause();
   expect(replies(ctx, "pho_spc_names")[0]).toBe(
     "Yo alice why don’t you short yourself, i’ll set up a market. Anyone wanna get in on this?",
   );
@@ -166,20 +175,16 @@ it("every distinctive line belongs to exactly one script", () => {
     }
 });
 
-it("plays Dennis's next scripted line if the chat goes quiet before the friends' lines", async () => {
+it("answers a reworded opener right away instead of waiting for the friends' lines", async () => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   const ctx = await setup();
   await ingestInbound(
     ctx,
-    say(ctx, "pho_spc_nudge", "Bro my companies says theres layoffs next week"),
+    say(ctx, "pho_spc_now", "Bro my companies says theres layoffs next week"),
   );
-  await vi.advanceTimersByTimeAsync(29_000);
-  expect(replies(ctx, "pho_spc_nudge")).toEqual([]);
-  await vi.advanceTimersByTimeAsync(2_000);
-  for (let i = 0; i < 20; i++) await Promise.resolve();
-  vi.useRealTimers();
-  await settle();
-  expect(replies(ctx, "pho_spc_nudge")).toEqual([
+  await pause();
+  // No LLM in tests: Dennis sends the script's next beat, with the sender cast as steven.
+  expect(replies(ctx, "pho_spc_now")).toEqual([
     "yo lets set up a short market, who thinks alices getting cut?",
   ]);
 });
@@ -201,4 +206,73 @@ it("reads slang variants of the next line mid-script", () => {
   const now = new Date();
   const at = { name: "minute", index: 0, at: now.toISOString() };
   expect(matchScriptStep("lmfaooo run it ill put $500", at, now)?.index).toBe(1);
+});
+
+it("answers an off-script message mid-script with a script-guided reply, not live Dennis", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  const seen: string[] = [];
+  const llm: StructuredLlm = {
+    name: "anthropic",
+    async generate<T>(req: StructuredRequest<T>) {
+      seen.push(req.task);
+      const value =
+        req.task === "script_guided_reply_v1"
+          ? { reply: "bob's in for $400. the boys are officially invested", step: 1 }
+          : { behavior: "silent", reason: "ambient", reply: null, addressedMessageIds: [] };
+      return {
+        value: req.schema.parse(value),
+        usage: { inputTokens: 0, outputTokens: 0 },
+        model: "fake",
+        provider: "anthropic" as const,
+        latencyMs: 0,
+        attempts: 1,
+      };
+    },
+    async health() {
+      const now = new Date().toISOString();
+      return {
+        name: "llm" as const,
+        mode: "live" as const,
+        healthy: true,
+        detail: "fake",
+        lastCheckedAt: now,
+        lastSuccessAt: now,
+      };
+    },
+  };
+  const ctx = await createTestPlatform({
+    llm,
+    config: { demoScript: "hybrid", photonAgentUserId: "pho_usr_agent", photonSpaceMode: "group" },
+  });
+  contexts.push(ctx);
+  await ingestInbound(
+    ctx,
+    say(ctx, "pho_spc_guided", "Im so cooked im failing my meta technical tmr"),
+  );
+  await pause();
+  const result = await ingestInbound(ctx, say(ctx, "pho_spc_guided", "i put $400"));
+  await pause();
+  expect(result.outcome).toBe("command");
+  expect(seen).toEqual(["script_guided_reply_v1"]);
+  expect(replies(ctx, "pho_spc_guided")).toEqual([
+    "Yo alice why don’t you short yourself, i’ll set up a market. Anyone wanna get in on this?",
+    "bob's in for $400. the boys are officially invested",
+  ]);
+});
+
+it("waits while a burst is still coming in, then answers once", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  const ctx = await setup();
+  const space = "pho_spc_burst";
+  await ingestInbound(ctx, say(ctx, space, "boys i think im gonna propose to my gf next month"));
+  await vi.advanceTimersByTimeAsync(800);
+  await ingestInbound(ctx, say(ctx, space, "BROOOOO NO WAY"));
+  await vi.advanceTimersByTimeAsync(800);
+  await ingestInbound(ctx, say(ctx, space, "u better not propose with that temu ring 😭"));
+  await vi.advanceTimersByTimeAsync(800);
+  expect(replies(ctx, space)).toEqual([]);
+  await pause();
+  expect(replies(ctx, space)).toEqual([
+    "alice ur about to make the biggest investment of ur life with zero due diligence",
+  ]);
 });

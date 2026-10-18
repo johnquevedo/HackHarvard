@@ -241,7 +241,8 @@ function resolveCandidate(
     return hit ? { candidate: hit } : { reply: `no open market with code ${code.toLowerCase()}.` };
   }
   if (all.length === 1) return { candidate: all[0] };
-  if (all.length === 0) return { reply: "no open market for you rn." };
+  if (all.length === 0)
+    return { reply: "nothing open to bet on yet. tell me what happened and i'll set one up" };
   return { reply: `which one? ${verb} plus the 4-letter code.` };
 }
 
