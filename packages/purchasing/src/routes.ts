@@ -207,6 +207,7 @@ export function purchasingRoutes(ctx: PlatformContext): Hono {
         amountCents: member.shareCents,
         last4: payer.last4,
         productLabel: offer.title,
+        mode: ctx.config.conversationMode,
       }),
       ttlMinutes: ctx.config.approvalTtlMinutes,
       idempotencyKey: `purchase:retry:${attempt.id}:${ctx.clock.now().getTime()}`,

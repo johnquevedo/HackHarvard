@@ -213,6 +213,15 @@ export const EVENT_PAYLOAD_SCHEMAS = {
   "messaging.latency": z
     .object({ outboxId: s, provider: s, span: z.literal("outbox_send_to_delivered"), latencyMs: n })
     .strict(),
+  "native.action": z
+    .object({
+      actionId: s,
+      kind: z.enum(["react", "poll", "rename", "voice", "contact_card"]),
+      status: z.enum(["queued", "sent", "failed", "unsupported", "skipped"]),
+      detail: s,
+    })
+    .strict(),
+  "poll.vote": z.object({ actionId: s, option: s, selected: b, ok: b, note: s }).strict(),
   "demo.reset": z.object({ runId: s }).strict(),
   "eval.report": z.object({ provider: z.enum(["chalk", "local"]), runId: s }).strict(),
   "error.logged": z.object({ where: s, message: s }).strict(),

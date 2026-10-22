@@ -18,6 +18,7 @@ export const ID_PREFIX = {
   ledger: "led",
   resolution: "res",
   trace: "trc",
+  native: "nat",
 } as const;
 export type IdKind = keyof typeof ID_PREFIX;
 

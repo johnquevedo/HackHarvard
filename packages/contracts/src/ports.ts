@@ -6,6 +6,7 @@ import type {
   ConsentScopeT,
   DecisionChannelT,
   InboundMessageT,
+  NativeEffectT,
   IntegrationStatusT,
   IntentStatusT,
   IntentT,
@@ -50,6 +51,34 @@ export interface MessagingProvider {
   health(): Promise<IntegrationStatusT>;
   acknowledge?(message: InboundMessageT): Promise<void>;
   setTyping?(spaceId: string, typing: boolean, idempotencyKey: string): Promise<void>;
+  /** Native iMessage features. Absent when the provider cannot do them; callers fall back or skip. */
+  native?: NativeMessaging;
+}
+
+export interface NativeTarget {
+  spaceId: string;
+  providerMessageId: string;
+}
+export interface NativeMessaging {
+  /** Tapback or emoji reaction on a message in the space. */
+  react(target: NativeTarget, emoji: string): Promise<void>;
+  /** A native poll; votes come back as inbound messages carrying `pollVote`. */
+  sendPoll(
+    spaceId: string,
+    title: string,
+    options: string[],
+  ): Promise<{ providerMessageId: string }>;
+  /** Group chats only. */
+  renameGroup(spaceId: string, name: string): Promise<void>;
+  /** An audio message (voice note). */
+  sendVoice(
+    spaceId: string,
+    audio: Uint8Array,
+    mimeType: string,
+    durationSeconds: number,
+  ): Promise<{ providerMessageId: string }>;
+  /** Share the agent account's own name and photo with the chat. */
+  shareContactCard(spaceId: string): Promise<void>;
 }
 
 // ---------- Banking (owner A2, package @dennis/purchasing) ----------
@@ -253,6 +282,8 @@ export interface NotifyRequest {
   text: string;
   /** Explicit conversation destination. Used for shared group-chat replies. */
   spaceId?: string;
+  /** Native iMessage send effect; providers without effects send plain text. */
+  effect?: NativeEffectT;
   approvalId?: string;
   opportunityId?: string;
   idempotencyKey: string;

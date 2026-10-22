@@ -26,6 +26,7 @@ import {
 import { onConfirmDecided } from "./resolution/service";
 import { shortmeRoutes } from "./routes";
 import { ensureShortmeSchema } from "./schema";
+import { registerShortmePollVotes } from "./native-moments";
 import { reportChalkStatus } from "./chalk-status";
 
 const SWEEP_MS = 30_000;
@@ -57,6 +58,7 @@ export const shortmeModule: FeatureModule = {
     ctx.commands.register("back", backFadeHandler(ctx, "back"));
     ctx.commands.register("fade", backFadeHandler(ctx, "fade"));
     ctx.commands.register("pass", passHandler(ctx));
+    registerShortmePollVotes(ctx);
     ctx.commands.register("put", putHandler(ctx));
     if (ctx.llm instanceof MockStructuredLlm)
       ctx.log.info("shortme.llm", { provider: "mock", label: "SIMULATED LLM" });

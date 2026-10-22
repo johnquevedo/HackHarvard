@@ -20,6 +20,7 @@ import {
 } from "../markets/service";
 import { assertTransition } from "../markets/state";
 import { approvalTtlMinutes } from "../rules";
+import { marketSpace, onMarketSettled, readsMarketGroup, resultEffect } from "../native-moments";
 import { confirmResolutionPrompt, deltaLine, disputeText, outcomeSentence } from "../templates";
 
 export type ResolutionRow = typeof marketResolutions.$inferSelect;
@@ -268,11 +269,14 @@ async function notifyAll(
       ),
     )
     .all();
+  const { spaceId, isGroup } = marketSpace(ctx, m);
   for (const p of parts) {
+    if (p.userId !== m.subjectUserId && readsMarketGroup(ctx, m, p.userId)) continue;
     await ctx.notifier.send({
       userId: p.userId,
       kind: "result",
       text,
+      ...(p.userId === m.subjectUserId && isGroup && spaceId ? { spaceId } : {}),
       opportunityId: m.opportunityId,
       idempotencyKey: `shortme_${tag}:${m.id}:${p.userId}`,
     });
@@ -435,15 +439,22 @@ async function sendResults(
     otherNames,
   });
   const recipients = new Set<string>([m.subjectUserId, ...positions.map((p) => p.userId)]);
+  const { spaceId, isGroup } = marketSpace(ctx, m);
+  const effect = resultEffect(outcome);
   for (const userId of recipients) {
+    // In the market's group chat one line is enough; everyone reading it there skips their copy.
+    if (userId !== m.subjectUserId && readsMarketGroup(ctx, m, userId)) continue;
     await ctx.notifier.send({
       userId,
       kind: "result",
       text,
+      ...(effect ? { effect } : {}),
+      ...(userId === m.subjectUserId && isGroup && spaceId ? { spaceId } : {}),
       opportunityId: m.opportunityId,
       idempotencyKey: `shortme_result:${m.id}:${userId}`,
     });
   }
+  await onMarketSettled(ctx, m, rows);
 }
 
 // Admin route (ADMIN token): only from disputed. yes or no resolves with payouts, void refunds.

@@ -1,5 +1,5 @@
 import { drainPlatform } from "./foundation.ts";
-import { DennisError } from "@dennis/contracts";
+import { DennisError, NativeEffect } from "@dennis/contracts";
 import { PhotonBetaProvider } from "@dennis/messaging";
 import type { ProviderSendResultT } from "@dennis/contracts";
 import type { OutboxRecordT } from "@dennis/contracts";
@@ -9,6 +9,7 @@ import { pollIntegrationHealth } from "./integrations.ts";
 import { recoverA2A } from "./a2a.ts";
 import { ingestInbound, runPipeline } from "./pipeline.ts";
 import { cancelConversationalReplies } from "./conversation.ts";
+import { dispatchNative } from "./native.ts";
 function emitDeliveryLatency(
   ctx: PlatformContext,
   outboxId: string,
@@ -79,6 +80,13 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
         item.id,
       );
       try {
+        const effect = NativeEffect.safeParse(
+          row<{ value: string }>(
+            ctx.db,
+            "SELECT value FROM kv WHERE key=?",
+            "outbox-effect:" + item.id,
+          )?.value,
+        ).data;
         const explicitSpace = row<{ value: string }>(
           ctx.db,
           "SELECT value FROM kv WHERE key=?",
@@ -98,6 +106,7 @@ export async function dispatchOutbox(ctx: PlatformContext): Promise<void> {
             null,
           text: item.text,
           idempotencyKey: stored.idempotencyKey,
+          ...(effect ? { effect } : {}),
         });
         update(
           ctx.db,
@@ -185,6 +194,7 @@ export async function recoverPending(ctx: PlatformContext): Promise<void> {
   await recoverA2A(ctx);
   await ctx.approvals.expireDue();
   await dispatchOutbox(ctx);
+  await dispatchNative(ctx);
   await confirmOutbox(ctx);
 }
 export async function startRuntime(ctx: PlatformContext): Promise<{ stop(): Promise<void> }> {
@@ -221,6 +231,7 @@ export async function startRuntime(ctx: PlatformContext): Promise<{ stop(): Prom
       setInterval(() => {
         if (!stopped)
           void dispatchOutbox(ctx)
+            .then(() => (stopped ? undefined : dispatchNative(ctx)))
             .then(() => (stopped ? undefined : confirmOutbox(ctx)))
             .catch(() => ctx.log.error("Outbox dispatch failed"));
       }, 1000),

@@ -6,12 +6,13 @@ import type {
   InboundMessageT,
   Logger,
   MessagingProvider,
+  NativeMessaging,
   ProviderSendRequestT,
   ProviderSendResultT,
 } from "@dennis/contracts";
 import type { Db } from "@dennis/db";
-import { Spectrum, text } from "spectrum-ts";
-import { imessage } from "spectrum-ts/providers/imessage";
+import { Spectrum, poll, rename, text, voice } from "spectrum-ts";
+import { effect, imessage, nativeContactCard } from "spectrum-ts/providers/imessage";
 
 async function connectSpectrum(config: AppConfig) {
   const app = await Spectrum({
@@ -95,7 +96,9 @@ export class PhotonSpectrumProvider implements MessagingProvider {
       for await (const [space, message] of app.messages) {
         if (this.stopped) break;
         if (message.direction !== "inbound" || message.platform !== "imessage") continue;
-        if (message.content.type !== "text" && message.content.type !== "markdown") continue;
+        const content = message.content;
+        const isVote = content.type === "poll_option";
+        if (content.type !== "text" && content.type !== "markdown" && !isVote) continue;
         const senderHandle = message.sender?.id;
         if (!senderHandle) continue;
         const imessageSpace = imessage(space);
@@ -123,9 +126,25 @@ export class PhotonSpectrumProvider implements MessagingProvider {
           providerParticipantHandles: participantHandles,
           providerSenderId: senderHandle,
           senderHandle,
-          text: message.content.type === "text" ? message.content.text : message.content.markdown,
+          text:
+            content.type === "text"
+              ? content.text
+              : content.type === "markdown"
+                ? content.markdown
+                : "",
           receivedAt: message.timestamp.toISOString(),
           mode: "live",
+          // Vote ids look like `<pollMessageGuid>:<sender>:<option>:<action>:<time>`; the poll guid is
+          // the id Dennis got back when it sent the poll.
+          ...(content.type === "poll_option"
+            ? {
+                pollVote: {
+                  pollMessageId: message.id.split(":")[0]!,
+                  option: content.option.title,
+                  selected: content.selected,
+                },
+              }
+            : {}),
         };
         await this.handler?.(inbound);
       }
@@ -154,7 +173,9 @@ export class PhotonSpectrumProvider implements MessagingProvider {
         ? (this.spaces.get(req.spaceId) ??
           (await platform.space.get(routed!.id, routed!.phone ? { phone: routed!.phone } : {})))
         : await platform.space.create(req.toHandle);
-      const message = await space.send(text(req.text));
+      const message = await space.send(
+        req.effect ? effect(text(req.text), imessage.effect.message[req.effect]) : text(req.text),
+      );
       if (!message)
         throw new DennisError("integration_unavailable", "Photon did not return a message", 503);
       const routedSpaceId = encodeSpaceId(space.id, imessage(space).phone);
@@ -182,6 +203,53 @@ export class PhotonSpectrumProvider implements MessagingProvider {
       );
     }
   }
+
+  private async spaceFor(spaceId: string): Promise<SpectrumSpace> {
+    const { platform } = await this.getConnection();
+    const routed = decodeSpaceId(spaceId);
+    return (
+      this.spaces.get(spaceId) ??
+      (await platform.space.get(routed.id, routed.phone ? { phone: routed.phone } : {}))
+    );
+  }
+
+  readonly native: NativeMessaging = {
+    react: async (target, emoji) => {
+      const space = await this.spaceFor(target.spaceId);
+      const message = await space.getMessage(target.providerMessageId);
+      if (!message)
+        throw new DennisError("not_found", "Photon could not find the message to react to", 404);
+      await message.react(emoji);
+    },
+    sendPoll: async (spaceId, title, options) => {
+      const space = await this.spaceFor(spaceId);
+      const sent = await space.send(poll(title, options));
+      if (!sent)
+        throw new DennisError("integration_unavailable", "Photon did not return the poll", 503);
+      return { providerMessageId: sent.id };
+    },
+    renameGroup: async (spaceId, name) => {
+      const space = await this.spaceFor(spaceId);
+      await space.send(rename(name));
+    },
+    sendVoice: async (spaceId, audio, mimeType, durationSeconds) => {
+      const space = await this.spaceFor(spaceId);
+      const sent = await space.send(
+        voice(Buffer.from(audio), { mimeType, duration: durationSeconds, name: "dennis.m4a" }),
+      );
+      if (!sent)
+        throw new DennisError(
+          "integration_unavailable",
+          "Photon did not return the voice note",
+          503,
+        );
+      return { providerMessageId: sent.id };
+    },
+    shareContactCard: async (spaceId) => {
+      const space = await this.spaceFor(spaceId);
+      await space.send(nativeContactCard());
+    },
+  };
 
   async acknowledge(message: InboundMessageT): Promise<void> {
     if (!message.providerSpaceId) return;

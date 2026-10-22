@@ -8,7 +8,7 @@ import { bankLinks, groupPurchaseMembers, groupPurchases, merchantOffers } from 
 import type { PlatformContext } from "@dennis/platform";
 import { and, eq, inArray } from "drizzle-orm";
 
-import { authorizePaymentCopy, joinGroupCopy } from "../copy.js";
+import { authorizePaymentCopy, groupConfirmedCopy, joinGroupCopy } from "../copy.js";
 import { matchingRules } from "../matching/rules.js";
 import { evaluateProposal, priceGroup } from "../offers/pricing.js";
 import { transitionGroup, type GroupStatus } from "./state-machine.js";
@@ -249,6 +249,7 @@ async function requestJoinApprovals(ctx: PlatformContext, groupId: string): Prom
         individualCents: group.individualPriceCents,
         savingsCents: group.savingsPerMemberCents,
         merchant: offer.merchantName,
+        mode: ctx.config.conversationMode,
       }),
       ttlMinutes: ctx.config.approvalTtlMinutes,
       idempotencyKey: `purchase:join:${groupId}:${member.userId}`,
@@ -321,7 +322,11 @@ async function revealNamesAndRequestPayment(ctx: PlatformContext, groupId: strin
     await ctx.notifier.send({
       userId: member.userId,
       kind: "info",
-      text: `You're buying with ${otherUser.firstName}.`,
+      text: groupConfirmedCopy({
+        otherFirst: otherUser.firstName,
+        mode: ctx.config.conversationMode,
+      }),
+      ...(ctx.config.conversationMode === "demo" ? { effect: "confetti" as const } : {}),
       opportunityId: group.opportunityId,
       idempotencyKey: `purchase:name-reveal:${groupId}:${member.userId}`,
     });
@@ -343,6 +348,7 @@ async function revealNamesAndRequestPayment(ctx: PlatformContext, groupId: strin
         amountCents: member.shareCents,
         last4: payer.last4,
         productLabel: offer.title,
+        mode: ctx.config.conversationMode,
       }),
       ttlMinutes: ctx.config.approvalTtlMinutes,
       idempotencyKey: `purchase:payment-approval:${groupId}:${member.userId}`,

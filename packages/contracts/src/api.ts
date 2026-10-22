@@ -84,6 +84,17 @@ export const SimInboundRequest = z
     fromUserId: z.string(),
     text: z.string().min(1).max(4000),
     clientMessageId: z.string().min(1).max(200).optional(),
+    /** Simulate an iMessage group chat with these members (the sender included). */
+    groupMemberIds: z.array(z.string()).min(2).max(32).optional(),
+  })
+  .strict();
+export const SimPollVoteRequest = z
+  .object({
+    fromUserId: z.string(),
+    pollMessageId: z.string().min(1),
+    option: z.string().min(1).max(200),
+    selected: z.boolean().default(true),
+    groupMemberIds: z.array(z.string()).min(2).max(32).optional(),
   })
   .strict();
 export const PositionRequest = z

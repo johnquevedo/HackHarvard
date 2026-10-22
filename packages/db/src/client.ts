@@ -71,4 +71,8 @@ export const BOOTSTRAP_SQL = [
   'CREATE TABLE IF NOT EXISTS `points_accounts` (\n\t`user_id` text PRIMARY KEY NOT NULL,\n\t`balance` integer NOT NULL,\n\tFOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,\n\tCONSTRAINT "nonnegative_balance" CHECK("points_accounts"."balance" >= 0)\n);\n',
   "CREATE TABLE IF NOT EXISTS `points_ledger` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`user_id` text NOT NULL,\n\t`market_id` text,\n\t`kind` text NOT NULL,\n\t`delta` integer NOT NULL,\n\t`balance_after` integer NOT NULL,\n\t`ref_id` text,\n\t`idempotency_key` text NOT NULL,\n\t`created_at` text NOT NULL,\n\tFOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,\n\tFOREIGN KEY (`market_id`) REFERENCES `markets`(`id`) ON UPDATE no action ON DELETE no action\n);\n",
   "CREATE UNIQUE INDEX IF NOT EXISTS `points_ledger_unique_0` ON `points_ledger` (`idempotency_key`);",
+  "CREATE TABLE IF NOT EXISTS `native_actions` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`kind` text NOT NULL,\n\t`user_id` text NOT NULL,\n\t`space_id` text,\n\t`tag` text,\n\t`payload` text NOT NULL,\n\t`status` text NOT NULL,\n\t`provider_message_id` text,\n\t`error` text,\n\t`idempotency_key` text NOT NULL,\n\t`created_at` text NOT NULL,\n\t`sent_at` text,\n\tFOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action\n);\n",
+  "CREATE UNIQUE INDEX IF NOT EXISTS `native_actions_unique_0` ON `native_actions` (`idempotency_key`);",
+  "CREATE INDEX IF NOT EXISTS `native_actions_queue` ON `native_actions` (`status`,`created_at`);",
+  "CREATE INDEX IF NOT EXISTS `native_actions_provider_message` ON `native_actions` (`provider_message_id`);",
 ].join("\n");

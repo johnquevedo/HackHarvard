@@ -137,7 +137,16 @@ describe("demo group chat, ShortMe part", () => {
       question: "Will john pass his Meta final round?",
     });
 
-    expect(await put(ctx, "john", line(2))).toBe(line(3));
+    // "Market created" goes out as its own message (sent with a slam), not as a command reply.
+    expect(await put(ctx, "john", line(2))).toBeUndefined();
+    expect(lastDennisTo(ctx, "john")).toBe(line(3));
+    expect(
+      ctx.db.$client
+        .prepare(
+          "SELECT k.value FROM outbox o JOIN kv k ON k.key = 'outbox-effect:' || o.id WHERE o.text = ?",
+        )
+        .get(line(3)),
+    ).toEqual({ value: JSON.stringify("slam") });
     expect(market(ctx, "john")?.status).toBe("open");
     expect(getBalance(ctx, PEOPLE.john.id)).toBe(1000 - 50);
 

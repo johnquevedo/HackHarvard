@@ -10,6 +10,7 @@ import {
   UserIdRequest,
   ApprovalDecisionRequest,
   SimInboundRequest,
+  SimPollVoteRequest,
   ConsentScope,
   IntentKind,
   OpportunityType,
@@ -29,6 +30,7 @@ import type { PlatformContext } from "./context.ts";
 import { row, rows, update } from "./storage.ts";
 import { ingestInbound } from "./pipeline.ts";
 import { forgetUser } from "./commands.ts";
+import { nativeActions, type NativePayload } from "./native.ts";
 async function body<T>(c: Context, schema: z.ZodType<T>): Promise<T> {
   let value: unknown;
   try {
@@ -56,7 +58,40 @@ function since(c: Context): number {
     .nonnegative()
     .parse(c.req.query("sinceSeq") ?? c.req.header("Last-Event-ID") ?? 0);
 }
+function describeNative(p: NativePayload): string {
+  switch (p.kind) {
+    case "react":
+      return `[dennis reacted ${p.emoji}]`;
+    case "poll":
+      return `[poll] ${p.title} | ${p.options.join(" | ")}`;
+    case "rename":
+      return `[dennis named the conversation "${p.name}"]`;
+    case "voice":
+      return `[voice note] ${p.text}`;
+    case "contact_card":
+      return "[dennis shared its contact card]";
+  }
+}
+
 export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
+  // Simulator space: a 1:1 thread by default, or a simulated iMessage group of the given users.
+  async function simSpace(groupMemberIds: string[] | undefined, senderHandle: string) {
+    if (!groupMemberIds) return { providerSpaceId: null };
+    const members = [];
+    for (const memberId of groupMemberIds) {
+      const member = await ctx.users.get(memberId);
+      if (!member) throw new DennisError("not_found", `Group member ${memberId} not found`, 404);
+      members.push(member.handle);
+    }
+    if (!members.includes(senderHandle))
+      throw new DennisError("validation_error", "The sender must be a group member", 400);
+    return {
+      providerSpaceId: "sim_group:" + [...groupMemberIds].sort().join("+"),
+      providerSpaceKind: "group" as const,
+      providerParticipantIds: members,
+      providerParticipantHandles: members,
+    };
+  }
   function admin(c: Context) {
     if (c.req.header("x-dennis-admin") !== ctx.config.dennisAdminToken)
       throw new DennisError("unauthorized", "Admin token required", 401);
@@ -434,7 +469,7 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
       provider: "sim",
       accountKey: ctx.config.photonAccountKey,
       providerMessageId: input.clientMessageId ?? ctx.ids.next("message"),
-      providerSpaceId: null,
+      ...(await simSpace(input.groupMemberIds, user.handle)),
       providerSenderId: null,
       senderHandle: user.handle,
       text: input.text,
@@ -445,6 +480,32 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
       messageId: result.messageId,
       accepted: result.outcome !== "ignored",
     });
+  });
+  // A simulated vote on one of Dennis's native polls (`pollMessageId` from the poll's native action).
+  app.post("/api/sim/poll-vote", async (c) => {
+    admin(c);
+    if (ctx.messaging.name !== "sim")
+      throw new DennisError("invalid_state", "Simulator provider is not active", 409);
+    const input = await body(c, SimPollVoteRequest);
+    const user = await ctx.users.get(input.fromUserId);
+    if (!user) throw new DennisError("not_found", "User not found", 404);
+    const result = await ingestInbound(ctx, {
+      provider: "sim",
+      accountKey: ctx.config.photonAccountKey,
+      providerMessageId: `${input.pollMessageId}:${user.id}:${input.option}:${input.selected}:${ctx.clock.nowIso()}`,
+      ...(await simSpace(input.groupMemberIds, user.handle)),
+      providerSenderId: null,
+      senderHandle: user.handle,
+      text: "",
+      receivedAt: ctx.clock.nowIso(),
+      mode: "simulated",
+      pollVote: {
+        pollMessageId: input.pollMessageId,
+        option: input.option,
+        selected: input.selected,
+      },
+    });
+    return c.json({ messageId: result.messageId, accepted: result.outcome !== "ignored" });
   });
   app.get("/api/sim/thread", async (c) => {
     const id = z.string().min(1).parse(c.req.query("userId"));
@@ -468,8 +529,23 @@ export function mountPlatformRoutes(app: Hono, ctx: PlatformContext): void {
         status: m.status,
       }),
     );
+    const spaces = rows<{ photonSpaceId: string }>(
+      ctx.db,
+      "SELECT photon_space_id FROM photon_spaces WHERE user_id=?",
+      id,
+    ).map((r) => r.photonSpaceId);
+    const native = nativeActions(ctx)
+      .filter((a) => a.userId === id || (a.spaceId !== null && spaces.includes(a.spaceId)))
+      .filter((a) => a.status === "sent" || a.status === "queued")
+      .map((a) => ({
+        direction: "out" as const,
+        text: describeNative(a.payload),
+        ts: (a as unknown as { createdAt: string }).createdAt,
+        status: a.status,
+        native: a.kind,
+      }));
     return c.json({
-      messages: [...incoming, ...outgoing].sort((a, b) => a.ts.localeCompare(b.ts)),
+      messages: [...incoming, ...outgoing, ...native].sort((a, b) => a.ts.localeCompare(b.ts)),
     });
   });
   app.post("/webhooks/photon", async (c) => {

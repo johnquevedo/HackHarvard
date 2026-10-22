@@ -58,6 +58,7 @@ function persistNotification(
   });
   insert(ctx.db, "outbox", { ...record, idempotencyKey: req.idempotencyKey });
   if (req.spaceId) insert(ctx.db, "kv", { key: "outbox-route:" + record.id, value: req.spaceId });
+  if (req.effect) insert(ctx.db, "kv", { key: "outbox-effect:" + record.id, value: req.effect });
   return { record, created: true };
 }
 function emitQueued(ctx: PlatformContext, value: OutboxRecordT): void {

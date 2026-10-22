@@ -174,6 +174,8 @@ const samples: Record<keyof typeof EVENT_PAYLOAD_SCHEMAS, unknown> = {
     lastCheckedAt: ts,
     lastSuccessAt: null,
   },
+  "native.action": { actionId: "nat_1", kind: "react", status: "sent", detail: "\ud83d\udc80" },
+  "poll.vote": { actionId: "nat_2", option: "long", selected: true, ok: true, note: "placed" },
   "demo.reset": { runId: "run_1" },
   "eval.report": { provider: "local", runId: "run_1" },
   "error.logged": { where: "test", message: "Sanitized error" },

@@ -9,6 +9,7 @@ import { merchantOffers, groupPurchaseMembers, groupPurchases } from "@dennis/db
 import { registerPrivacyCleanup } from "@dennis/platform";
 import { eq, inArray, and } from "drizzle-orm";
 import type { FeatureModule, PlatformContext } from "@dennis/platform";
+import { queueNative, spaceOfInbound } from "@dennis/platform";
 
 import { purchaseDetector } from "./detector/purchase.js";
 import { MockPurchaseDetector } from "./detector/mock.js";
@@ -62,6 +63,13 @@ async function handlePurchaseDetection(
   if (!(await ctx.consent.has(input.agent.userId, "purchase_matching"))) return;
 
   const shared = await ctx.intents.markShared(input.intent.id);
+  // 👀 on the message: Dennis noticed, and is quietly checking with other agents.
+  if (input.intent.sourceMessageId && spaceOfInbound(ctx, input.intent.sourceMessageId))
+    queueNative(ctx, {
+      userId: input.agent.userId,
+      payload: { kind: "react", targetMessageId: input.intent.sourceMessageId, emoji: "👀" },
+      idempotencyKey: `purchasing.native:noticed:${input.intent.id}`,
+    });
   ctx.events.emit({
     type: "intent.registered",
     actor: { kind: "agent", agentId: input.agent.id, userId: input.agent.userId },

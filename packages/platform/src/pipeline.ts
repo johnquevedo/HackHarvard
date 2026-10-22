@@ -12,6 +12,7 @@ import { insert, row, rows, update } from "./storage.ts";
 import { normalizeHandle } from "@dennis/messaging";
 import { handleCommand, ONBOARDING } from "./commands.ts";
 import { scheduleConversationalReply } from "./conversation.ts";
+import { handlePollVote, queueNative, rememberSpaceKind } from "./native.ts";
 interface StoredInbound {
   id: string;
   userId: string;
@@ -141,6 +142,9 @@ export async function ingestInbound(
     }
     const agent = await ctx.users.getAgentByUserId(user.id);
     if (!agent) throw new DennisError("not_found", "Agent not found", 404);
+    if (msg.providerSpaceId && msg.providerSpaceKind)
+      rememberSpaceKind(ctx, msg.providerSpaceId, msg.providerSpaceKind);
+    if (msg.pollVote) return ingestPollVote(ctx, msg, user, agent, identityFailure);
     const pendingApprovalCount = (await ctx.approvals.findPending(user.id, null)).length;
     const command = parseCommand(msg.text, {
       allowNaturalApproval: pendingApprovalCount === 1,
@@ -150,6 +154,13 @@ export async function ingestInbound(
     const groupFailure = await groupAuthorizationFailure(ctx, msg);
     const alsoDetect = command.kind === "put" && command.alsoDetect === true;
     if (msg.providerSpaceKind === "group" && msg.providerSpaceId && !groupFailure) {
+      // First time Dennis is in this group: share its contact card (name and photo), once.
+      queueNative(ctx, {
+        userId: user.id,
+        spaceId: msg.providerSpaceId,
+        payload: { kind: "contact_card" },
+        idempotencyKey: "platform.native:contact-card:" + msg.providerSpaceId,
+      });
       for (const handle of new Set(msg.providerParticipantHandles ?? [])) {
         const participant = await ctx.users.getByHandle(normalizeHandle(handle).handle);
         if (participant)
@@ -441,4 +452,60 @@ export async function runPipeline(ctx: PlatformContext, messageId: string): Prom
       await typing(false);
     }
   });
+}
+
+// A vote on one of Dennis's native polls. Same identity, group-membership, consent, and pause checks
+// as text; the vote is stored as a command-like inbound row and routed to the feature that owns the poll.
+async function ingestPollVote(
+  ctx: PlatformContext,
+  msg: InboundMessageT,
+  user: { id: string },
+  agent: { id: string; status: string },
+  identityFailure: string | null,
+): Promise<{ messageId: string; outcome: "command" | "ignored" }> {
+  const vote = msg.pollVote!;
+  const groupFailure = await groupAuthorizationFailure(ctx, msg);
+  const consent = await ctx.consent.has(user.id, "messaging_context");
+  const paused =
+    agent.status === "paused" ||
+    row<{ value: boolean }>(ctx.db, "SELECT value FROM kv WHERE key='inbound_paused'")?.value ===
+      true;
+  const reason =
+    identityFailure ?? groupFailure ?? (!consent ? "no_consent" : paused ? "paused" : null);
+  const messageId = ctx.ids.next("message");
+  insert(ctx.db, "inbound_messages", {
+    id: messageId,
+    provider: msg.provider,
+    providerMessageId: msg.providerMessageId,
+    providerSpaceId: msg.providerSpaceId,
+    userId: user.id,
+    agentId: agent.id,
+    text: reason
+      ? null
+      : `[poll ${vote.selected ? "vote" : "unvote"}] ${vote.option}`.slice(0, 4000),
+    status: reason ? "ignored" : "command",
+    ignoreReason: reason,
+    receivedAt: msg.receivedAt,
+    processedAt: ctx.clock.nowIso(),
+  });
+  if (reason) {
+    ctx.events.emit({
+      type: "message.ignored",
+      actor: { kind: "system" },
+      visibility: "system",
+      mode: msg.mode,
+      payload: { messageId, reason },
+    });
+    return { messageId, outcome: "ignored" };
+  }
+  const result = await handlePollVote(ctx, msg, user, agent, messageId);
+  if (result.reply)
+    await ctx.notifier.send({
+      userId: user.id,
+      kind: "info",
+      text: result.reply,
+      ...(msg.providerSpaceId ? { spaceId: msg.providerSpaceId } : {}),
+      idempotencyKey: "poll-vote-reply:" + messageId,
+    });
+  return { messageId, outcome: "command" };
 }

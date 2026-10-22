@@ -19,7 +19,10 @@ function safeErrorChain(error: unknown): string {
   }
   return [process.env.PHOTON_PROJECT_SECRET, process.env.PHOTON_PROJECT_ID]
     .filter((value): value is string => Boolean(value))
-    .reduce((message, value) => message.replaceAll(value, "[redacted]"), [...new Set(parts)].join(": "));
+    .reduce(
+      (message, value) => message.replaceAll(value, "[redacted]"),
+      [...new Set(parts)].join(": "),
+    );
 }
 
 async function spectrumDoctor(preflightOnly: boolean, sendFirst: boolean): Promise<void> {
@@ -327,11 +330,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const diagnostic = process.env.PHOTON_PROJECT_SECRET
       ? safeErrorChain(error)
       : error instanceof Error &&
-      (error.message.startsWith("NOT VERIFIED:") ||
-        error.message.startsWith("Unknown doctor") ||
-        error.message.startsWith("Demo senders") ||
-        (Boolean(process.env.PHOTON_PROJECT_SECRET) &&
-          error.message.startsWith("Photon Spectrum")))
+          (error.message.startsWith("NOT VERIFIED:") ||
+            error.message.startsWith("Unknown doctor") ||
+            error.message.startsWith("Demo senders") ||
+            (Boolean(process.env.PHOTON_PROJECT_SECRET) &&
+              error.message.startsWith("Photon Spectrum")))
         ? error.message
         : photonError(error).message;
     process.stderr.write(diagnostic + "\n");

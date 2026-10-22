@@ -62,6 +62,29 @@ export const Agent = z.object({
 });
 
 // Normalized inbound message produced by every MessagingProvider.
+// Native iMessage send effects Dennis may use (Photon Spectrum maps them to Apple effect ids).
+export const NativeEffect = z.enum([
+  "slam",
+  "loud",
+  "gentle",
+  "invisible",
+  "confetti",
+  "fireworks",
+  "balloons",
+  "lasers",
+  "celebration",
+  "sparkles",
+  "spotlight",
+  "echo",
+  "heart",
+]);
+// A vote (or un-vote) on a native poll Dennis sent; `pollMessageId` is the poll's provider id.
+export const PollVote = z.object({
+  pollMessageId: z.string(),
+  option: z.string(),
+  selected: z.boolean(),
+});
+
 export const InboundMessage = z.object({
   provider: z.enum(["photon", "sim"]),
   accountKey: z.string(),
@@ -75,6 +98,7 @@ export const InboundMessage = z.object({
   text: z.string().max(4000),
   receivedAt: IsoDateTime,
   mode: ProviderMode,
+  pollVote: PollVote.optional(),
 });
 
 export const PurchaseCategory = z.enum([
@@ -217,6 +241,7 @@ export const ProviderSendRequest = z.object({
   spaceId: z.string().nullable(),
   text: z.string().max(1500),
   idempotencyKey: z.string(),
+  effect: NativeEffect.optional(),
 });
 export const ProviderSendResult = z.object({
   providerMessageId: z.string(),
@@ -245,6 +270,8 @@ export type AgentSettingsT = z.infer<typeof AgentSettings>;
 export type UserT = z.infer<typeof User>;
 export type AgentT = z.infer<typeof Agent>;
 export type InboundMessageT = z.infer<typeof InboundMessage>;
+export type NativeEffectT = z.infer<typeof NativeEffect>;
+export type PollVoteT = z.infer<typeof PollVote>;
 export type PurchaseCategoryT = z.infer<typeof PurchaseCategory>;
 export type TimeframeT = z.infer<typeof Timeframe>;
 export type PurchaseIntentPrivateT = z.infer<typeof PurchaseIntentPrivate>;

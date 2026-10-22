@@ -13,6 +13,7 @@ import { GATES } from "../rules";
 import { dollars, dollarsToPoints, marketCreatedText, stakeRecordedText } from "../templates";
 import { emitLedgerPosted, emitPositionPlaced } from "./events";
 import { stakingOnPublish } from "./publish-state";
+import { marketSpace, onStakeMessage } from "../native-moments";
 import { marketByOpportunity, passInvite, requireMarket } from "./service";
 
 export type PositionRow = typeof marketPositions.$inferSelect;
@@ -276,6 +277,12 @@ async function placeAndDescribe(
     idempotencyKey: `cmd:${input.messageId}`,
     via: "imessage",
   });
+  onStakeMessage(ctx, {
+    inboundMessageId: input.messageId,
+    isSubject: input.isSubject,
+    side: input.side,
+    userId: input.userId,
+  });
   const [me, subject] = await Promise.all([
     ctx.users.get(input.userId),
     ctx.users.get(m.subjectUserId),
@@ -380,17 +387,26 @@ export function putHandler(ctx: PlatformContext) {
         stakingOnPublish.delete(m.id);
       }
       const live = requireMarket(ctx, m.id);
-      // Dennis already said its piece on dating markets; recruiting gets the "Market created" line.
-      return live.category === "dating"
-        ? {}
-        : {
-            reply: marketCreatedText({
-              question: live.question,
-              subjectStakePoints: points,
-              category: live.category,
-              mode: ctx.config.conversationMode,
-            }),
-          };
+      // Dennis already said its piece on dating markets; recruiting gets the "Market created" line,
+      // sent with a slam, into the market's group when it has one.
+      if (live.category !== "dating") {
+        const { spaceId, isGroup } = marketSpace(ctx, live);
+        await ctx.notifier.send({
+          userId: input.userId,
+          kind: "info",
+          text: marketCreatedText({
+            question: live.question,
+            subjectStakePoints: points,
+            category: live.category,
+            mode: ctx.config.conversationMode,
+          }),
+          effect: "slam",
+          ...(isGroup && spaceId ? { spaceId } : {}),
+          opportunityId: live.opportunityId,
+          idempotencyKey: `market_created:${live.id}`,
+        });
+      }
+      return {};
     }
     const { candidate, reply } = resolveCandidate(
       ctx,

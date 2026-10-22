@@ -246,3 +246,30 @@ export const kv = sqliteTable("kv", {
   key: text("key").primaryKey().notNull(),
   value: text("value", { mode: "json" }).notNull(),
 });
+// Native iMessage actions (tapbacks, polls, group renames, voice notes, contact cards), queued and
+// dispatched after the outbox so they arrive in order. Created at runtime by the platform with the
+// exact DDL drizzle generates, so db:push sees no drift.
+export const nativeActions = sqliteTable(
+  "native_actions",
+  {
+    id: text("id").primaryKey().notNull(),
+    kind: text("kind").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    spaceId: text("space_id"),
+    tag: text("tag"),
+    payload: text("payload", { mode: "json" }).notNull(),
+    status: text("status").notNull(),
+    providerMessageId: text("provider_message_id"),
+    error: text("error"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    createdAt: text("created_at").notNull(),
+    sentAt: text("sent_at"),
+  },
+  (t) => [
+    uniqueIndex("native_actions_unique_0").on(t.idempotencyKey),
+    index("native_actions_queue").on(t.status, t.createdAt),
+    index("native_actions_provider_message").on(t.providerMessageId),
+  ],
+);

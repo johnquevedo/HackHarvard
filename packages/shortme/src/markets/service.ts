@@ -21,6 +21,7 @@ import {
   publishMarketPrompt,
 } from "../templates";
 import { stakingOnPublish } from "./publish-state";
+import { marketSpace, onMarketOpened, onMarketProposed, readsMarketGroup } from "../native-moments";
 import { ensureStarterGrant, getBalance } from "../ledger/ledger";
 import {
   approvalTtlMinutes,
@@ -209,6 +210,7 @@ export async function handleMilestoneDetection(
   });
   ensureStarterGrant(ctx, user.id);
   emitMarketUpdated(ctx, row);
+  onMarketProposed(ctx, row);
 
   const payload: PublishPayload = { question, invitees, pointsOnly: true };
   await ctx.approvals.request({
@@ -271,6 +273,7 @@ export async function onPublishDecided(ctx: PlatformContext, approval: ApprovalT
     await syncOpportunity(ctx, opened);
     await sendInvites(ctx, opened, approvedInvitees);
     if (!stakingOnPublish.has(opened.id)) {
+      const { spaceId, isGroup } = marketSpace(ctx, opened);
       await ctx.notifier.send({
         userId: opened.subjectUserId,
         kind: "info",
@@ -280,10 +283,13 @@ export async function onPublishDecided(ctx: PlatformContext, approval: ApprovalT
           category: opened.category,
           mode: ctx.config.conversationMode,
         }),
+        effect: "slam",
+        ...(isGroup && spaceId ? { spaceId } : {}),
         opportunityId: opened.opportunityId,
         idempotencyKey: `market_created:${opened.id}`,
       });
     }
+    await onMarketOpened(ctx, opened);
   });
 }
 
@@ -425,6 +431,8 @@ export async function onMarketInvite(
   const invite = inviteFor(ctx, marketId, agent.userId);
   if (!invite) throw new DennisError("not_found", "invitation record missing", 404);
   const code = invite.code;
+  // In the market's own group chat the native poll is the invite; a per-friend text would repeat.
+  if (readsMarketGroup(ctx, m, agent.userId)) return;
   await ctx.notifier.send({
     userId: agent.userId,
     kind: "invite",

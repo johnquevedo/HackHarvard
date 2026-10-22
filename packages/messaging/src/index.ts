@@ -10,6 +10,7 @@ import type {
   IdFactory,
   Logger,
   MessagingProvider,
+  NativeMessaging,
   InboundHandler,
   ProviderSendRequestT,
   ProviderSendResultT,
@@ -32,10 +33,64 @@ export function normalizeHandle(raw: string): {
     throw new DennisError("validation_error", "Invalid phone or email handle", 400);
   return { handle, kind: "phone" };
 }
+/** One native action the simulator performed, in order, for tests and the dashboard thread. */
+export interface SimNativeRecord {
+  kind: "react" | "poll" | "rename" | "voice" | "contact_card";
+  spaceId: string;
+  providerMessageId?: string;
+  emoji?: string;
+  targetMessageId?: string;
+  title?: string;
+  options?: string[];
+  name?: string;
+  durationSeconds?: number;
+  bytes?: number;
+}
+
 export class SimMessagingProvider implements MessagingProvider {
   readonly name = "sim" as const;
   private handler: InboundHandler | null = null;
   readonly sent: ProviderSendRequestT[] = [];
+  readonly nativeLog: SimNativeRecord[] = [];
+  private nativeSeq = 0;
+  readonly native: NativeMessaging = {
+    react: async (target, emoji) => {
+      this.nativeLog.push({
+        kind: "react",
+        spaceId: target.spaceId,
+        targetMessageId: target.providerMessageId,
+        emoji,
+      });
+    },
+    sendPoll: async (spaceId, title, options) => {
+      const providerMessageId = `sim_poll_${++this.nativeSeq}`;
+      this.nativeLog.push({
+        kind: "poll",
+        spaceId,
+        providerMessageId,
+        title,
+        options: [...options],
+      });
+      return { providerMessageId };
+    },
+    renameGroup: async (spaceId, name) => {
+      this.nativeLog.push({ kind: "rename", spaceId, name });
+    },
+    sendVoice: async (spaceId, audio, _mimeType, durationSeconds) => {
+      const providerMessageId = `sim_voice_${++this.nativeSeq}`;
+      this.nativeLog.push({
+        kind: "voice",
+        spaceId,
+        providerMessageId,
+        durationSeconds,
+        bytes: audio.byteLength,
+      });
+      return { providerMessageId };
+    },
+    shareContactCard: async (spaceId) => {
+      this.nativeLog.push({ kind: "contact_card", spaceId });
+    },
+  };
   private results = new Map<string, ProviderSendResultT>();
   constructor(
     private clock: Clock = {
