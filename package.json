@@ -29,6 +29,7 @@
     "eval:local": "tsx packages/eval-data/src/cli.ts",
     "eval:chalk": "bash services/chalk-eval/run.sh",
     "photon:doctor": "tsx scripts/photon-doctor.ts",
+    "photon:send-native": "tsx --env-file=.env apps/web/src/lib/photon-native-breadth/send-cli.ts",
     "nessie:doctor": "tsx scripts/nessie-doctor.ts",
     "e2e:sim": "tsx tests/e2e/run.ts",
     "build:web": "node apps/web/dev.mjs build",

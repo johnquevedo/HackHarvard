@@ -44,6 +44,16 @@ Cast: Alice and Bob. Presenter drives the dashboard.
 | Bank fails                | Show the failed attempt. Do not switch the bank mid-demo. | SIMULATED BANK only if you started that way |
 | Whole stack is down       | `pnpm demo:replay purchase`                               | REPLAY, always visible                      |
 
+## Photon native extras (Vincent / optional)
+
+Hackathon default stays `DENNIS_ACK_MODE=none` and all `DENNIS_PHOTON_*=0`.
+
+**Tapbacks + typing:** set `DENNIS_ACK_MODE=reaction`, run `tsx --env-file=.env scripts/seed-demo.ts` (re-applies `ackMode` on `agt_demo_*`), use live Photon Spectrum (`PHOTON_PROJECT_SECRET`) or Beta, confirm messaging consent. Pipeline already calls `acknowledge` / `setTyping` when gated.
+
+**Web apps / contact / voice / location proxy (Spectrum):** set the matching flag, then send with `pnpm photon:send-native` (see `docs/INTEGRATIONS.md`). Needs real Spectrum credentials + a reachable handle. Provider auto-send and inbound voice/location still need A1 (CR-A4-001).
+
+**Lead with group chat:** keep `PHOTON_SPACE_MODE=either` and demo the group space first; native cards are additive flourishes on top.
+
 ## Rehearsal
 
 | Run | Date    | Duration | Notes                                           |

@@ -363,3 +363,27 @@ Dennis's purchasing lines in the transcript, with amounts formatted by code: "wa
 - Copy v2 in Dennis's voice for proposals, market created, invites, stakes, confirmations, disputes, results; quip prompt rewritten in voice; detector prompt understands "cooked", "chopped", "tmr", "tn", and asking someone out.
 - `putHandler`: "I'll put $X" picks the side by role (subject shorts themself, friends back the subject) and, when the subject has a pending proposal, approves and stakes in one step.
 - Scripted mock LLM rules and tests/cross/a3-demo-script.test.ts replay john's and steven's lines word for word through the real platform, plus settlement in dollars.
+
+## CR-A4-001 to A1: Photon native-breadth provider wire-up (Vincent / contest)
+
+Branch: `a4/photon-native-breadth-v1`. A4 cannot edit `packages/messaging/**` or `docs/spikes/photon.md` (A1-owned). Requested additive work only; defaults stay off.
+
+**Already on A4 (do not re-implement):**
+- Tapbacks/typing via `DENNIS_ACK_MODE=reaction` + `seed-demo` `applyAckModeFromEnv` (pipeline already gates).
+- Beta 1.0 SendContent builders under `apps/web/src/lib/photon-native-breadth/content.ts`.
+- Spectrum serializable intents + **working CLI send path** `pnpm photon:send-native` (`send-spectrum.ts` / `send-cli.ts`) for `app` / `customizedMiniApp` / `richlink` / `nativeContactCard` / `contact` / `voice` / live-location **proxy** (maps URL as `app({ live })`).
+- Flags: `DENNIS_PHOTON_SPECTRUM_WEBAPP`, `DENNIS_PHOTON_SPECTRUM_CONTACT_CARD`, `DENNIS_PHOTON_SPECTRUM_LIVE_LOCATION`, plus existing `DENNIS_PHOTON_NATIVE_*`.
+
+**Still blocked on A1:**
+
+1. Copy or re-export `apps/web/src/lib/photon-native-breadth/` into `packages/messaging/src/photon/` (preferred home). Prefer Spectrum builders for Vincent surfaces when `PHOTON_PROJECT_SECRET` is set.
+2. `PhotonSpectrumProvider` (primary contest path):
+   - Use `DENNIS_PHOTON_ACK_REACTION` in `acknowledge` (today hardcoded 👍).
+   - Opt-in helpers (or outbox kinds) that call the same intent→`space.send` path as A4's `sendSpectrumIntent`, gated by the Spectrum/voice flags — so the **pipeline** can send webapp/contact/voice without the CLI.
+   - Inbound: accept `voice` (and location, if the SDK surfaces it) in `consume()`, not only `text`/`markdown`; normalize into platform inbound (text transcript or attachment ref).
+3. `PhotonBetaProvider`: `DENNIS_PHOTON_ACK_REACTION`; opt-in `sendAttachment` / `sendVoice` / `markRead` gated by `DENNIS_PHOTON_NATIVE_ATTACHMENT|VOICE|READ` (uploadAttachment then SendContent).
+4. Platform `seedCore`: optional mirror of ackMode upsert so server startup matches without `seed-demo`.
+5. `docs/spikes/photon.md`: Spectrum Cloud is the Vincent path for miniapp/contact/voice; Beta 1.0 remains for API-key projects. Honest gap: **no outbound Apple live-location share builder** — proxy is maps URL card; inbound live location needs item 2.
+6. Point at `docs/INTEGRATIONS.md` § Photon native breadth.
+
+Verification on A4: vitest for Beta builders, Spectrum intents, mocked send path, ack upsert; `.env.example` + runbook updated. CLI send is live-capable with credentials; provider auto-send / inbound voice+location remain A1.
